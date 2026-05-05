@@ -1022,6 +1022,7 @@ export type LocalStateUI = {
 	};
 	lid?: number;
 	liveGameInProgress: boolean;
+	liveGameProgress: number;
 	neutralSite: GameAttributesLeague["neutralSite"];
 	numPeriods: number;
 	numWatchColors: number;

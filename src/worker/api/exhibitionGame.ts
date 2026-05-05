@@ -439,7 +439,7 @@ export const simExhibitionGame = async (
 	// Hacky, but if you send the same gid once, processLiveGameEvents won't reset playersByPid
 	const gid = random.randInt(0, 1000000000);
 
-	const result = new GameSim({
+	const result = await new GameSim({
 		gid,
 		day: -1,
 		teams: teamsProcessed,

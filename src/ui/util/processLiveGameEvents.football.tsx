@@ -61,6 +61,7 @@ export type SportState = {
 		countsTowardsYards: boolean;
 		tagOverride: string | undefined;
 		subPlay: boolean; // subPlay is like a kick return or turnover return
+		playType: "run" | "pass" | undefined;
 
 		// Team with the ball after the play ends
 		t: 0 | 1;
@@ -652,6 +653,7 @@ const processLiveGameEvents = ({
 				countsTowardsYards: false,
 				tagOverride: undefined,
 				subPlay,
+				playType: undefined,
 			});
 		};
 
@@ -982,6 +984,11 @@ const processLiveGameEvents = ({
 				e.type === "handoff" ||
 				e.type === "kneel"
 			) {
+				if (e.type === "dropback") {
+					play.playType = "pass";
+				} else if (e.type === "handoff") {
+					play.playType = "run";
+				}
 				if (!sportState.awaitingAfterTouchdown) {
 					play.countsTowardsNumPlays = true;
 					play.countsTowardsYards = true;

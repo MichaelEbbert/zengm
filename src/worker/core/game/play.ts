@@ -347,7 +347,7 @@ const play = async (
 		}
 	};
 
-	const getResult = ({
+	const getResult = async ({
 		gid,
 		day,
 		teams,
@@ -471,7 +471,7 @@ const play = async (
 						}
 					}
 
-					const result = getResult({
+					const result = await getResult({
 						gid: game.gid,
 						day: game.day,
 						teams: helpers.deepCopy(teamsInput), // So stats start at 0 each time
@@ -542,7 +542,7 @@ const play = async (
 					(g.get("neutralSite") === "playoffs" ||
 						(g.get("neutralSite") === "finals" && game.finals));
 
-				const result = getResult({
+				const result = await getResult({
 					gid: game.gid,
 					day: game.day,
 					teams: teamsInput,

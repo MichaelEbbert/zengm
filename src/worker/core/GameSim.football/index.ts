@@ -1,4 +1,4 @@
-import { g, helpers, random } from "../../util/index.ts";
+import { g, helpers, random, toUI } from "../../util/index.ts";
 import { POSITIONS } from "../../../common/constants.football.ts";
 import PlayByPlayLogger, {
 	type PlayByPlayEventScore,
@@ -28,6 +28,10 @@ import { PHASE, STARTING_NUM_TIMEOUTS } from "../../../common/constants.ts";
 import type { TeamNum } from "../../../common/types.ts";
 
 const teamNums: [TeamNum, TeamNum] = [0, 1];
+
+// Coach sidecar play-calling config — set COACH_SIDECAR_PLAY_CALLING to false to revert to math
+const COACH_SIDECAR_PLAY_CALLING = process.env.NODE_ENV !== "test";
+const COACH_SIDECAR_BASE_URL = process.env.COACH_SIDECAR_URL ?? "";
 
 const FIELD_GOAL_DISTANCE_YARDS_ADDED_FROM_SCRIMMAGE = 17;
 
@@ -121,6 +125,8 @@ class GameSim extends GameSimBase {
 	// For penalties at the end of a half
 	playUntimedPossession = false;
 
+	playCount = 0;
+
 	twoPointConversionTeam: TeamNum | undefined;
 
 	overtimeType =
@@ -207,16 +213,16 @@ class GameSim extends GameSimBase {
 		}
 	}
 
-	run() {
+	async run() {
 		// Simulate the game up to the end of regulation
-		this.simRegulation();
+		await this.simRegulation();
 
 		let numOvertimes = 0;
 		while (
 			this.team[0].stat.pts === this.team[1].stat.pts &&
 			numOvertimes < this.maxOvertimes
 		) {
-			this.simOvertime();
+			await this.simOvertime();
 			numOvertimes += 1;
 		}
 
@@ -264,6 +270,67 @@ class GameSim extends GameSimBase {
 			}
 
 			scoringSummary.push(current);
+		}
+
+		if (COACH_SIDECAR_BASE_URL) {
+			const buildTeamStats = (t: 0 | 1) => {
+				const players = this.team[t].player;
+				return {
+					id: this.team[t].id,
+					score: this.team[t].stat.pts,
+					rushAttempts: players.reduce((s, p) => s + (p.stat.rus ?? 0), 0),
+					rushYards: players.reduce((s, p) => s + (p.stat.rusYds ?? 0), 0),
+					rushTDs: players.reduce((s, p) => s + (p.stat.rusTD ?? 0), 0),
+					passAttempts: players.reduce((s, p) => s + (p.stat.pss ?? 0), 0),
+					passCompletions: players.reduce(
+						(s, p) => s + (p.stat.pssCmp ?? 0),
+						0,
+					),
+					passYards: players.reduce((s, p) => s + (p.stat.pssYds ?? 0), 0),
+					passTDs: players.reduce((s, p) => s + (p.stat.pssTD ?? 0), 0),
+					passInts: players.reduce((s, p) => s + (p.stat.pssInt ?? 0), 0),
+				};
+			};
+			const gameResultBody = JSON.stringify({
+				gid: this.id,
+				season: g.get("season"),
+				phase: g.get("phase"),
+				teams: [buildTeamStats(0), buildTeamStats(1)],
+			});
+			const sendGameResult = async () => {
+				for (let attempt = 0; attempt < 6; attempt++) {
+					if (attempt > 0) {
+						await new Promise((resolve) => setTimeout(resolve, 5000));
+					}
+					try {
+						const res = await fetch(COACH_SIDECAR_BASE_URL + "/game-result", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: gameResultBody,
+						});
+						if (res.ok) return;
+						throw new Error(`status ${res.status}`);
+					} catch (err) {
+						console.warn(
+							`[COACH_SIDECAR] /game-result attempt ${attempt + 1}/6 failed — ${(err as Error).message}`,
+						);
+					}
+				}
+			};
+			// Await the first attempt so bulk-sim games don't skip it; retries are fire-and-forget
+			try {
+				const res = await fetch(COACH_SIDECAR_BASE_URL + "/game-result", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: gameResultBody,
+				});
+				if (!res.ok) throw new Error(`status ${res.status}`);
+			} catch (err) {
+				console.warn(
+					`[COACH_SIDECAR] /game-result attempt 1/6 failed — ${(err as Error).message}`,
+				);
+				sendGameResult();
+			}
 		}
 
 		const out = {
@@ -380,7 +447,7 @@ class GameSim extends GameSimBase {
 		});
 	}
 
-	simRegulation() {
+	async simRegulation() {
 		let quarter = 1;
 
 		while (true) {
@@ -389,7 +456,7 @@ class GameSim extends GameSimBase {
 				this.awaitingAfterTouchdown ||
 				this.playUntimedPossession
 			) {
-				this.simPlay();
+				await this.simPlay();
 			}
 
 			// Who gets the ball after halftime?
@@ -421,7 +488,7 @@ class GameSim extends GameSimBase {
 		}
 	}
 
-	simOvertime() {
+	async simOvertime() {
 		this.clock = this.getOvertimeLength();
 
 		this.overtime = true;
@@ -459,7 +526,7 @@ class GameSim extends GameSimBase {
 			(this.clock > 0 || this.playUntimedPossession) &&
 			this.overtimeState !== "over"
 		) {
-			this.simPlay();
+			await this.simPlay();
 		}
 	}
 
@@ -609,7 +676,90 @@ class GameSim extends GameSimBase {
 		);
 	}
 
-	getPlayType() {
+	async coachSidecarPlayCall(fourthDown?: {
+		fieldGoalProbability: number;
+		canPunt: boolean;
+		canKickFieldGoal: boolean;
+	}): Promise<"pass" | "run" | "fieldGoal" | "punt"> {
+		const fallbackPlay = fourthDown ? "punt" : "run";
+
+		if (!COACH_SIDECAR_BASE_URL) {
+			console.warn("[COACH_SIDECAR] FALLBACK — no COACH_SIDECAR_URL set");
+			return fallbackPlay;
+		}
+
+		const offPlayers = this.team[this.o].player;
+		const defPlayers = this.team[this.d].player;
+		const gameState = {
+			gid: this.id,
+			offenseId: this.team[this.o].id,
+			defenseId: this.team[this.d].id,
+			quarter: this.team[this.o].stat.ptsQtrs.length,
+			down: this.down,
+			toGo: this.toGo,
+			scrimmage: this.scrimmage,
+			clockMinutes: this.clock,
+			offenseScore: this.team[this.o].stat.pts,
+			defenseScore: this.team[this.d].stat.pts,
+			offenseTimeouts: this.timeouts[this.o],
+			defenseTimeouts: this.timeouts[this.d],
+			offenseRushing: this.team[this.o].compositeRating.rushing,
+			offenseReceiving: this.team[this.o].compositeRating.receiving,
+			defenseRunStopping: this.team[this.d].compositeRating.runStopping,
+			defensePassCoverage: this.team[this.d].compositeRating.passCoverage,
+			rushAttempts: offPlayers.reduce((s, p) => s + (p.stat.rus ?? 0), 0),
+			rushYards: offPlayers.reduce((s, p) => s + (p.stat.rusYds ?? 0), 0),
+			passAttempts: offPlayers.reduce((s, p) => s + (p.stat.pss ?? 0), 0),
+			passYards: offPlayers.reduce((s, p) => s + (p.stat.pssYds ?? 0), 0),
+			...(fourthDown
+				? {
+						fourthDown: true,
+						fieldGoalProbability: fourthDown.fieldGoalProbability,
+						canPunt: fourthDown.canPunt,
+						canKickFieldGoal: fourthDown.canKickFieldGoal,
+					}
+				: {}),
+		};
+
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+			toUI("updateLocal", [{ liveGameProgress: this.playCount * 3 + 1 }]);
+			const response = await fetch(COACH_SIDECAR_BASE_URL + "/play", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(gameState),
+				signal: controller.signal,
+			}).finally(() => clearTimeout(timeoutId));
+
+			if (!response.ok) {
+				throw new Error(`sidecar status ${response.status}`);
+			}
+
+			toUI("updateLocal", [{ liveGameProgress: this.playCount * 3 + 2 }]);
+			const parsed = (await response.json()) as {
+				play?: string;
+				reasoning?: string;
+			};
+			const decision = parsed?.play;
+
+			const validPlays = fourthDown
+				? ["run", "pass", "fieldGoal", "punt"]
+				: ["run", "pass"];
+
+			if (decision && validPlays.includes(decision)) {
+				return decision as "run" | "pass" | "fieldGoal" | "punt";
+			}
+
+			throw new Error(`unexpected play value: ${decision}`);
+		} catch (err) {
+			console.warn(`[COACH_SIDECAR] FALLBACK — ${(err as Error).message}`);
+			return fallbackPlay;
+		}
+	}
+
+	async getPlayType(): Promise<string> {
 		if (this.awaitingKickoff !== undefined) {
 			return Math.random() < this.probOnside() ? "onsideKick" : "kickoff";
 		}
@@ -784,6 +934,14 @@ class GameSim extends GameSimBase {
 		}
 
 		if (this.down === 4) {
+			if (COACH_SIDECAR_PLAY_CALLING) {
+				return await this.coachSidecarPlayCall({
+					fieldGoalProbability: this.probMadeFieldGoal(),
+					canPunt: !neverPunt,
+					canKickFieldGoal: !needTouchdown,
+				});
+			}
+
 			// Don't kick a FG when we really need a touchdown!
 			if (!needTouchdown) {
 				const probMadeFieldGoal = this.probMadeFieldGoal();
@@ -866,6 +1024,10 @@ class GameSim extends GameSimBase {
 			}
 		}
 
+		if (COACH_SIDECAR_PLAY_CALLING) {
+			return await this.coachSidecarPlayCall();
+		}
+
 		if (Math.random() < this.probPass()) {
 			return "pass";
 		}
@@ -873,11 +1035,11 @@ class GameSim extends GameSimBase {
 		return "run";
 	}
 
-	simPlay() {
+	async simPlay() {
 		// Reset before calling Play, so Play can set to true if necessary for the next play
 		this.playUntimedPossession = false;
 
-		const playType = this.getPlayType();
+		const playType = await this.getPlayType();
 
 		// Set these before creating a new Play so they are updated in there too
 		if (playType === "extraPoint") {
@@ -1066,6 +1228,9 @@ class GameSim extends GameSimBase {
 		) {
 			this.overtimeState = "over";
 		}
+
+		this.playCount += 1;
+		toUI("updateLocal", [{ liveGameProgress: this.playCount * 3 }]);
 	}
 
 	doTackle({ ydsFromScrimmage }: { ydsFromScrimmage: number | undefined }) {

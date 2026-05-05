@@ -67,6 +67,7 @@ const useLocal = createWithEqualityFn<LocalStateWithActions>(
 		keyboardShortcuts: undefined,
 		lid: undefined,
 		liveGameInProgress: false,
+		liveGameProgress: 0,
 		neutralSite: defaultGameAttributes.neutralSite,
 		numPeriods: defaultGameAttributes.numPeriods,
 		numWatchColors: defaultGameAttributes.numWatchColors,

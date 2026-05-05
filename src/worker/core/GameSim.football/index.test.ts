@@ -60,7 +60,7 @@ test("kick a field goal when down 2 at the end of the game and there is little t
 	game.clock = 0.01;
 	game.currentPlay = new Play(game);
 
-	assert.strictEqual(game.getPlayType(), "fieldGoalLate");
+	assert.strictEqual(await game.getPlayType(), "fieldGoalLate");
 });
 
 test("kick a field goal on 4th down to take the lead late in the game", async () => {
@@ -116,7 +116,7 @@ test("kick a field goal on 4th down to take the lead late in the game", async ()
 		game.down = 4;
 		game.currentPlay = new Play(game);
 
-		assert.strictEqual(game.getPlayType(), "fieldGoal");
+		assert.strictEqual(await game.getPlayType(), "fieldGoal");
 	}
 });
 
@@ -135,7 +135,7 @@ test("kick a field goal at the end of the 2nd quarter rather than running out th
 	game.clock = 0.01;
 	game.currentPlay = new Play(game);
 
-	assert.strictEqual(game.getPlayType(), "fieldGoalLate");
+	assert.strictEqual(await game.getPlayType(), "fieldGoalLate");
 });
 
 test("kick a field goal at the end of overtime in a tie game rather than running out the clock", async () => {
@@ -155,7 +155,7 @@ test("kick a field goal at the end of overtime in a tie game rather than running
 	game.overtimeState = "bothTeamsPossessed";
 	game.currentPlay = new Play(game);
 
-	assert.strictEqual(game.getPlayType(), "fieldGoalLate");
+	assert.strictEqual(await game.getPlayType(), "fieldGoalLate");
 });
 
 test("kick a field goal in overtime if it will win the game and is very likely to go in", async () => {
@@ -176,11 +176,11 @@ test("kick a field goal in overtime if it will win the game and is very likely t
 	game.probMadeFieldGoal = () => 0.99;
 	game.currentPlay = new Play(game);
 
-	assert(game.getPlayType() !== "fieldGoal");
+	assert((await game.getPlayType()) !== "fieldGoal");
 
 	game.overtimeState = "bothTeamsPossessed";
 
-	assert.strictEqual(game.getPlayType(), "fieldGoal");
+	assert.strictEqual(await game.getPlayType(), "fieldGoal");
 });
 
 test("don't punt when down late, and usually pass", async () => {
@@ -200,7 +200,7 @@ test("don't punt when down late, and usually pass", async () => {
 
 	let numRun = 0;
 	for (let i = 0; i < 100; i++) {
-		const playType = game.getPlayType();
+		const playType = await game.getPlayType();
 		assert(playType === "run" || playType === "pass");
 		if (playType === "run") {
 			numRun += 1;
@@ -282,12 +282,12 @@ test("OT ends after failed 4th down conversion if 1st team kicked a FG", async (
 	game.overtimeState = "secondPossession";
 
 	// Sacks always happen, no penalties
-	game.getPlayType = () => "pass";
+	game.getPlayType = async () => "pass";
 	game.probSack = () => 1;
 	game.probFumble = () => 0;
 	game.checkPenalties = () => false;
 
-	game.simPlay();
+	await game.simPlay();
 
 	assert.strictEqual(game.overtimeState, "over");
 
@@ -301,7 +301,7 @@ test("fumble recovered by offense should only cost one down", async () => {
 
 	// No penalties, run the ball
 	game.checkPenalties = () => false;
-	game.getPlayType = () => "run";
+	game.getPlayType = async () => "run";
 
 	// Keep doing it until offense recovers
 	while (true) {
@@ -325,7 +325,7 @@ test("fumble recovered by offense should only cost one down", async () => {
 			return 1;
 		};
 
-		game.simPlay();
+		await game.simPlay();
 
 		// Looking for the offense to recover, and not for a first down
 		if (game.o === 0 && game.scrimmage < 30 && !game.awaitingAfterTouchdown) {

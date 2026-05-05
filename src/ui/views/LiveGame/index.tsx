@@ -15,6 +15,7 @@ import { TeamLogoInline } from "../../components/TeamLogoInline.tsx";
 import useTitleBar from "../../hooks/useTitleBar.tsx";
 import { helpers } from "../../util/helpers.ts";
 import { toWorker } from "../../util/toWorker.ts";
+import { useLocalPartial } from "../../util/local.ts";
 import type { View } from "../../../common/types.ts";
 import { bySport, isSport } from "../../../common/sportFunctions.ts";
 import useLocalStorageState from "use-local-storage-state";
@@ -275,6 +276,7 @@ const getNavigateWarning = (exhibition: boolean | undefined) => {
 };
 
 export const LiveGame = (props: View<"liveGame">) => {
+	const { liveGameProgress } = useLocalPartial(["liveGameProgress"]);
 	const [paused, setPaused] = useState(false);
 	const pausedRef = useRef(paused);
 	const [speed, setSpeed] = useLocalStorageState("live-game-speed", {
@@ -1089,7 +1091,12 @@ export const LiveGame = (props: View<"liveGame">) => {
 							sportState={sportState.current}
 						/>
 					) : (
-						<h2>Loading...</h2>
+						<h2>
+							Loading...{" "}
+							{liveGameProgress > 0
+								? ["|", "\\", "-", "/"][liveGameProgress % 4]
+								: ""}
+						</h2>
 					)}
 				</div>
 				<div className="col-md-3">
