@@ -688,37 +688,31 @@ class GameSim extends GameSimBase {
 			return fallbackPlay;
 		}
 
+		this.updatePlayersOnField("startersFake");
+		this.updateTeamCompositeRatings();
+
 		const offPlayers = this.team[this.o].player;
-		const defPlayers = this.team[this.d].player;
 		const gameState = {
 			gid: this.id,
 			offenseId: this.team[this.o].id,
 			defenseId: this.team[this.d].id,
-			quarter: this.team[this.o].stat.ptsQtrs.length,
 			down: this.down,
 			toGo: this.toGo,
 			scrimmage: this.scrimmage,
+			quarter: this.team[this.o].stat.ptsQtrs.length,
 			clockMinutes: this.clock,
 			offenseScore: this.team[this.o].stat.pts,
 			defenseScore: this.team[this.d].stat.pts,
 			offenseTimeouts: this.timeouts[this.o],
 			defenseTimeouts: this.timeouts[this.d],
-			offenseRushing: this.team[this.o].compositeRating.rushing,
-			offenseReceiving: this.team[this.o].compositeRating.receiving,
-			defenseRunStopping: this.team[this.d].compositeRating.runStopping,
-			defensePassCoverage: this.team[this.d].compositeRating.passCoverage,
+			canPunt: fourthDown?.canPunt ?? false,
+			canKickFieldGoal: fourthDown?.canKickFieldGoal ?? false,
+			fieldGoalProbability: fourthDown?.fieldGoalProbability ?? 0,
 			rushAttempts: offPlayers.reduce((s, p) => s + (p.stat.rus ?? 0), 0),
 			rushYards: offPlayers.reduce((s, p) => s + (p.stat.rusYds ?? 0), 0),
 			passAttempts: offPlayers.reduce((s, p) => s + (p.stat.pss ?? 0), 0),
+			passCompletions: offPlayers.reduce((s, p) => s + (p.stat.pssCmp ?? 0), 0),
 			passYards: offPlayers.reduce((s, p) => s + (p.stat.pssYds ?? 0), 0),
-			...(fourthDown
-				? {
-						fourthDown: true,
-						fieldGoalProbability: fourthDown.fieldGoalProbability,
-						canPunt: fourthDown.canPunt,
-						canKickFieldGoal: fourthDown.canKickFieldGoal,
-					}
-				: {}),
 		};
 
 		try {
