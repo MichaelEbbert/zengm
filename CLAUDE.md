@@ -89,8 +89,16 @@ Minor async/await plumbing change to support the async play-calling path.
 
 ## Running the Dev Server
 
+**bash/Linux/Mac:**
+
 ```bash
 COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev
+```
+
+**PowerShell:**
+
+```powershell
+$env:COACH_SIDECAR_URL="http://192.168.1.142:3004"; $env:SPORT="football"; node --run dev
 ```
 
 Node 24 (nvm) and pnpm 10 required. Change the IP to whichever machine is running the sidecar.
