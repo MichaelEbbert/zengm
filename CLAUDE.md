@@ -89,10 +89,26 @@ Minor async/await plumbing change to support the async play-calling path.
 
 ## Running the Dev Server
 
-**bash/Linux/Mac:**
+**Standard command / bash/Linux/Mac** (use this when asked how to run or start the app):
 
 ```bash
-COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev
+COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev -- --host
+```
+
+**Background + LAN-accessible** (use `--host` to bind to `0.0.0.0`, `< /dev/null` to prevent stdin crash):
+
+```bash
+nohup bash -c 'COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev -- --host' < /dev/null > /tmp/zengm-dev.log 2>&1 &
+echo "PID: $!"
+tail -f /tmp/zengm-dev.log  # shows the network URL once ready
+```
+
+**Stop it:**
+
+```bash
+kill <PID>
+# or if you lost the PID:
+kill $(lsof -ti :3000)
 ```
 
 **PowerShell:**

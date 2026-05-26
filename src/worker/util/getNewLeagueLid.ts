@@ -4,11 +4,8 @@ const getNewLeagueLid = async () => {
 	const cursor = await (
 		await idb.meta.transaction("leagues")
 	).store.openCursor(undefined, "prev");
-	if (cursor) {
-		return cursor.value.lid + 1;
-	}
-
-	return 1;
+	const lastLid = cursor ? cursor.value.lid + 1 : 1;
+	return Math.max(Date.now(), lastLid);
 };
 
 export default getNewLeagueLid;
