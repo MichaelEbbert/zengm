@@ -89,32 +89,20 @@ Minor async/await plumbing change to support the async play-calling path.
 
 ## Running the Dev Server
 
-**Standard command / bash/Linux/Mac** (use this when asked how to run or start the app):
-
-```bash
-COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev -- --host
-```
-
-**Background + LAN-accessible** (use `--host` to bind to `0.0.0.0`, `< /dev/null` to prevent stdin crash):
-
-```bash
-nohup bash -c 'COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev -- --host' < /dev/null > /tmp/zengm-dev.log 2>&1 &
-echo "PID: $!"
-tail -f /tmp/zengm-dev.log  # shows the network URL once ready
-```
-
-**Stop it:**
-
-```bash
-kill <PID>
-# or if you lost the PID:
-kill $(lsof -ti :3000)
-```
-
-**PowerShell:**
+**Standard command / PowerShell** (use this when asked how to run or start the app):
 
 ```powershell
 $env:COACH_SIDECAR_URL="http://192.168.1.142:3004"; $env:SPORT="football"; node --run dev
+```
+
+Add `-- --host` to bind to `0.0.0.0` and make it LAN-accessible.
+
+**Stop it:**
+
+```powershell
+Stop-Process -Id <PID>
+# or if you lost the PID:
+Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess
 ```
 
 Node 24 (nvm) and pnpm 10 required. Change the IP to whichever machine is running the sidecar.
