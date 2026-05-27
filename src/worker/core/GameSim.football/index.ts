@@ -293,6 +293,7 @@ class GameSim extends GameSimBase {
 			};
 			const gameResultBody = JSON.stringify({
 				gid: this.id,
+				leagueId: g.get("lid"),
 				season: g.get("season"),
 				phase: g.get("phase"),
 				teams: [buildTeamStats(0), buildTeamStats(1)],
@@ -694,6 +695,7 @@ class GameSim extends GameSimBase {
 		const offPlayers = this.team[this.o].player;
 		const gameState = {
 			gid: this.id,
+			leagueId: g.get("lid"),
 			offenseId: this.team[this.o].id,
 			defenseId: this.team[this.d].id,
 			down: this.down,
