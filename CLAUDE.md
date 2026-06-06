@@ -1,6 +1,6 @@
-# CLAUDE.md - ZenGM Football (LLM Coach Fork)
+# CLAUDE.md - ZenGM Football (Coach Fork)
 
-This is a fork of [zengm-games/zengm](https://github.com/zengm-games/zengm), modified to replace the hardcoded run/pass math with an AI play-calling coach. Development splits between ThinkPad (Linux, 192.168.1.29) and Windows desktop (192.168.1.18).
+This is a fork of [zengm-games/zengm](https://github.com/zengm-games/zengm), modified to add a deterministic play-calling coach module. Development splits between ThinkPad (Linux, 192.168.1.29) and Windows desktop (192.168.1.18).
 
 ---
 
@@ -18,18 +18,6 @@ Coach sidecar: `https://github.com/MichaelEbbert/zengm-coach`
 ---
 
 ## Project State (2026-06-06)
-
-### Phase 1 — COMPLETE (2026-05-01)
-
-- `llmPlayCall()` added to `GameSim.football/index.ts`
-- Called Groq API (`llama-3.1-8b-instant`) directly, got `{ play, reasoning }` back
-- First ever LLM play call: RUN, 2nd & 7, own 35, tied 14-14, Q3
-
-### Phase 2 — COMPLETE (2026-05-02)
-
-- Replaced direct Groq calls with HTTP sidecar (`zengm-coach`)
-- Sidecar started as FastAPI + LLM, evolved into fully deterministic Python (no LLM)
-- ZenGM POSTs game state to sidecar per play, gets `"run"` / `"pass"` / `"fieldGoal"` / `"punt"` back
 
 ### Current Architecture
 
@@ -96,36 +84,13 @@ Upstream diverges increasingly as we add Electron + SQLite. Manual diff review p
 
 ---
 
-## Long-term Vision
-
-The current sidecar is deterministic and LLM-free. That is temporary. The eventual goal is a true AI coach:
-
-```
-ZenGM GameSim
-    └── POST /play  →  Coach Agent (in-process after task 8)
-                           ├── loads coach_profile.md   (personality — immutable, who the coach IS)
-                           ├── queries coach_memory.db  (mutable, coach-written — what the coach LEARNED)
-                           ├── calls Groq / local Ollama
-                           └── returns { play, reasoning }
-```
-
-- Each team gets its own coach instance with its own personality and memory DB
-- Coach memory is coach-authored: after each game, the LLM writes what it learned back to its SQLite ("they stopped my run on 3rd and short twice — switch to pass in that situation")
-- Swap models per coach — Groq for cloud, Ollama for local GPU inference
-- Two personalities were tested in Phase 1 (2026-05-01): "default coordinator" and "aggressive first-down coach" — both called PASS on 3rd & 4 down 7 Q4, but reasoning differed noticeably
-- Eventual pitch: "pluggable coach API" that anyone could implement and share with the ZenGM community
-
-The deterministic sidecar is a stepping stone — it proves the HTTP interface and game-state payload before adding LLM complexity back in.
-
----
-
 ## Machine Notes
 
-| Machine          | IP            | Notes                                                                                             |
-| ---------------- | ------------- | ------------------------------------------------------------------------------------------------- |
-| ThinkPad (Linux) | 192.168.1.29  | Primary dev machine                                                                               |
-| Windows Desktop  | 192.168.1.18  | NVIDIA 3060/3070; Mistral GGUF installed via Ollama (port 11434) — target for local LLM inference |
-| Laptop           | 192.168.1.142 | Sometimes runs the sidecar                                                                        |
+| Machine          | IP            | Notes                  |
+| ---------------- | ------------- | ---------------------- |
+| ThinkPad (Linux) | 192.168.1.29  | Primary dev machine    |
+| Windows Desktop  | 192.168.1.18  | Secondary dev machine  |
+| Laptop           | 192.168.1.142 | Sometimes runs sidecar |
 
 ---
 
@@ -205,12 +170,6 @@ SPORT=football node --run test
 ### `src/worker/api/exhibitionGame.ts`
 
 - Minor async change to support the async play-calling path
-
----
-
-## Key Gotcha (historical, kept for reference)
-
-`llama-3.1-8b-instant` on Groq does NOT support `json_schema` response format — returns 400. Use `json_object` and enforce field names via system prompt wording. (The sidecar no longer calls any LLM, but if LLM integration resumes, remember this.)
 
 ---
 
