@@ -171,6 +171,28 @@ Override port with `ELECTRON_API_PORT`.
 | POST | `/sim/untilRegularSeason` | Advance to regular season start |
 | GET | `/query` | SQL (stub — available in Phase 2) |
 
+Quick test (with a league open in Electron):
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:3001/status
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/day
+```
+
+Full season automation sequence:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/untilPlayoffs
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/throughPlayoffs
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/untilDraft
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/draft/untilEnd
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/untilResignPlayers
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/untilFreeAgency
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/untilPreseason
+Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/untilRegularSeason
+```
+
+Each call blocks until the action completes before returning.
+
 ---
 
 ## Running the Sidecar
