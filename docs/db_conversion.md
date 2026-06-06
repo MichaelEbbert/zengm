@@ -386,11 +386,12 @@ GameSim makes zero db calls during simulation. No risk here.
 
 Each store is cut over completely in one commit — IDB removed for that store, SQLite live. Leagues in use during migration are disposable. Commit and push after each successful store cutover.
 
-### 8. Sidecar Consolidation — Plan Code Changes
+### 8. Sidecar Consolidation — PLANNING COMPLETE
 
 **Current sidecar state (as of 2026-06-06):**
 
-- Repo: `https://github.com/MichaelEbbert/zengm-coach`, cloned to `/home/michael/claude_projects/zengm-coach`
+- Repo: `https://github.com/MichaelEbbert/zengm-coach`
+- Local: `C:\claude_projects\zengm-coach\` (Windows) and `/home/michael/claude_projects/zengm-coach/` (Linux)
 - Language: Python (FastAPI)
 - Logic: 100% deterministic — no LLM calls at all
 - `play_decision.py`: `determine_mode()` (desperation/protection/normal based on score_diff/quarter/clock), `play_decision()` (run/pass via if/else + YPC/YPA ratio with randomness on 1st down)
@@ -398,32 +399,21 @@ Each store is cut over completely in one commit — IDB removed for that store, 
 - `main.py`: FastAPI server, CORS middleware, SQLite logging to `stats.db` (play_log + game_results tables)
 - Speed: entire 3.5s overhead vs. baseline is HTTP round-trip × ~150 plays. After merging to TypeScript in-process, game sim returns to ~2.5s baseline.
 
-Goal: eliminate the two-process architecture. Sidecar logic moves into ZenGM TypeScript. Dead LLM play-calling stub in ZenGM gets removed.
+Detailed implementation plan: **See Phase 8** in the Implementation Phases section below.
 
-Sub-tasks:
-
-- [ ] Locate and catalog all dead/stub play-calling code in ZenGM to remove (`llmPlayCall()` / `coachSidecarPlayCall()` HTTP call and fallback stubs)
-- [ ] Audit current sidecar unit test coverage — count tests, estimate % coverage
-- [ ] Set a coverage goal before migration (e.g. 80% of coach decision paths)
-- [ ] Write tests to reach the coverage goal (in Python, current sidecar language)
-- [ ] Port sidecar logic into ZenGM as a native TypeScript module (line-for-line conversion — the logic is simple arithmetic and if/else)
-- [ ] Migrate all sidecar unit tests into ZenGM's test suite (rewrite in TypeScript/vitest)
-- [ ] Remove the old dead play-calling stub code from ZenGM
-- [ ] Verify: running ZenGM alone produces correct play calls, no second process, all tests green
-
-### 9. Upstream Sync — Record Details for Future Planning
-
-This task captures information needed to someday create an upstream sync plan. No plan is being created now.
+### 9. Upstream Sync — PLANNING COMPLETE
 
 - Upstream repo: `https://github.com/zengm-games/zengm`
 - Our fork: `https://github.com/MichaelEbbert/zengm`
-- [ ] Record fork point commit SHA — this is the baseline for all future diffs
+- **Fork baseline:** `d870ac071` ("When calculating seasonLeaders...", May 1, 2026) — last upstream commit before our first custom commit `96476b802`
+- No upstream remote is configured yet — must add before any diff work (see Phase 9, step 9.1)
 - Manual diff review is preferred over `git merge`/`git rebase` because:
   - Our SQLite changes will diverge structurally from upstream's IndexedDB code
   - Sidecar consolidation removes code that upstream still has — a merge would reintroduce it
   - Upstream housekeeping commits (JSON schema updates, etc.) need translation to SQLite migrations in our code, not literal application
 - Most critical upstream category to watch: `connectLeague.ts` migration steps — each new IDB migration step upstream must be translated to a new SQLite migration in our framework
-- [ ] Preferred method: isolate a diff per upstream commit or batch, review in plan mode, apply deliberately
+
+Detailed process: **See Phase 9** in the Implementation Phases section below.
 
 ## Implementation Phases
 
@@ -436,8 +426,12 @@ Leagues used during migration are disposable. Commit and push after each success
 Goal: game runs in Electron with IndexedDB still intact. UI identical to today. No game logic changes.
 
 - [ ] 1.1 Audit browser-specific globals — grep for `self`, `window`, `navigator`, `location` in worker code; catalog what needs changing
-- [ ] 1.2 Add Electron to the project — install `electron` and `electron-builder` as dev dependencies
-- [ ] 1.3 Write Electron main process entry point — create `electron/main.ts`; open a BrowserWindow pointing at the existing Vite dev server (dev) or built index.html (prod)
+- [ ] 1.2 Add Electron to the project — install `electron@^35.0.0` and `electron-builder` as dev dependencies (35.x is the version already in use by the sibling `poker-sim` project and is confirmed working on this machine)
+- [ ] 1.3 Write Electron main process entry point — create `electron/main.ts`; adapt the pattern from `C:\claude_projects\poker-sim\ui\main.js` as a reference:
+  - `contextIsolation: true`, `nodeIntegration: false`, `preload` script for the renderer bridge — use this exact security model
+  - In dev: point BrowserWindow at the Vite dev server URL (e.g. `http://localhost:3000`) instead of a static file
+  - In prod: load the built `index.html` (same as poker-sim's `mainWindow.loadFile(...)`)
+  - Add `before-quit` handler to clean up any child processes (same pattern poker-sim uses to kill its Java process)
 - [ ] 1.4 Rewrite the postMessage/onmessage bridge — replace browser web worker communication with Electron IPC (`ipcMain` / `ipcRenderer` / `contextBridge`)
 - [ ] 1.5 Fix browser global references found in 1.1
 - [ ] 1.6 Verify the game runs end to end in Electron — create league, sim games, check box scores, advance season
@@ -533,5 +527,134 @@ Goal: IDB code deleted entirely. SQLite is the only persistence layer.
 - [ ] 7.3 Remove any remaining IDB references
 - [ ] 7.4 Full regression: create league, sim full season, verify all views
 - [ ] 7.5 Commit and push
+
+---
+
+### Phase 8 — Sidecar Consolidation
+
+Goal: Port Python FastAPI play-calling logic into ZenGM TypeScript. Eliminate two-process architecture and HTTP overhead (~3.5s/game). Game sim returns to ~2.5s baseline. Preserve the per-play decision log (previously in sidecar's `stats.db`) — re-wired to the league SQLite DB.
+
+Prerequisites: Sub-tasks 8.1–8.11 have no prerequisites (can be done before phases 1–7). Sub-task 8.12 (play-call logging) requires Phase 2 (`better-sqlite3` in place).
+
+**Part A — Logic port (no prerequisites)**
+
+- [ ] 8.1 Fill out unit tests in `zengm-coach` (user-driven)
+  - Run an agent in `C:\claude_projects\zengm-coach\` to audit current test coverage
+  - Set a coverage target (e.g. 80% of decision paths)
+  - Add Python tests in `zengm-coach/tests/` to reach the target
+  - All tests must pass before moving to 8.2
+
+- [ ] 8.2 Remove dead LLM code in ZenGM
+  - Delete `src/worker/core/GameSim.football/llm.integration.test.ts`
+  - Remove `GROQ_API_KEY` from `tools/lib/rolldownConfig.ts` define block
+
+- [ ] 8.3 Read the Python sidecar source from `C:\claude_projects\zengm-coach\`
+  - Read `play_decision.py` — transcribe `determine_mode()` and `play_decision()` logic
+  - Read `fourth_down.py` — transcribe `fourth_down_decision()` logic
+  - Catalog all test cases in `tests/` to port in sub-task 8.5
+
+- [ ] 8.4 Create `src/worker/core/GameSim.football/coach.ts`
+  - Port `determine_mode(gameState) → "desperation" | "protection" | "normal"` — pure arithmetic on score_diff/quarter/clock
+  - Port `play_decision(gameState, mode) → "run" | "pass"` — if/else + YPC/YPA ratio with randomness on 1st down
+  - Port `fourth_down_decision(gameState, mode) → "fieldGoal" | "punt" | "go"` — FG probability thresholds + scrimmage position thresholds
+  - All functions synchronous — no HTTP, no I/O, no imports beyond game state types
+
+- [ ] 8.5 Create `src/worker/core/GameSim.football/coach.test.ts`
+  - Use existing `genTwoTeams()` / `initGameSim()` helpers from `index.test.ts`
+  - Test all three branches of `determine_mode()` (desperation, protection, normal)
+  - Test main decision paths for `play_decision()` and `fourth_down_decision()`
+  - Port every test case from `zengm-coach/tests/` (added in sub-task 8.1) to vitest
+
+- [ ] 8.6 Replace `coachSidecarPlayCall()` in `index.ts` with inline coach calls
+  - In `getPlayType()` 4th down path (~line 933): call `fourthDownDecision(gameState, mode)` directly
+  - In `getPlayType()` standard path (~line 1023): call `playDecision(gameState, mode)` directly
+  - Build `gameState` inline from the same GameSim fields already used in `coachSidecarPlayCall()`
+  - Delete `coachSidecarPlayCall()` method
+  - Delete `COACH_SIDECAR_PLAY_CALLING` and `COACH_SIDECAR_BASE_URL` constants
+  - Delete `probPass()` — it is now unreachable
+
+- [ ] 8.7 Remove game-result POST from `run()`
+  - Find and remove the `/game-result` fetch + retry loop at the end of `run()`
+  - Per-game aggregate stats are not needed; only per-play decisions matter (sub-task 8.12)
+
+- [ ] 8.8 Make `getPlayType()` synchronous
+  - Remove `async` / `await` from `getPlayType()` and its two coach call sites
+  - In `src/worker/core/game/play.ts`: verify no other async callers remain; revert async if safe
+  - In `src/worker/api/exhibitionGame.ts`: same check and revert
+
+- [ ] 8.9 Remove `COACH_SIDECAR_URL` from `tools/lib/rolldownConfig.ts` define block
+
+- [ ] 8.10 Run tests — `SPORT=football node --run test` — all must pass
+
+- [ ] 8.11 Manual smoke test — start dev server, create league, sim a game
+  - Verify play calls look reasonable (no all-pass or all-run streaks)
+  - Verify no `[COACH_SIDECAR]` warnings in console
+  - Verify game sim completes in ~2.5s (vs. prior ~6s)
+  - Commit and push
+
+**Part B — Play-call logging (requires Phase 2)**
+
+- [ ] 8.12 Add `play_calls` table to the league SQLite migration
+  - Write migration adding `play_calls` table: `(id INTEGER PRIMARY KEY, gid, leagueId, offenseId, defenseId, down, toGo, scrimmage, quarter, clockMinutes, offenseScore, defenseScore, offenseTimeouts, defenseTimeouts, mode, decision, timestamp)`
+  - Wire an INSERT into `coach.ts` after each call to `play_decision()` / `fourth_down_decision()`; pass the DB handle via a parameter so coach.ts stays free of module-level state
+  - Verify rows appear in the DB after simming a game
+  - Commit and push
+
+---
+
+### Phase 9 — Upstream Sync Process
+
+Goal: Establish a repeatable, low-friction process for reviewing `zengm-games/zengm` upstream changes and selectively applying them — preserving our structural divergence (SQLite conversion, sidecar consolidation) while keeping useful upstream improvements.
+
+This phase has two parts: one-time setup (9.1–9.3) and a per-sync workflow to repeat whenever upstream needs to be reviewed (9.4–9.9). The per-sync workflow should be run in plan mode.
+
+Prerequisites: None for setup. Translating DB migrations (9.7) requires Phase 2 (SQLite migration framework).
+
+**Part A — One-time setup**
+
+- [ ] 9.1 Add upstream remote and fetch
+  - `git remote add upstream https://github.com/zengm-games/zengm`
+  - `git fetch upstream`
+
+- [ ] 9.2 Record fork baseline in this document
+  - Fork baseline: `d870ac071` ("When calculating seasonLeaders...", May 1, 2026) — last upstream commit before our first custom commit `96476b802`
+  - This SHA is already recorded in Task 9 above; confirm it appears in `upstream/master` history after fetching
+
+- [ ] 9.3 Initial upstream audit — categorize all commits since baseline
+  - Run: `git log --oneline d870ac071..upstream/master`
+  - For each commit (or logical batch), assign a category:
+    - **A — Apply directly:** bug fixes or improvements in files we haven't touched
+    - **B — Translate:** new `upgrade<N>()` steps in `connectLeague.ts` → must become SQLite migrations in our framework
+    - **C — Manual merge:** changes to our modified files (`GameSim.football/index.ts`, `game/play.ts`, `exhibitionGame.ts`, `rolldownConfig.ts`) — review line by line
+    - **D — Skip:** changes to IDB infrastructure we're replacing (Cache.ts, connectLeague.ts schema, SafeIdb.ts, connectMeta.ts)
+  - Create `docs/upstream_sync_log.md` with columns: upstream SHA | description | category | status
+
+**Part B — Per-sync workflow (repeat as needed, run in plan mode)**
+
+- [ ] 9.4 Fetch latest upstream and identify new commits
+  - `git fetch upstream`
+  - `git log --oneline <last-synced-sha>..upstream/master`
+  - Add new commits to `docs/upstream_sync_log.md`
+
+- [ ] 9.5 Review each commit or batch in plan mode
+  - `git show <sha> -- <file>` or `git diff <sha>^..<sha>` for targeted inspection
+  - Assign category A/B/C/D to each
+  - For category B: note the upgrade number and what schema/data change it makes
+
+- [ ] 9.6 Apply category A changes (safe applies)
+  - Cherry-pick or manually apply; run `SPORT=football node --run test` after each
+  - Record in `docs/upstream_sync_log.md`: upstream SHA → our commit SHA, status = applied
+
+- [ ] 9.7 Translate category B changes (DB migrations)
+  - For each new `upgrade<N>()` in upstream `connectLeague.ts`: determine the schema/data change, write the equivalent SQLite migration in our framework
+  - Record: upstream upgrade N → our SQLite migration file, status = translated
+
+- [ ] 9.8 Handle category C changes (manual merge for our modified files)
+  - Read the upstream diff; read our version; apply the upstream intent without overwriting our changes
+  - Run `SPORT=football node --run test`; record in `docs/upstream_sync_log.md`, status = merged
+
+- [ ] 9.9 Update sync baseline
+  - Record the new `<last-synced-sha>` in `docs/upstream_sync_log.md`
+  - Commit `docs/upstream_sync_log.md` with all status updates
 
 ## Notes

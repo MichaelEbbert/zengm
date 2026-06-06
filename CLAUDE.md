@@ -6,10 +6,10 @@ This is a fork of [zengm-games/zengm](https://github.com/zengm-games/zengm), mod
 
 ## Repos Involved
 
-| Repo                | Location                                     | Purpose                        |
-| ------------------- | -------------------------------------------- | ------------------------------ |
-| `zengm` (this repo) | `/home/michael/claude_projects/zengm/`       | Game engine — TypeScript       |
-| `zengm-coach`       | `/home/michael/claude_projects/zengm-coach/` | Coach sidecar — Python FastAPI |
+| Repo                | Location                                                                                          | Purpose                        |
+| ------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `zengm` (this repo) | `/home/michael/claude_projects/zengm/` (Linux) · `C:\claude_projects\zengm\` (Windows)           | Game engine — TypeScript       |
+| `zengm-coach`       | `/home/michael/claude_projects/zengm-coach/` (Linux) · `C:\claude_projects\zengm-coach\` (Windows) | Coach sidecar — Python FastAPI |
 
 Upstream: `https://github.com/zengm-games/zengm`
 Our fork: `https://github.com/MichaelEbbert/zengm`
@@ -128,6 +128,24 @@ Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess
 Set `COACH_SIDECAR_URL` to whichever machine is running the sidecar. Without it, falls back to `Math.random() < this.probPass()`.
 
 Node 24 (nvm) and pnpm 10 required.
+
+---
+
+## Running in Electron (Phase 1)
+
+Start the dev server in one terminal (see above), then in a second terminal:
+
+```powershell
+node --run electron
+```
+
+The Electron app loads `http://localhost:3000`. If the dev server started on a different port (check its output), override with:
+
+```powershell
+$env:ELECTRON_DEV_PORT="3001"; node --run electron
+```
+
+Electron must be installed first: `pnpm install` (requires network access).
 
 ---
 

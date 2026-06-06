@@ -1,1 +1,11 @@
+# Terminal 1 - sidecar (on laptop 192.168.1.142)
+uvicorn main:app --host 0.0.0.0 --port 3004
+
+# Terminal 2 - dev server (sidecar on laptop 192.168.1.142)
 $env:COACH_SIDECAR_URL="http://192.168.1.142:3004"; $env:SPORT="football"; node --run dev
+
+# Terminal 2 - dev server (sidecar on desktop 192.168.1.29)
+$env:COACH_SIDECAR_URL="http://192.168.1.29:3004"; $env:SPORT="football"; node --run dev
+
+# Terminal 3 - Electron (COACH_SIDECAR_URL is baked into the bundle by the dev server)
+node --run electron

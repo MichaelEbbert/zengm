@@ -15,6 +15,7 @@
 		"deploy": "node --run lint && node --run test && node tools/deploy.ts",
 		"deploy-all": "node --run lint && node --run test && node tools/deploy-all.ts",
 		"dev": "node tools/watch/cli.ts",
+		"electron": "electron electron/main.js",
 		"preview": "node tools/preview.ts",
 		"lint": "concurrently --raw \"node --run lint-js\" \"node --run lint-ts\"",
 		"lint-js": "node --run pre-test && eslint",
@@ -88,6 +89,7 @@
 	},
 	"devDependencies": {
 		"@babel/core": "8.0.0-rc.3",
+		"electron": "^35.0.0",
 		"@babel/plugin-syntax-jsx": "8.0.0-rc.3",
 		"@babel/plugin-syntax-typescript": "8.0.0-rc.3",
 		"@nkzw/eslint-config": "3.3.0",
