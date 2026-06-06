@@ -425,19 +425,15 @@ Leagues used during migration are disposable. Commit and push after each success
 
 Goal: game runs in Electron with IndexedDB still intact. UI identical to today. No game logic changes.
 
-- [ ] 1.1 Audit browser-specific globals — grep for `self`, `window`, `navigator`, `location` in worker code; catalog what needs changing
-- [ ] 1.2 Add Electron to the project — install `electron@^35.0.0` and `electron-builder` as dev dependencies (35.x is the version already in use by the sibling `poker-sim` project and is confirmed working on this machine)
-- [ ] 1.3 Write Electron main process entry point — create `electron/main.ts`; adapt the pattern from `C:\claude_projects\poker-sim\ui\main.js` as a reference:
-  - `contextIsolation: true`, `nodeIntegration: false`, `preload` script for the renderer bridge — use this exact security model
-  - In dev: point BrowserWindow at the Vite dev server URL (e.g. `http://localhost:3000`) instead of a static file
-  - In prod: load the built `index.html` (same as poker-sim's `mainWindow.loadFile(...)`)
-  - Add `before-quit` handler to clean up any child processes (same pattern poker-sim uses to kill its Java process)
-- [ ] 1.4 Rewrite the postMessage/onmessage bridge — replace browser web worker communication with Electron IPC (`ipcMain` / `ipcRenderer` / `contextBridge`)
-- [ ] 1.5 Fix browser global references found in 1.1
-- [ ] 1.6 Verify the game runs end to end in Electron — create league, sim games, check box scores, advance season
+- [x] 1.1 Audit browser-specific globals — no changes needed; `self` usages are all legitimate Web Worker globals, safe in Electron renderer
+- [x] 1.2 Add Electron to the project — electron@35.7.5 copied from sibling `poker-sim` project (bypasses network install); added to devDependencies in package.json
+- [x] 1.3 Write Electron main process entry point — created `electron/main.js`; loads dev server at `http://localhost:3000` (ELECTRON_DEV_PORT override); `contextIsolation: true`, `nodeIntegration: false`
+- [x] 1.4 Rewrite the postMessage/onmessage bridge — no-op; Web Workers run in Electron's renderer (Chromium), so the existing postMessage bridge works unchanged
+- [x] 1.5 Fix browser global references found in 1.1 — no-op (see 1.1)
+- [x] 1.6 Verify the game runs end to end in Electron — confirmed: full seasons played manually including regular season, playoffs, draft, and free agency; sim speed ~2s/game
 - [x] 1.7 Add local HTTP API to Electron main process — Node `http` server on `127.0.0.1:3001` (ELECTRON_API_PORT override). Uses `win.webContents.executeJavaScript()` to call `window.bbgm.toWorker()` in the renderer — no preload or IPC bridge needed. Endpoints: `GET /status`, `POST /sim/{day,week,month,untilPlayoffs,throughPlayoffs,untilDraft,untilResignPlayers,untilFreeAgency,untilPreseason,untilRegularSeason}`, `POST /draft/{onePick,untilEnd,pick}`, `GET /query` (stub until Phase 2)
-- [ ] 1.8 Verify API drives a full season programmatically — sim day loop until phase advances, repeat through draft and free agency
-- [ ] 1.9 Commit and push
+- [ ] 1.8 DEFERRED — Verify API drives a full season programmatically — sim day loop until phase advances, repeat through draft and free agency
+- [x] 1.9 Commit and push
 
 ---
 
@@ -445,10 +441,140 @@ Goal: game runs in Electron with IndexedDB still intact. UI identical to today. 
 
 Goal: box scores written to and read from SQLite. IndexedDB still used for everything else.
 
-- [ ] 2.1 Design `games` and `game_player_stats` SQLite schema — finalize column names, types, indexes
+#### Schema (finalized)
+
+**`games`** — one row per game
+```sql
+CREATE TABLE games (
+    gid          INTEGER PRIMARY KEY,
+    season       INTEGER NOT NULL,
+    day          INTEGER,
+    att          INTEGER,
+    overtimes    INTEGER NOT NULL DEFAULT 0,
+    num_periods  INTEGER NOT NULL DEFAULT 4,
+    playoffs     INTEGER NOT NULL DEFAULT 0,
+    finals       INTEGER NOT NULL DEFAULT 0,
+    neutral_site INTEGER NOT NULL DEFAULT 0,
+    won_tid      INTEGER NOT NULL,
+    won_pts      INTEGER NOT NULL,
+    lost_tid     INTEGER NOT NULL,
+    lost_pts     INTEGER NOT NULL
+);
+```
+
+**`game_teams`** — two rows per game, one per team; `opp*` stats excluded (computable via self-join)
+```sql
+CREATE TABLE game_teams (
+    id             INTEGER PRIMARY KEY,
+    gid            INTEGER NOT NULL REFERENCES games(gid),
+    tid            INTEGER NOT NULL,
+    pts            INTEGER NOT NULL,
+    pts_qtrs       TEXT NOT NULL,    -- JSON array e.g. [7,14,0,10]
+    ovr            INTEGER,
+    won            INTEGER,
+    lost           INTEGER,
+    tied           INTEGER,
+    otl            INTEGER,
+    playoff_seed   INTEGER,
+    playoff_won    INTEGER,
+    playoff_lost   INTEGER,
+    drives INTEGER, tot_start_yds INTEGER, time_pos INTEGER, sk_alw INTEGER,
+    tp INTEGER, tpa INTEGER,
+    pss_cmp INTEGER, pss INTEGER, pss_yds INTEGER, pss_td INTEGER,
+    pss_int INTEGER, pss_lng INTEGER, pss_sk INTEGER, pss_sk_yds INTEGER,
+    rus INTEGER, rus_yds INTEGER, rus_td INTEGER, rus_lng INTEGER,
+    tgt INTEGER, rec INTEGER, rec_yds INTEGER, rec_td INTEGER, rec_lng INTEGER,
+    pr INTEGER, pr_yds INTEGER, pr_td INTEGER, pr_lng INTEGER,
+    kr INTEGER, kr_yds INTEGER, kr_td INTEGER, kr_lng INTEGER,
+    def_int INTEGER, def_int_yds INTEGER, def_int_td INTEGER, def_int_lng INTEGER,
+    def_pss_def INTEGER,
+    def_fmb_frc INTEGER, def_fmb_rec INTEGER, def_fmb_yds INTEGER,
+    def_fmb_td INTEGER, def_fmb_lng INTEGER,
+    def_sk INTEGER, def_tck_solo INTEGER, def_tck_ast INTEGER,
+    def_tck_loss INTEGER, def_sft INTEGER,
+    fmb INTEGER, fmb_lost INTEGER,
+    fg0 INTEGER, fga0 INTEGER, fg20 INTEGER, fga20 INTEGER,
+    fg30 INTEGER, fga30 INTEGER, fg40 INTEGER, fga40 INTEGER,
+    fg50 INTEGER, fga50 INTEGER, fg_lng INTEGER,
+    xp INTEGER, xpa INTEGER,
+    ko INTEGER, ko_yds INTEGER, ko_tb INTEGER,
+    ok INTEGER, ok_rec INTEGER,
+    pnt INTEGER, pnt_yds INTEGER, pnt_lng INTEGER,
+    pnt_tb INTEGER, pnt_in20 INTEGER, pnt_blk INTEGER,
+    pen INTEGER, pen_yds INTEGER,
+    pbw INTEGER, pba INTEGER, rbw INTEGER, rba INTEGER,
+    UNIQUE(gid, tid)
+);
+```
+
+**`game_players`** — one row per player per game
+```sql
+CREATE TABLE game_players (
+    id                     INTEGER PRIMARY KEY,
+    gid                    INTEGER NOT NULL REFERENCES games(gid),
+    tid                    INTEGER NOT NULL,
+    pid                    INTEGER NOT NULL,
+    name                   TEXT NOT NULL,
+    pos                    TEXT,
+    skills                 TEXT,    -- JSON array
+    injury_type            TEXT,
+    injury_games_remaining INTEGER,
+    injury_new_this_game   INTEGER,
+    injury_playing_through INTEGER,
+    injury_at_start        TEXT,
+    gp INTEGER, gs INTEGER, min REAL,
+    fmb INTEGER, fmb_lost INTEGER,
+    pss_cmp INTEGER, pss INTEGER, pss_yds INTEGER, pss_td INTEGER,
+    pss_int INTEGER, pss_lng INTEGER, pss_sk INTEGER, pss_sk_yds INTEGER,
+    rus INTEGER, rus_yds INTEGER, rus_td INTEGER, rus_lng INTEGER,
+    tgt INTEGER, rec INTEGER, rec_yds INTEGER, rec_td INTEGER, rec_lng INTEGER,
+    pr INTEGER, pr_yds INTEGER, pr_td INTEGER, pr_lng INTEGER,
+    kr INTEGER, kr_yds INTEGER, kr_td INTEGER, kr_lng INTEGER,
+    def_int INTEGER, def_int_yds INTEGER, def_int_td INTEGER, def_int_lng INTEGER,
+    def_pss_def INTEGER,
+    def_fmb_frc INTEGER, def_fmb_rec INTEGER, def_fmb_yds INTEGER,
+    def_fmb_td INTEGER, def_fmb_lng INTEGER,
+    def_sk INTEGER, def_tck_solo INTEGER, def_tck_ast INTEGER,
+    def_tck_loss INTEGER, def_sft INTEGER,
+    fg0 INTEGER, fga0 INTEGER, fg20 INTEGER, fga20 INTEGER,
+    fg30 INTEGER, fga30 INTEGER, fg40 INTEGER, fga40 INTEGER,
+    fg50 INTEGER, fga50 INTEGER, fg_lng INTEGER,
+    xp INTEGER, xpa INTEGER,
+    ko INTEGER, ko_yds INTEGER, ko_tb INTEGER,
+    ok INTEGER, ok_rec INTEGER,
+    pnt INTEGER, pnt_yds INTEGER, pnt_lng INTEGER,
+    pnt_tb INTEGER, pnt_in20 INTEGER, pnt_blk INTEGER,
+    pen INTEGER, pen_yds INTEGER,
+    pbw INTEGER, pba INTEGER, rbw INTEGER, rba INTEGER,
+    UNIQUE(gid, pid)
+);
+```
+
+**`game_scoring_plays`** — one row per scoring event; score progression computed by summing `pts_scored` in `seq` order
+```sql
+CREATE TABLE game_scoring_plays (
+    id         INTEGER PRIMARY KEY,
+    gid        INTEGER NOT NULL REFERENCES games(gid),
+    seq        INTEGER NOT NULL,
+    quarter    INTEGER NOT NULL,
+    clock      INTEGER NOT NULL,  -- seconds remaining
+    tid        INTEGER NOT NULL,
+    pid        INTEGER,           -- scorer; NULL for safeties
+    passer_pid INTEGER,           -- non-NULL only when play_type = 'pass'
+    yds        INTEGER,           -- NULL for extra_point, two_point_failed, safety
+    play_type  TEXT NOT NULL,     -- 'run' | 'pass' | 'interception' | 'fumble_recovery' |
+                                  -- 'kickoff_return' | 'punt_return' | 'field_goal' |
+                                  -- 'extra_point' | 'two_point_failed' | 'safety'
+    made       INTEGER,           -- 1/0 for field_goal and extra_point; NULL otherwise
+    pts_scored INTEGER NOT NULL,
+    UNIQUE(gid, seq)
+);
+```
+
+- [x] 2.1 Design `games`, `game_teams`, `game_players`, `game_scoring_plays` SQLite schema — see schema above
 - [ ] 2.2 Add `better-sqlite3` to the project
 - [ ] 2.3 Write SQLite migration framework — versioned migration files, applied at app startup
-- [ ] 2.4 Write migration 001 — create `games` and `game_player_stats` tables
+- [ ] 2.4 Write migration 001 — create `games`, `game_teams`, `game_players`, `game_scoring_plays` tables
 - [ ] 2.5 Replace `idb.cache.games.put()` in `writeGameStats.ts` with SQLite insert
 - [ ] 2.6 Replace `idb.league` direct reads in `getCopies/games.ts` with SQLite queries
 - [ ] 2.7 Remove the `games` store delete call in `newPhaseRegularSeason.ts` (box scores kept forever)
@@ -529,11 +655,7 @@ Prerequisites: Sub-tasks 8.1–8.11 have no prerequisites (can be done before ph
 
 **Part A — Logic port (no prerequisites)**
 
-- [ ] 8.1 Fill out unit tests in `zengm-coach` (user-driven)
-  - Run an agent in `C:\claude_projects\zengm-coach\` to audit current test coverage
-  - Set a coverage target (e.g. 80% of decision paths)
-  - Add Python tests in `zengm-coach/tests/` to reach the target
-  - All tests must pass before moving to 8.2
+- [x] 8.1 Fill out unit tests in `zengm-coach` — coverage above 80% overall, 100% on key decision files (`play_decision.py`, `fourth_down.py`); all tests passing
 
 - [ ] 8.2 Remove dead LLM code in ZenGM
   - Delete `src/worker/core/GameSim.football/llm.integration.test.ts`
