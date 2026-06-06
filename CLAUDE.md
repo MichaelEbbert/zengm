@@ -147,6 +147,30 @@ $env:ELECTRON_DEV_PORT="3001"; node --run electron
 
 Electron must be installed first: `pnpm install` (requires network access).
 
+### Electron HTTP API (Session 2)
+
+An HTTP API server starts automatically on `http://127.0.0.1:3001` alongside Electron. It uses `win.webContents.executeJavaScript()` to call `window.bbgm.toWorker()` in the renderer — no preload script or IPC bridge needed.
+
+Override port with `ELECTRON_API_PORT`.
+
+| Method | Path | Action |
+|--------|------|--------|
+| GET | `/status` | Current `{ phase, season }` |
+| POST | `/sim/day` | Sim one day |
+| POST | `/sim/week` | Sim one week |
+| POST | `/sim/month` | Sim one month |
+| POST | `/sim/untilPlayoffs` | Sim through regular season |
+| POST | `/sim/throughPlayoffs` | Sim through playoffs |
+| POST | `/sim/untilDraft` | Advance to draft phase |
+| POST | `/draft/onePick` | Sim one AI draft pick |
+| POST | `/draft/untilEnd` | Sim rest of draft |
+| POST | `/draft/pick` | User draft pick — body: `{"pid": 123}` |
+| POST | `/sim/untilResignPlayers` | Advance to resign players |
+| POST | `/sim/untilFreeAgency` | Advance to free agency |
+| POST | `/sim/untilPreseason` | Sim through free agency |
+| POST | `/sim/untilRegularSeason` | Advance to regular season start |
+| GET | `/query` | SQL (stub — available in Phase 2) |
+
 ---
 
 ## Running the Sidecar

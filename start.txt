@@ -9,3 +9,21 @@ $env:COACH_SIDECAR_URL="http://192.168.1.29:3004"; $env:SPORT="football"; node -
 
 # Terminal 3 - Electron (COACH_SIDECAR_URL is baked into the bundle by the dev server)
 node --run electron
+
+# Electron HTTP API (starts automatically with Electron, no extra terminal needed)
+# Base URL: http://127.0.0.1:3001
+# GET  /status                  - current phase and season
+# POST /sim/day                 - sim one day
+# POST /sim/week                - sim one week
+# POST /sim/month               - sim one month
+# POST /sim/untilPlayoffs       - sim through regular season
+# POST /sim/throughPlayoffs     - sim through playoffs
+# POST /sim/untilDraft          - advance to draft
+# POST /draft/onePick           - sim one AI draft pick
+# POST /draft/untilEnd          - sim rest of draft
+# POST /draft/pick              - user draft pick: body {"pid": 123}
+# POST /sim/untilResignPlayers  - advance to resign players phase
+# POST /sim/untilFreeAgency     - advance to free agency
+# POST /sim/untilPreseason      - sim through free agency
+# POST /sim/untilRegularSeason  - advance to regular season start
+# GET  /query                   - SQL (stub until Phase 2)

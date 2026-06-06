@@ -1986,6 +1986,13 @@ const getLocal = async (name: keyof Local) => {
 	return local[name];
 };
 
+const getLeagueStatus = async () => ({
+	phase: g.get("phase"),
+	season: g.get("season"),
+	phaseText: local.phaseText,
+	statusText: local.statusText,
+});
+
 const getPlayerBioInfoDefaults = initDefaults;
 
 const getPlayerRangeFooterStats = async ({
@@ -5183,6 +5190,7 @@ export default {
 		getDiamondInfo,
 		getJerseyNumberConflict,
 		getLeagueInfo,
+			getLeagueStatus,
 		getLeagueName,
 		getLeagues,
 		getNegotiationProps,

@@ -435,16 +435,7 @@ Goal: game runs in Electron with IndexedDB still intact. UI identical to today. 
 - [ ] 1.4 Rewrite the postMessage/onmessage bridge — replace browser web worker communication with Electron IPC (`ipcMain` / `ipcRenderer` / `contextBridge`)
 - [ ] 1.5 Fix browser global references found in 1.1
 - [ ] 1.6 Verify the game runs end to end in Electron — create league, sim games, check box scores, advance season
-- [ ] 1.7 Add local HTTP API to Electron main process — small Express/Hono server on localhost with action endpoints:
-  - `POST /sim/play` — sim one play
-  - `POST /sim/game` — sim one game
-  - `POST /sim/day` — sim one day/week
-  - `POST /sim/phase` — advance to next phase
-  - `POST /phase/set` — manually set phase
-  - `POST /draft/pick` — make a draft pick
-  - `POST /freeagent/sign` — sign a free agent
-  - `POST /trade/propose` — propose a trade
-  - `GET /query` — run arbitrary SQL against the league DB, return results as JSON
+- [x] 1.7 Add local HTTP API to Electron main process — Node `http` server on `127.0.0.1:3001` (ELECTRON_API_PORT override). Uses `win.webContents.executeJavaScript()` to call `window.bbgm.toWorker()` in the renderer — no preload or IPC bridge needed. Endpoints: `GET /status`, `POST /sim/{day,week,month,untilPlayoffs,throughPlayoffs,untilDraft,untilResignPlayers,untilFreeAgency,untilPreseason,untilRegularSeason}`, `POST /draft/{onePick,untilEnd,pick}`, `GET /query` (stub until Phase 2)
 - [ ] 1.8 Verify API drives a full season programmatically — sim day loop until phase advances, repeat through draft and free agency
 - [ ] 1.9 Commit and push
 
