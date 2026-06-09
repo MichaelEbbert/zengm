@@ -1242,7 +1242,7 @@ const achievements: Achievement[] = [
 				}
 			}
 
-			const games = await idb.cache.games.getAll();
+			const games = await idb.getCopies.games({ season: g.get("season") });
 			const game = games.at(-1); // Last game of finals
 
 			return !!game && game.overtimes >= 1 && game.won.tid === g.get("userTid");
@@ -1270,7 +1270,7 @@ const achievements: Achievement[] = [
 				}
 			}
 
-			const games = await idb.cache.games.getAll();
+			const games = await idb.getCopies.games({ season: g.get("season") });
 			const game = games.at(-1); // Last game of finals
 
 			return (
@@ -1692,7 +1692,7 @@ if (isSport("hockey") || isSport("basketball")) {
 				}
 
 				// Confirm lost last 4 games
-				const games = await idb.cache.games.getAll();
+				const games = await idb.getCopies.games({ season: g.get("season") });
 				const last4 = games.slice(-4);
 
 				for (const game of last4) {
@@ -2139,7 +2139,7 @@ if (isSport("football")) {
 		const wonTitle = await userWonTitle();
 
 		if (wonTitle) {
-			const games = await idb.cache.games.getAll();
+			const games = await idb.getCopies.games({ season: g.get("season") });
 			const userPlayoffGames = games.filter(
 				(game) => game.playoffs && game.won.tid === g.get("userTid"),
 			);

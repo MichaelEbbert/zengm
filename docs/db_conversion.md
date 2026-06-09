@@ -588,8 +588,8 @@ CREATE TABLE game_scoring_plays (
   - [ ] 2.5f TypeScript type-check passes (`node --run lint-ts`)
   - [ ] 2.5g GameSim unit tests pass (`SPORT=football node --run test -- GameSim`)
 - [x] 2.6 Replace `idb.league` direct reads in `getCopies/games.ts` with SQLite queries
-- [ ] 2.7 Remove the `games` store delete call in `newPhaseRegularSeason.ts` (box scores kept forever)
-- [ ] 2.8 Remove `games` from `Cache.ts` STORES list and storeInfos
+- [x] 2.7 Remove the `games` store delete call in `newPhaseRegularSeason.ts` (box scores kept forever)
+- [x] 2.8 Remove `games` from `Cache.ts` STORES list and storeInfos
 - [ ] 2.9 Verify box score display works end to end
 - [ ] 2.10 Commit and push
 

@@ -6,13 +6,13 @@ import { helpers } from "../../common/helpers.ts";
 import { idb } from "./index.ts";
 import cmp from "./cmp.ts";
 import { g, local, lock } from "../util/index.ts";
+import { getSqliteDb } from "./sqlite.ts";
 import type {
 	AllStars,
 	DraftLotteryResult,
 	DraftPick,
 	DraftPickWithoutKey,
 	EventBBGM,
-	Game,
 	GameAttribute,
 	HeadToHead,
 	Message,
@@ -58,7 +58,6 @@ export type Store =
 	| "draftPicks"
 	| "events"
 	| "gameAttributes"
-	| "games"
 	| "headToHeads"
 	| "messages"
 	| "negotiations"
@@ -93,7 +92,6 @@ export const STORES: Store[] = [
 	"draftPicks",
 	"events",
 	"gameAttributes",
-	"games",
 	"headToHeads",
 	"messages",
 	"negotiations",
@@ -264,8 +262,6 @@ class Cache {
 
 	gameAttributes: StoreAPI<GameAttribute<any>, GameAttribute<any>, string>;
 
-	games: StoreAPI<Game, Game, number>;
-
 	headToHeads: StoreAPI<HeadToHead, HeadToHead, number>;
 
 	messages: StoreAPI<MessageWithoutKey, Message, number>;
@@ -360,14 +356,6 @@ class Cache {
 				pkType: "string",
 				autoIncrement: false,
 				getData: (tx) => tx.objectStore("gameAttributes").getAll(),
-			},
-			games: {
-				pk: "gid",
-				pkType: "number",
-				autoIncrement: false,
-				// Current season
-				getData: (tx, season) =>
-					getAll(tx.objectStore("games").index("season"), season),
 			},
 			headToHeads: {
 				pk: "season",
@@ -563,7 +551,6 @@ class Cache {
 		this.draftPicks = new StoreAPI(this, "draftPicks");
 		this.events = new StoreAPI(this, "events");
 		this.gameAttributes = new StoreAPI(this, "gameAttributes");
-		this.games = new StoreAPI(this, "games");
 		this.headToHeads = new StoreAPI(this, "headToHeads");
 		this.messages = new StoreAPI(this, "messages");
 		this.negotiations = new StoreAPI(this, "negotiations");
@@ -719,8 +706,7 @@ class Cache {
 		}
 
 		{
-			// Special case for games is due to interaction with schedule (see hack below)
-			if (storeInfo.autoIncrement || store === "games") {
+			if (storeInfo.autoIncrement) {
 				this._maxIds[store] = -1;
 
 				const cursor = await transaction
@@ -785,6 +771,19 @@ class Cache {
 
 		if (local.autoSave) {
 			this._dirty = false;
+		}
+
+		// Seed schedule maxId from SQLite so new schedule gids never collide with
+		// existing game gids (replaces the old in-memory games-store HACK).
+		const sqliteDb = await getSqliteDb();
+		if (sqliteDb && Object.hasOwn(this._maxIds, "schedule")) {
+			const row = sqliteDb
+				.prepare("SELECT MAX(gid) AS max FROM games")
+				.get() as { max: number | null } | undefined;
+			const maxGameGid = row?.max ?? -1;
+			if (this._maxIds.schedule < maxGameGid) {
+				this._maxIds.schedule = maxGameGid;
+			}
 		}
 
 		this._setStatus("full");
@@ -989,11 +988,6 @@ class Cache {
 				throw new Error(
 					`Primary key field "${pk}" is required for non-autoincrementing store "${store}"`,
 				);
-			}
-
-			// HACK - special case for schedule store, maxId can come from schedule or games because we can't rely on schedule always being populated
-			if (store === "schedule" && this._maxIds.schedule < this._maxIds.games) {
-				this._maxIds.schedule = this._maxIds.games;
 			}
 
 			this._maxIds[store] += 1;

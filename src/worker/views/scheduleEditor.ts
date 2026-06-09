@@ -115,7 +115,7 @@ const updateScheduleEditor = async (
 			}
 		}
 
-		const games = await idb.cache.games.getAll();
+		const games = await idb.getCopies.games({ season: g.get("season") });
 		const allStars = await idb.cache.allStars.get(g.get("season"));
 		const allStarGameAlreadyHappened = !!allStars;
 

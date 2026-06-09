@@ -155,7 +155,7 @@ const getRealFinalsMvp = async (
 	players: PlayerFiltered[],
 	champTid: number,
 ): Promise<AwardPlayer | undefined> => {
-	const games = await idb.cache.games.getAll();
+	const games = await idb.getCopies.games({ season: g.get("season") });
 
 	// Last game of the season will have the two finals teams
 	const finalsTids = games.at(-1)?.teams.map((t) => t.tid);

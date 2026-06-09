@@ -3650,13 +3650,8 @@ const setNote = async (info: NoteInfo & { editedNote: string }) => {
 		cacheStore = idb.cache.draftPicks;
 		object = await idb.cache.draftPicks.get(info.dpid);
 	} else if (info.type === "game") {
-		cacheStore = idb.cache.games;
-		object = await idb.getCopy.games(
-			{
-				gid: info.gid,
-			},
-			"noCopyCache",
-		);
+		// Game notes not yet supported with SQLite storage (games table has no note column)
+		return;
 	} else if (info.type === "player") {
 		cacheStore = idb.cache.players;
 		object = await idb.getCopy.players(
@@ -5190,7 +5185,7 @@ export default {
 		getDiamondInfo,
 		getJerseyNumberConflict,
 		getLeagueInfo,
-			getLeagueStatus,
+		getLeagueStatus,
 		getLeagueName,
 		getLeagues,
 		getNegotiationProps,
