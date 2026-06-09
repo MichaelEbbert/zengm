@@ -1,7 +1,5 @@
 import { getAll, idb } from "../index.ts";
-import { mergeByPk } from "./helpers.ts";
 import type { Game, GetCopyType } from "../../../common/types.ts";
-import { helpers } from "../../util/index.ts";
 import { getSqliteDb } from "../sqlite.ts";
 import {
 	TEAM_STAT_KEYS,
@@ -242,27 +240,15 @@ const getCopies = async (
 		}
 	}
 
-	// IDB fallback (browser / test / note queries)
+	// IDB fallback (browser / test / note queries) — no cache merge, games no longer in cache
 	if (season !== undefined) {
-		return mergeByPk(
-			await getAll(
-				idb.league.transaction("games").store.index("season"),
-				season,
-			),
-			(await idb.cache.games.getAll()).filter((gm) => {
-				return gm.season === season;
-			}),
-			"games",
-			type,
+		return getAll(
+			idb.league.transaction("games").store.index("season"),
+			season,
 		);
 	}
 
 	if (gid !== undefined) {
-		const game = await idb.cache.games.get(gid);
-		if (game) {
-			return [type === "noCopyCache" ? game : helpers.deepCopy(game)];
-		}
-
 		const game2 = await idb.league.get("games", gid);
 		if (game2) {
 			return [game2];
@@ -272,20 +258,12 @@ const getCopies = async (
 	}
 
 	if (note) {
-		return mergeByPk(
-			await idb.league.transaction("games").store.index("noteBool").getAll(),
-			await idb.cache.games.getAll(),
-			"games",
-			type,
+		return (
+			await idb.league.transaction("games").store.index("noteBool").getAll()
 		).filter((row) => row.noteBool === 1);
 	}
 
-	return mergeByPk(
-		await getAll(idb.league.transaction("games").store),
-		await idb.cache.games.getAll(),
-		"games",
-		type,
-	);
+	return getAll(idb.league.transaction("games").store);
 };
 
 export default getCopies;
