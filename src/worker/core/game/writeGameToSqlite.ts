@@ -1,5 +1,6 @@
 import type { Game } from "../../../common/types.ts";
 import { getSqliteDb } from "../../db/sqlite.ts";
+import { g } from "../../util/index.ts";
 import {
 	TEAM_STAT_KEYS,
 	PLAYER_STAT_KEYS,
@@ -81,29 +82,39 @@ const TD_TYPE_MAP: Record<string, string> = {
 	interception: "interception",
 };
 
-// Prepared statements cached after first use
-let stmts: {
+type Stmts = {
 	insertGame: any;
 	insertTeam: any;
 	insertPlayer: any;
 	insertScoringPlay: any;
-} | null = null;
+};
+
+// Prepared statements cached per league id
+const _stmtsCache = new Map<number, Stmts>();
 
 async function getStmts() {
 	const db = await getSqliteDb();
 	if (!db) return null;
 
-	if (!stmts) {
-		stmts = {
-			insertGame: db.prepare(buildInsert("games", GAME_COLS)),
-			insertTeam: db.prepare(buildInsert("game_teams", TEAM_COLS)),
-			insertPlayer: db.prepare(buildInsert("game_players", PLAYER_COLS)),
-			insertScoringPlay: db.prepare(
-				buildInsert("game_scoring_plays", SCORING_COLS),
-			),
-		};
+	let lid: number;
+	try {
+		lid = g.get("lid") as number;
+	} catch {
+		return null;
 	}
 
+	const cached = _stmtsCache.get(lid);
+	if (cached) return { db, ...cached };
+
+	const stmts: Stmts = {
+		insertGame: db.prepare(buildInsert("games", GAME_COLS)),
+		insertTeam: db.prepare(buildInsert("game_teams", TEAM_COLS)),
+		insertPlayer: db.prepare(buildInsert("game_players", PLAYER_COLS)),
+		insertScoringPlay: db.prepare(
+			buildInsert("game_scoring_plays", SCORING_COLS),
+		),
+	};
+	_stmtsCache.set(lid, stmts);
 	return { db, ...stmts };
 }
 

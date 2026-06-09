@@ -153,7 +153,7 @@ Electron must be installed first: `pnpm install` (requires network access).
 
 ```json
 {
-	"dbPath": "/path/to/your/zengm.db"
+	"dbDir": "/path/to/league/storage/directory"
 }
 ```
 
@@ -161,11 +161,13 @@ Windows Desktop example:
 
 ```json
 {
-	"dbPath": "D:\\Dropbox\\Gaming and Magic and Comics\\ZenGM\\db\\zengm.db"
+	"dbDir": "D:\\Dropbox\\Gaming and Magic and Comics\\ZenGM\\football"
 }
 ```
 
-If `settings.json` is absent, the DB falls back to Electron's `userData` folder (`%APPDATA%\Electron\zengm.db` on Windows).
+Each league gets its own file inside `dbDir`: `league-<lid>.db` (lid is a millisecond timestamp).
+
+If `settings.json` is absent, DBs are stored in Electron's `userData` folder (`%APPDATA%\Electron\` on Windows).
 
 ### Electron HTTP API (Session 2)
 

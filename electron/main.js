@@ -4,8 +4,6 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { initDb } from "./db.js";
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Dev server port — matches getPort({ port: 3000 }) default in tools/lib/server.ts.
@@ -131,22 +129,21 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-	// Load DB path from electron/settings.json, falling back to userData
-	let dbPath;
+	// Load DB directory from electron/settings.json, falling back to userData
+	let dbDir;
 	try {
 		const settingsFile = path.join(__dirname, "settings.json");
 		const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
-		if (settings.dbPath) {
-			dbPath = settings.dbPath;
-			fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+		if (settings.dbDir) {
+			dbDir = settings.dbDir;
 		}
 	} catch {}
-	if (!dbPath) {
-		dbPath = path.join(app.getPath("userData"), "zengm.db");
+	if (!dbDir) {
+		dbDir = app.getPath("userData");
 	}
+	fs.mkdirSync(dbDir, { recursive: true });
 	// Set before createWindow() so the renderer process inherits it
-	process.env.ZENGM_DB_PATH = dbPath;
-	initDb(dbPath);
+	process.env.ZENGM_DB_DIR = dbDir;
 
 	createWindow();
 
