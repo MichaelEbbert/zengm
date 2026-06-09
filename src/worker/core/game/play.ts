@@ -128,6 +128,10 @@ const play = async (
 			results.map(async (result) => {
 				const att = await writeTeamStats(result);
 
+				{
+					const { wlog } = await import("../../db/workerLog.ts");
+					await wlog(`play.ts: calling writeGameStats gid=${result.gid}`);
+				}
 				const maybeGameToUi = await writeGameStats(result, att, conditions);
 				if (maybeGameToUi) {
 					gameToUi = maybeGameToUi;
@@ -391,6 +395,10 @@ const play = async (
 			baseInjuryRate = g.get("injuryRate");
 		}
 
+		{
+			const { wlog } = await import("../../db/workerLog.ts");
+			await wlog(`game sim start gid=${gid}`);
+		}
 		return new GameSim({
 			gid,
 			day,

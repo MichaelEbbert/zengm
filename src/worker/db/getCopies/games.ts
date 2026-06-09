@@ -1,6 +1,7 @@
 import { getAll, idb } from "../index.ts";
 import type { Game, GetCopyType } from "../../../common/types.ts";
-import { getSqliteDb } from "../sqlite.ts";
+import { readGames as electronReadGames } from "../electronApi.ts";
+import { g } from "../../util/index.ts";
 import {
 	TEAM_STAT_KEYS,
 	PLAYER_STAT_KEYS,
@@ -229,14 +230,21 @@ const getCopies = async (
 	} = {},
 	type?: GetCopyType,
 ): Promise<Game[]> => {
-	const db = await getSqliteDb();
-
-	if (db) {
-		// note queries fall back to IDB — games table has no note/noteBool column yet
-		if (!note) {
-			if (gid !== undefined) return sqliteQuery(db, "gid = ?", [gid]);
-			if (season !== undefined) return sqliteQuery(db, "season = ?", [season]);
-			return sqliteQuery(db, "", []);
+	if (!note) {
+		let lid: number | undefined;
+		try {
+			lid = g.get("lid") as number;
+		} catch {}
+		if (typeof lid === "number") {
+			const rows = await electronReadGames(lid, { gid, season });
+			if (rows !== null) {
+				return assembleGames(
+					rows.gameRows,
+					rows.teamRows,
+					rows.playerRows,
+					rows.scoringRows,
+				);
+			}
 		}
 	}
 

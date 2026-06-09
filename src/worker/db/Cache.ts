@@ -6,7 +6,7 @@ import { helpers } from "../../common/helpers.ts";
 import { idb } from "./index.ts";
 import cmp from "./cmp.ts";
 import { g, local, lock } from "../util/index.ts";
-import { getSqliteDb } from "./sqlite.ts";
+import { getMaxGameGid } from "./electronApi.ts";
 import type {
 	AllStars,
 	DraftLotteryResult,
@@ -775,14 +775,16 @@ class Cache {
 
 		// Seed schedule maxId from SQLite so new schedule gids never collide with
 		// existing game gids (replaces the old in-memory games-store HACK).
-		const sqliteDb = await getSqliteDb();
-		if (sqliteDb && Object.hasOwn(this._maxIds, "schedule")) {
-			const row = sqliteDb
-				.prepare("SELECT MAX(gid) AS max FROM games")
-				.get() as { max: number | null } | undefined;
-			const maxGameGid = row?.max ?? -1;
-			if (this._maxIds.schedule < maxGameGid) {
-				this._maxIds.schedule = maxGameGid;
+		if (Object.hasOwn(this._maxIds, "schedule")) {
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+			if (typeof lid === "number") {
+				const maxGameGid = (await getMaxGameGid(lid)) ?? -1;
+				if (this._maxIds.schedule < maxGameGid) {
+					this._maxIds.schedule = maxGameGid;
+				}
 			}
 		}
 

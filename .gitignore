@@ -13,3 +13,4 @@
 /.vscode
 /tools/names-groups-html
 /electron/settings.json
+/logs/

@@ -1838,6 +1838,11 @@ const createStream = async (
 	});
 	// console.timeLog("createStream");
 
+	{
+		const { wlog } = await import("../../db/workerLog.ts");
+		await wlog(`league created lid=${lid} name=${name}`);
+	}
+
 	const { extraFromStream, saveToDB } = await getSaveToDB({
 		keptKeys,
 		maxGid: fromFile.maxGid,

@@ -2,6 +2,7 @@ import { PHASE } from "../../../common/constants.ts";
 import { saveAwardsByPlayer } from "../season/awards.ts";
 import { idb } from "../../db/index.ts";
 import { writeGameToSqlite } from "./writeGameToSqlite.ts";
+import { wlog } from "../../db/workerLog.ts";
 import { g, helpers, logEvent } from "../../util/index.ts";
 import type {
 	Conditions,
@@ -371,6 +372,7 @@ const writeGameStats = async (
 	att: number,
 	conditions: Conditions,
 ) => {
+	await wlog(`writeGameStats entered gid=${results.gid}`);
 	const {
 		allStarGame,
 		allStars,
@@ -700,6 +702,7 @@ const writeGameStats = async (
 		seriesWinner,
 	});
 
+	await wlog(`writeGameStats: calling writeGameToSqlite gid=${gameStats.gid}`);
 	await writeGameToSqlite(gameStats);
 
 	return gameToUi;

@@ -3,8 +3,25 @@
 // Each league gets its own file: <dbDir>/league-<lid>.db
 
 import { g } from "../util/index.ts";
+import { wlog } from "./workerLog.ts";
 
 const _dbs = new Map<number, any>();
+
+// Cache the dbDir fetched from the Electron API — null means not in Electron
+let _dbDir: string | null | undefined = undefined;
+
+async function getDbDir(): Promise<string | null> {
+	if (_dbDir !== undefined) return _dbDir;
+	try {
+		const resp = await fetch("http://127.0.0.1:3001/config");
+		const data = await resp.json();
+		_dbDir = data.dbDir ?? null;
+	} catch {
+		_dbDir = null;
+	}
+	await wlog(`getDbDir resolved: ${_dbDir}`);
+	return _dbDir;
+}
 
 function runMigrations(db: any): void {
 	db.exec(`
@@ -149,21 +166,26 @@ function runMigrations(db: any): void {
 }
 
 export async function getSqliteDb(): Promise<any> {
-	// Use bracket notation so the bundler doesn't substitute this at build time
-	const dbDir =
-		typeof process !== "undefined"
-			? (process as any).env?.["ZENGM_DB_DIR"]
-			: undefined;
+	const dbDir = await getDbDir();
 
-	if (!dbDir) return null;
+	await wlog(`getSqliteDb called — dbDir: ${dbDir}`);
+
+	if (!dbDir) {
+		await wlog("no dbDir, returning null");
+		return null;
+	}
 
 	let lid: number | undefined;
 	try {
 		lid = g.get("lid") as number | undefined;
-	} catch {
+	} catch (e) {
+		await wlog(`g.get('lid') threw: ${e}`);
 		return null;
 	}
-	if (typeof lid !== "number") return null;
+	if (typeof lid !== "number") {
+		await wlog(`lid is not a number: ${lid}`);
+		return null;
+	}
 
 	if (_dbs.has(lid)) return _dbs.get(lid);
 
@@ -179,9 +201,10 @@ export async function getSqliteDb(): Promise<any> {
 		db.pragma("foreign_keys = ON");
 		runMigrations(db);
 		_dbs.set(lid, db);
+		await wlog(`opened ${dbPath}`);
 		return db;
 	} catch (e) {
-		console.warn("[SQLite] Worker could not open database:", e);
+		await wlog(`failed to open database: ${e}`);
 		return null;
 	}
 }

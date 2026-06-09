@@ -3,6 +3,7 @@ import fs from "fs";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { openDb, writeGame, readGames, getMaxGid } from "./sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -96,8 +97,59 @@ function startApiServer(win) {
 				return;
 			}
 
+			if (key === "GET /config") {
+				send(200, { dbDir: process.env.ZENGM_DB_DIR || null });
+				return;
+			}
+
 			if (key === "GET /query") {
 				send(501, { error: "SQL query not available until Phase 2 (SQLite)" });
+				return;
+			}
+
+			if (key === "POST /game") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, gameStats } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeGame(db, gameStats);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /games" || key === "GET /games/maxgid") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.pathname === "/games/maxgid") {
+					send(200, { maxGid: getMaxGid(db) });
+					return;
+				}
+				const filter = {};
+				if (url2.searchParams.has("gid"))
+					filter.gid = Number(url2.searchParams.get("gid"));
+				if (url2.searchParams.has("season"))
+					filter.season = Number(url2.searchParams.get("season"));
+				send(200, readGames(db, filter));
+				return;
+			}
+
+			if (key === "POST /log") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const logDir = path.join(__dirname, "..", "logs");
+				fs.mkdirSync(logDir, { recursive: true });
+				fs.appendFileSync(
+					path.join(logDir, "worker.log"),
+					`${new Date().toISOString()} ${body}\n`,
+				);
+				send(200, { ok: true });
 				return;
 			}
 
