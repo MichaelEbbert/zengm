@@ -53,6 +53,7 @@
 		"@visx/text": "3.12.0",
 		"@visx/tooltip": "3.12.0",
 		"ajv": "8.18.0",
+		"better-sqlite3": "^12.10.0",
 		"bootstrap": "5.3.8",
 		"clsx": "2.1.1",
 		"confetti-js": "0.0.18",
@@ -89,12 +90,12 @@
 	},
 	"devDependencies": {
 		"@babel/core": "8.0.0-rc.3",
-		"electron": "^35.0.0",
 		"@babel/plugin-syntax-jsx": "8.0.0-rc.3",
 		"@babel/plugin-syntax-typescript": "8.0.0-rc.3",
 		"@nkzw/eslint-config": "3.3.0",
 		"@restart/ui": "1.9.4",
 		"@rolldown/pluginutils": "1.0.0-rc.17",
+		"@types/better-sqlite3": "^7.6.13",
 		"@types/d3-dsv": "3.0.7",
 		"@types/d3-scale": "4.0.9",
 		"@types/google-publisher-tag": "1.20260420.0",
@@ -114,6 +115,7 @@
 		"cloudflare": "5.2.0",
 		"concurrently": "9.2.1",
 		"conditional-type-checks": "1.0.6",
+		"electron": "^35.0.0",
 		"eslint": "10.2.1",
 		"eslint-plugin-import-zod": "^1.2.1",
 		"eslint-plugin-jsx-a11y": "6.10.2",
@@ -139,5 +141,12 @@
 		"node": "^24.0.0",
 		"pnpm": "^10.0.0"
 	},
-	"private": true
+	"private": true,
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"better-sqlite3",
+			"electron",
+			"unrs-resolver"
+		]
+	}
 }

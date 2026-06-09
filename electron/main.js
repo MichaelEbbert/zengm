@@ -1,5 +1,11 @@
 import { app, BrowserWindow } from "electron";
 import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
+
+import { initDb } from "./db.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Dev server port — matches getPort({ port: 3000 }) default in tools/lib/server.ts.
 // Override with ELECTRON_DEV_PORT if the server landed on a different port.
@@ -66,7 +72,12 @@ function startApiServer(win) {
 			}
 
 			if (key === "GET /status") {
-				const status = await callWorker(win, "main", "getLeagueStatus", undefined);
+				const status = await callWorker(
+					win,
+					"main",
+					"getLeagueStatus",
+					undefined,
+				);
 				send(200, status);
 				return;
 			}
@@ -108,7 +119,8 @@ function createWindow() {
 		height: 900,
 		webPreferences: {
 			contextIsolation: true,
-			nodeIntegration: false,
+			nodeIntegration: true,
+			nodeIntegrationInWorker: true,
 		},
 	});
 
@@ -118,6 +130,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+	const dbPath = path.join(app.getPath("userData"), "zengm.db");
+	// Set before createWindow() so the renderer process inherits it
+	process.env.ZENGM_DB_PATH = dbPath;
+	initDb(dbPath);
+
 	createWindow();
 
 	// macOS: re-create window when dock icon is clicked and no windows are open

@@ -1,6 +1,7 @@
 import { PHASE } from "../../../common/constants.ts";
 import { saveAwardsByPlayer } from "../season/awards.ts";
 import { idb } from "../../db/index.ts";
+import { writeGameToSqlite } from "./writeGameToSqlite.ts";
 import { g, helpers, logEvent } from "../../util/index.ts";
 import type {
 	Conditions,
@@ -699,7 +700,7 @@ const writeGameStats = async (
 		seriesWinner,
 	});
 
-	await idb.cache.games.put(gameStats);
+	await writeGameToSqlite(gameStats);
 
 	return gameToUi;
 };

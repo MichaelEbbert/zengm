@@ -95,6 +95,10 @@ export const rolldownConfig = (
 		plugins,
 		preserveEntrySignatures: false,
 		external(id, parentId) {
+			// Node-only native addon — used from the worker in Electron via nodeIntegrationInWorker
+			if (id === "better-sqlite3") {
+				return true;
+			}
 			// These are in the dropbox package but never actually get executed
 			if ((id === "crypto" || id === "util") && parentId?.includes("dropbox")) {
 				return true;

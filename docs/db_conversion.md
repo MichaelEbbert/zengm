@@ -444,6 +444,7 @@ Goal: box scores written to and read from SQLite. IndexedDB still used for every
 #### Schema (finalized)
 
 **`games`** — one row per game
+
 ```sql
 CREATE TABLE games (
     gid          INTEGER PRIMARY KEY,
@@ -463,6 +464,7 @@ CREATE TABLE games (
 ```
 
 **`game_teams`** — two rows per game, one per team; `opp*` stats excluded (computable via self-join)
+
 ```sql
 CREATE TABLE game_teams (
     id             INTEGER PRIMARY KEY,
@@ -508,6 +510,7 @@ CREATE TABLE game_teams (
 ```
 
 **`game_players`** — one row per player per game
+
 ```sql
 CREATE TABLE game_players (
     id                     INTEGER PRIMARY KEY,
@@ -551,6 +554,7 @@ CREATE TABLE game_players (
 ```
 
 **`game_scoring_plays`** — one row per scoring event; score progression computed by summing `pts_scored` in `seq` order
+
 ```sql
 CREATE TABLE game_scoring_plays (
     id         INTEGER PRIMARY KEY,
@@ -572,11 +576,18 @@ CREATE TABLE game_scoring_plays (
 ```
 
 - [x] 2.1 Design `games`, `game_teams`, `game_players`, `game_scoring_plays` SQLite schema — see schema above
-- [ ] 2.2 Add `better-sqlite3` to the project
-- [ ] 2.3 Write SQLite migration framework — versioned migration files, applied at app startup
-- [ ] 2.4 Write migration 001 — create `games`, `game_teams`, `game_players`, `game_scoring_plays` tables
+- [x] 2.2 Add `better-sqlite3` to the project
+- [x] 2.3 Write SQLite migration framework — versioned migration files, applied at app startup
+- [x] 2.4 Write migration 001 — create `games`, `game_teams`, `game_players`, `game_scoring_plays` tables
 - [ ] 2.5 Replace `idb.cache.games.put()` in `writeGameStats.ts` with SQLite insert
-- [ ] 2.6 Replace `idb.league` direct reads in `getCopies/games.ts` with SQLite queries
+  - [x] 2.5a Enable `nodeIntegration`/`nodeIntegrationInWorker` in `electron/main.js`; set `ZENGM_DB_PATH` env var before window creation
+  - [x] 2.5b Mark `better-sqlite3` external in `rolldownConfig.ts`
+  - [x] 2.5c Create `src/worker/db/sqlite.ts` — lazy singleton connection (returns null outside Electron)
+  - [x] 2.5d Create `src/worker/core/game/writeGameToSqlite.ts` — maps `Game` → four tables in one transaction
+  - [x] 2.5e Replace `idb.cache.games.put(gameStats)` in `writeGameStats.ts` with `writeGameToSqlite(gameStats)`
+  - [ ] 2.5f TypeScript type-check passes (`node --run lint-ts`)
+  - [ ] 2.5g GameSim unit tests pass (`SPORT=football node --run test -- GameSim`)
+- [x] 2.6 Replace `idb.league` direct reads in `getCopies/games.ts` with SQLite queries
 - [ ] 2.7 Remove the `games` store delete call in `newPhaseRegularSeason.ts` (box scores kept forever)
 - [ ] 2.8 Remove `games` from `Cache.ts` STORES list and storeInfos
 - [ ] 2.9 Verify box score display works end to end
