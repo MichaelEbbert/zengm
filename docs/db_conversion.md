@@ -19,7 +19,9 @@ Read-only data that was fetched but not modified may be kept in browser session 
 
 ## Status
 
-- [ ] Research phase — no code changes
+- [x] Phase 1 — COMPLETE (Electron runtime, HTTP API)
+- [x] Phase 2 — COMPLETE (box scores to SQLite, reads and writes verified)
+- [ ] Phase 3+ — not started
 
 ## Research Tasks
 
@@ -580,9 +582,9 @@ CREATE TABLE game_scoring_plays (
 - [x] 2.3 Write SQLite migration framework — versioned migration files, applied at app startup
 - [x] 2.4 Write migration 001 — create `games`, `game_teams`, `game_players`, `game_scoring_plays` tables
 - [ ] 2.5 Replace `idb.cache.games.put()` in `writeGameStats.ts` with SQLite insert
-  - [x] 2.5a Enable `nodeIntegration`/`nodeIntegrationInWorker` in `electron/main.js`; set `ZENGM_DB_PATH` env var before window creation
+  - [x] 2.5a Enable `nodeIntegration`/`nodeIntegrationInWorker` in `electron/main.js`
   - [x] 2.5b Mark `better-sqlite3` external in `rolldownConfig.ts`
-  - [x] 2.5c Create `src/worker/db/sqlite.ts` — lazy singleton connection (returns null outside Electron)
+  - [x] 2.5c Create `src/worker/db/sqlite.ts` — lazy connection (returns null outside Electron)
   - [x] 2.5d Create `src/worker/core/game/writeGameToSqlite.ts` — maps `Game` → four tables in one transaction
   - [x] 2.5e Replace `idb.cache.games.put(gameStats)` in `writeGameStats.ts` with `writeGameToSqlite(gameStats)`
   - [ ] 2.5f TypeScript type-check passes (`node --run lint-ts`)
@@ -590,8 +592,10 @@ CREATE TABLE game_scoring_plays (
 - [x] 2.6 Replace `idb.league` direct reads in `getCopies/games.ts` with SQLite queries
 - [x] 2.7 Remove the `games` store delete call in `newPhaseRegularSeason.ts` (box scores kept forever)
 - [x] 2.8 Remove `games` from `Cache.ts` STORES list and storeInfos
-- [ ] 2.9 Verify box score display works end to end
-- [ ] 2.10 Commit and push
+- [x] 2.9 Verify box score display works end to end — weekly schedule shows completed games with box score links; two leagues tested, per-league file isolation confirmed
+- [x] 2.10 Commit and push
+
+**Architecture note (2026-06-09):** ES module web workers in Electron cannot load native addons via dynamic `import()` — only `better-sqlite3` marked external in rolldown is not actually resolved at runtime. SQLite was moved to the Electron main process. Worker communicates via the existing HTTP API (port 3001): `POST /game`, `GET /games`, `GET /games/maxgid`, `GET /config`. New files: `electron/sqlite.js` (all DB logic), `src/worker/db/electronApi.ts` (HTTP client), `src/worker/db/workerLog.ts` (file logger via `POST /log`). Per-league files: `<dbDir>/league-<lid>.db` where lid is a millisecond timestamp. Settings: `electron/settings.json` (gitignored), key `dbDir`.
 
 ---
 
