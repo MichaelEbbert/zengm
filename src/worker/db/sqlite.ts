@@ -6,9 +6,10 @@ let _db: any | null | undefined = undefined; // undefined = not yet attempted
 export async function getSqliteDb(): Promise<any> {
 	if (_db !== undefined) return _db;
 
+	// Use bracket notation so the bundler doesn't substitute this at build time
 	const dbPath =
 		typeof process !== "undefined"
-			? (process as any).env?.ZENGM_DB_PATH
+			? (process as any).env?.["ZENGM_DB_PATH"]
 			: undefined;
 
 	if (!dbPath) {
