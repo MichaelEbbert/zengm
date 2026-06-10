@@ -147,6 +147,27 @@ $env:ELECTRON_DEV_PORT="3001"; node --run electron
 
 Electron must be installed first: `pnpm install` (requires network access).
 
+### Rebuilding native modules (better-sqlite3)
+
+`better-sqlite3` is a native module compiled against a specific Node ABI. It must be rebuilt to match Electron's ABI whenever you switch Node versions or set up a new machine. `pnpm rebuild` uses the system Node ABI (wrong); use `@electron/rebuild` instead.
+
+`@electron/rebuild` is not in `package.json` -- install it to your home directory once per machine:
+
+```powershell
+# Windows: if pnpm install gets ECONNRESET, IPv6 may be broken on the machine;
+# force IPv4 for the install only:
+$env:NODE_OPTIONS="--dns-result-order=ipv4first"; pnpm add @electron/rebuild
+```
+
+Then rebuild from the project directory using the home-dir binary (omit `-m`; pnpm's virtual store breaks that flag):
+
+```powershell
+Set-Location "C:\claude_projects\zengm"
+& "$env:USERPROFILE\node_modules\.bin\electron-rebuild.CMD" -f
+```
+
+On Linux, install globally (`npm install -g @electron/rebuild`) and run `electron-rebuild -f` from the project root.
+
 ### Electron DB path (per-machine setup)
 
 `electron/settings.json` is gitignored. Each machine must create it once:
