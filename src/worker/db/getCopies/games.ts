@@ -9,9 +9,6 @@ import {
 	PLAYER_STAT_COLS,
 } from "../sqliteGameKeys.ts";
 
-const inList = (n: number) =>
-	`(${Array.from({ length: n }, () => "?").join(", ")})`;
-
 // Reverse type mapping for scoring summary reconstruction
 const PLAY_TYPE_META: Record<
 	string,
@@ -131,7 +128,7 @@ function assembleGames(
 		// tid → team index (0 or 1) for scoring summary
 		const tidToIdx = new Map<number, number>();
 		for (let i = 0; i < teams.length; i++) {
-			tidToIdx.set(teams[i].tid, i);
+			tidToIdx.set(teams[i]!.tid, i);
 		}
 
 		const scoringSummary = myScoring.map((sr: any) => {
@@ -185,37 +182,6 @@ function assembleGames(
 		if (row.neutral_site === 1) game.neutralSite = true;
 		return game as Game;
 	});
-}
-
-async function sqliteQuery(
-	db: any,
-	where: string,
-	params: any[],
-): Promise<Game[]> {
-	const sql = where
-		? `SELECT * FROM games WHERE ${where}`
-		: "SELECT * FROM games";
-	const gameRows: any[] = params.length
-		? db.prepare(sql).all(...params)
-		: db.prepare(sql).all();
-	if (gameRows.length === 0) return [];
-
-	const gids = gameRows.map((r: any) => r.gid);
-	const inn = inList(gids.length);
-
-	const teamRows = db
-		.prepare(`SELECT * FROM game_teams WHERE gid IN ${inn} ORDER BY rowid`)
-		.all(...gids);
-	const playerRows = db
-		.prepare(`SELECT * FROM game_players WHERE gid IN ${inn}`)
-		.all(...gids);
-	const scoringRows = db
-		.prepare(
-			`SELECT * FROM game_scoring_plays WHERE gid IN ${inn} ORDER BY seq`,
-		)
-		.all(...gids);
-
-	return assembleGames(gameRows, teamRows, playerRows, scoringRows);
 }
 
 const getCopies = async (

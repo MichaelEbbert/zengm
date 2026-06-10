@@ -1,5 +1,4 @@
 import { idb } from "../db/index.ts";
-import g from "./g.ts";
 import type { Game } from "../../common/types.ts";
 
 /**

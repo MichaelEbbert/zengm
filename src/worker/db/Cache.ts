@@ -43,7 +43,6 @@ import type {
 } from "../../common/types.ts";
 import type { IDBPTransaction } from "@dumbmatter/idb";
 import type { LeagueDB } from "./connectLeague.ts";
-import getAll from "./getAll.ts";
 import { league } from "../core/index.ts";
 
 export const NUM_SEASON_LEADERS_CACHE = 50;

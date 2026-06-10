@@ -20,7 +20,7 @@ async function getDbDir(): Promise<string | null> {
 		_dbDir = null;
 	}
 	await wlog(`getDbDir resolved: ${_dbDir}`);
-	return _dbDir;
+	return _dbDir as string | null;
 }
 
 function runMigrations(db: any): void {

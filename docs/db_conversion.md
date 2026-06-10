@@ -587,8 +587,8 @@ CREATE TABLE game_scoring_plays (
   - [x] 2.5c Create `src/worker/db/sqlite.ts` — lazy connection (returns null outside Electron)
   - [x] 2.5d Create `src/worker/core/game/writeGameToSqlite.ts` — maps `Game` → four tables in one transaction
   - [x] 2.5e Replace `idb.cache.games.put(gameStats)` in `writeGameStats.ts` with `writeGameToSqlite(gameStats)`
-  - [ ] 2.5f TypeScript type-check passes (`node --run lint-ts`)
-  - [ ] 2.5g GameSim unit tests pass (`SPORT=football node --run test -- GameSim`)
+  - [x] 2.5f TypeScript type-check passes (`node --run lint-ts`)
+  - [x] 2.5g GameSim unit tests pass (`SPORT=football node --run test -- GameSim`)
 - [x] 2.6 Replace `idb.league` direct reads in `getCopies/games.ts` with SQLite queries
 - [x] 2.7 Remove the `games` store delete call in `newPhaseRegularSeason.ts` (box scores kept forever)
 - [x] 2.8 Remove `games` from `Cache.ts` STORES list and storeInfos

@@ -499,7 +499,7 @@ const clearNotes = async (type: NoteInfo["type"]) => {
 	for (const row of rows) {
 		delete row.note;
 		delete row.noteBool;
-		await idb.cache[storeName].put(row as any);
+		await (idb.cache as any)[storeName].put(row as any);
 	}
 
 	await toUI("realtimeUpdate", [noteUpdateEvents[type]]);
