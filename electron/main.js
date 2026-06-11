@@ -3,7 +3,16 @@ import fs from "fs";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
-import { openDb, writeGame, readGames, getMaxGid } from "./sqlite.js";
+import {
+	openDb,
+	writeGame,
+	readGames,
+	getMaxGid,
+	writePlayers,
+	readActivePlayers,
+	readPlayersFilter,
+	countPlayers,
+} from "./sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -136,6 +145,58 @@ function startApiServer(win) {
 				if (url2.searchParams.has("season"))
 					filter.season = Number(url2.searchParams.get("season"));
 				send(200, readGames(db, filter));
+				return;
+			}
+
+			if (key === "POST /players/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, players, deletePids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writePlayers(db, players, deletePids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /players") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				const mode = url2.searchParams.get("mode");
+				if (mode === "active") {
+					send(200, { players: readActivePlayers(db) });
+					return;
+				}
+				if (mode === "count") {
+					send(200, { count: countPlayers(db) });
+					return;
+				}
+				const filter = {};
+				if (url2.searchParams.has("pid"))
+					filter.pid = Number(url2.searchParams.get("pid"));
+				else if (url2.searchParams.has("pids"))
+					filter.pids = url2.searchParams.get("pids").split(",").map(Number);
+				else if (url2.searchParams.has("tid"))
+					filter.tid = Number(url2.searchParams.get("tid"));
+				else if (url2.searchParams.has("retiredYear"))
+					filter.retiredYear = Number(url2.searchParams.get("retiredYear"));
+				else if (url2.searchParams.has("draftYear"))
+					filter.draftYear = Number(url2.searchParams.get("draftYear"));
+				else if (url2.searchParams.has("statsTid"))
+					filter.statsTid = Number(url2.searchParams.get("statsTid"));
+				else if (url2.searchParams.get("hof") === "1") filter.hof = true;
+				else if (url2.searchParams.get("note") === "1") filter.note = true;
+				else if (url2.searchParams.get("watch") === "1") filter.watch = true;
+				else if (url2.searchParams.get("activeAndRetired") === "1")
+					filter.activeAndRetired = true;
+				else if (url2.searchParams.has("activeSeason"))
+					filter.activeSeason = Number(url2.searchParams.get("activeSeason"));
+				send(200, { players: readPlayersFilter(db, filter) });
 				return;
 			}
 

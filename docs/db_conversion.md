@@ -21,7 +21,8 @@ Read-only data that was fetched but not modified may be kept in browser session 
 
 - [x] Phase 1 — COMPLETE (Electron runtime, HTTP API)
 - [x] Phase 2 — COMPLETE (box scores to SQLite, reads and writes verified)
-- [ ] Phase 3+ — not started
+- [ ] Phase 3 — IN PROGRESS (schema + write/read code done; pending live test + stash pop + commit)
+- [ ] Phase 4+ — not started
 
 ## Research Tasks
 
@@ -599,16 +600,41 @@ CREATE TABLE game_scoring_plays (
 
 ---
 
-### Phase 3 — Players to SQLite (`players` + `player_stats`)
+### Phase 3 — Players to SQLite (fully normalized)
 
-Goal: player records and career stats written to and read from SQLite.
+Goal: all player data written to and read from SQLite. ALL nested arrays normalized — no JSON blobs for queryable data.
 
-- [ ] 3.1 Design `players` and `player_stats` SQLite schema — normalize career stats array into rows
-- [ ] 3.2 Write migration 002 — create `players` and `player_stats` tables
-- [ ] 3.3 Replace `Cache.flush()` dirty-record writes for `players` store with SQLite upserts
-- [ ] 3.4 Replace `Cache.fill()` player load with SQLite query
-- [ ] 3.5 Replace `getCopies/players.ts` direct IDB reads with SQL queries (6 query paths — hardest file)
-- [ ] 3.6 Remove `players` from Cache STORES
+**9 tables created in migration 002:**
+
+| Table                 | Description                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| `players`             | Main row: all scalar fields + face (JSON blob)                                       |
+| `player_stats`        | Career stats (derived + raw, 1 row per season/tid/playoffs)                          |
+| `player_ratings`      | One row per ratings snapshot (seq, not season, because injury mid-season adds a row) |
+| `player_injuries`     | Each injury in injuries[] array                                                      |
+| `player_salaries`     | Each season salary                                                                   |
+| `player_awards`       | Each award                                                                           |
+| `player_relatives`    | Each relative (type, rel_pid, name)                                                  |
+| `player_mood_traits`  | Each mood trait string                                                               |
+| `player_transactions` | Each transaction event                                                               |
+
+**Key decisions:**
+
+- `stats_tids` field DROPPED — derivable via `SELECT DISTINCT tid FROM player_stats WHERE pid = ?`
+- `player_ratings` uses `UNIQUE(pid, seq)` not `UNIQUE(pid, season)` — addRatingsRow() can add multiple rows per season (injury mid-season)
+- `contract` flattened to `contract_amount` + `contract_exp` on players row
+- `face` kept as JSON blob — deeply nested procedural object, never queried
+- On first fill() if SQLite empty but IDB has players: auto-migrate IDB → SQLite
+
+- [x] 3.1 Design `players` + 8 child table SQLite schema — fully normalized
+- [x] 3.2 Write migration 002 — create all 9 player tables + indexes (`electron/sqlite.js`)
+- [x] 3.2b Add `playerToRow`, `statsToRow`, `ratingsToRow`, `rowToPlayer`, `writePlayers`, `readActivePlayers`, `readPlayersFilter`, `countPlayers` helpers (`electron/sqlite.js`)
+- [x] 3.2c Add `POST /players/flush` and `GET /players` routes (`electron/main.js`)
+- [x] 3.2d Add `flushPlayers`, `readActivePlayers`, `countSqlitePlayers`, `readPlayersFilter` to `electronApi.ts`
+- [x] 3.3 Replace `Cache.flush()` dirty-record writes for `players` store with SQLite upserts
+- [x] 3.4 Replace `Cache.fill()` player load with SQLite query (IDB fallback + one-time auto-migration)
+- [x] 3.5 Replace `getCopies/players.ts` direct IDB reads with `readPlayersFilter()` (IDB fallback for all 11 query paths)
+- [ ] 3.6 Remove `players` from Cache STORES (deferred — wait until live test confirms correctness)
 - [ ] 3.7 Verify player stats, ratings, and history display correctly
 - [ ] 3.8 Commit and push
 

@@ -61,3 +61,87 @@ export async function getMaxGameGid(lid: number): Promise<number | null> {
 		return null;
 	}
 }
+
+export async function flushPlayers(
+	lid: number,
+	players: any[],
+	deletePids: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/players/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, players, deletePids }),
+		});
+	} catch {}
+}
+
+export async function readActivePlayers(lid: number): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/players?lid=${lid}&mode=active`);
+		if (!r.ok) return null;
+		const data = await r.json();
+		return data.players;
+	} catch {
+		return null;
+	}
+}
+
+export async function countSqlitePlayers(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/players?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		const data = await r.json();
+		return data.count;
+	} catch {
+		return 0;
+	}
+}
+
+type PlayerFilter =
+	| { pid: number }
+	| { pids: number[] }
+	| { tid: number }
+	| { retiredYear: number }
+	| { draftYear: number }
+	| { statsTid: number }
+	| { hof: true }
+	| { note: true }
+	| { watch: true }
+	| { activeAndRetired: true }
+	| { activeSeason: number }
+	| Record<string, never>;
+
+export async function readPlayersFilter(
+	lid: number,
+	filter: PlayerFilter,
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if ("pid" in filter) params.set("pid", String(filter.pid));
+		else if ("pids" in filter) params.set("pids", filter.pids.join(","));
+		else if ("tid" in filter) params.set("tid", String(filter.tid));
+		else if ("retiredYear" in filter)
+			params.set("retiredYear", String(filter.retiredYear));
+		else if ("draftYear" in filter)
+			params.set("draftYear", String(filter.draftYear));
+		else if ("statsTid" in filter)
+			params.set("statsTid", String(filter.statsTid));
+		else if ("hof" in filter) params.set("hof", "1");
+		else if ("note" in filter) params.set("note", "1");
+		else if ("watch" in filter) params.set("watch", "1");
+		else if ("activeAndRetired" in filter) params.set("activeAndRetired", "1");
+		else if ("activeSeason" in filter)
+			params.set("activeSeason", String(filter.activeSeason));
+		const r = await fetch(`${API}/players?${params}`);
+		if (!r.ok) return null;
+		const data = await r.json();
+		return data.players;
+	} catch {
+		return null;
+	}
+}

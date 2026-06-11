@@ -5,6 +5,7 @@ import { g, helpers } from "../../util/index.ts";
 import type { GetCopyType, Player } from "../../../common/types.ts";
 import { type IDBPDatabase, unwrap } from "@dumbmatter/idb";
 import type { LeagueDB } from "../connectLeague.ts";
+import { readPlayersFilter } from "../electronApi.ts";
 
 export const getPlayersActiveSeason = (
 	league: IDBPDatabase<LeagueDB>,
@@ -51,6 +52,14 @@ export const getPlayersActiveSeason = (
 	});
 };
 
+function getLid(): number | undefined {
+	try {
+		return g.get("lid") as number;
+	} catch {
+		return undefined;
+	}
+}
+
 const getCopies = async (
 	{
 		pid,
@@ -86,9 +95,19 @@ const getCopies = async (
 	}
 
 	if (pid !== undefined) {
+		// Check in-memory cache first (covers active/dirty players)
 		const p = await idb.cache.players.get(pid);
 		if (p) {
 			return [type === "noCopyCache" ? p : helpers.deepCopy(p)];
+		}
+
+		// Try SQLite (retired players not in cache)
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { pid });
+			if (sqlitePlayers !== null && sqlitePlayers.length > 0) {
+				return sqlitePlayers;
+			}
 		}
 
 		const p2 = await idb.league.get("players", pid);
@@ -102,6 +121,29 @@ const getCopies = async (
 	if (pids !== undefined) {
 		if (pids.length === 0) {
 			return [];
+		}
+
+		// Try SQLite first for bulk lookup
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { pids });
+			if (sqlitePlayers !== null) {
+				// Merge with cache so dirty active players win
+				const merged = mergeByPk(
+					sqlitePlayers,
+					(await idb.cache.players.getAll()).filter((p) =>
+						pids.includes(p.pid),
+					),
+					"players",
+					type,
+				);
+				const sorted = [];
+				for (const p of pids) {
+					const found = merged.find((p2) => p2.pid === p);
+					if (found) sorted.push(found);
+				}
+				return sorted;
+			}
 		}
 
 		const sortedPids = [...pids].sort((a, b) => a - b);
@@ -154,17 +196,23 @@ const getCopies = async (
 		);
 
 		const sorted = [];
-		for (const pid of pids) {
-			const p = merged.find((p2) => p2.pid === pid);
-			if (p) {
-				sorted.push(p);
-			}
+		for (const p of pids) {
+			const found = merged.find((p2) => p2.pid === p);
+			if (found) sorted.push(found);
 		}
 
 		return sorted;
 	}
 
 	if (retiredYear !== undefined) {
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { retiredYear });
+			if (sqlitePlayers !== null) {
+				return sqlitePlayers.filter(filter);
+			}
+		}
+
 		const fromDB = await new Promise<Player[]>((resolve, reject) => {
 			const players: Player[] = [];
 
@@ -233,7 +281,28 @@ const getCopies = async (
 	}
 
 	if (activeAndRetired === true) {
-		// All except draft prospects
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, {
+				activeAndRetired: true,
+			});
+			if (sqlitePlayers !== null) {
+				return mergeByPk(
+					sqlitePlayers,
+					([] as Player[]).concat(
+						await idb.cache.players.indexGetAll("playersByTid", PLAYER.RETIRED),
+						await idb.cache.players.indexGetAll("playersByTid", [
+							PLAYER.FREE_AGENT,
+							Infinity,
+						]),
+					),
+					"players",
+					type,
+				).filter(filter);
+			}
+		}
+
+		// IDB fallback
 		return mergeByPk(
 			[].concat(
 				// @ts-expect-error
@@ -263,7 +332,7 @@ const getCopies = async (
 	if (activeSeason !== undefined) {
 		let proceed = true;
 		if (statsTid !== undefined) {
-			// If statsTid and activeSeason are both defined, use activeSeason rather thatn statsTid based on number of seasons/teams
+			// If statsTid and activeSeason are both defined, use activeSeason rather than statsTid based on number of seasons/teams
 			const numTeams = g.get("numTeams");
 			const numSeasons = g.get("season") - g.get("startingSeason");
 
@@ -274,6 +343,35 @@ const getCopies = async (
 		}
 
 		if (proceed) {
+			const lid = getLid();
+			if (lid !== undefined) {
+				const sqlitePlayers = await readPlayersFilter(lid, { activeSeason });
+				if (sqlitePlayers !== null) {
+					return mergeByPk(
+						sqlitePlayers,
+						([] as Player[])
+							.concat(
+								await idb.cache.players.indexGetAll(
+									"playersByTid",
+									PLAYER.RETIRED,
+								),
+								await idb.cache.players.indexGetAll("playersByTid", [
+									PLAYER.FREE_AGENT,
+									Infinity,
+								]),
+							)
+							.filter(
+								(p) =>
+									p.draft.year < activeSeason &&
+									p.retiredYear >= activeSeason &&
+									(statsTid === undefined || p.statsTids?.includes(statsTid)),
+							),
+						"players",
+						type,
+					);
+				}
+			}
+
 			const fromDB = await getPlayersActiveSeason(idb.league, activeSeason);
 
 			return mergeByPk(
@@ -290,7 +388,7 @@ const getCopies = async (
 						(p) =>
 							p.draft.year < activeSeason &&
 							p.retiredYear >= activeSeason &&
-							(statsTid === undefined || p.statsTids.includes(statsTid)),
+							(statsTid === undefined || p.statsTids?.includes(statsTid)),
 					),
 				"players",
 				type,
@@ -299,6 +397,19 @@ const getCopies = async (
 	}
 
 	if (hof) {
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { hof: true });
+			if (sqlitePlayers !== null) {
+				return mergeByPk(
+					sqlitePlayers,
+					(await idb.cache.players.getAll()).filter((p) => p.hof === 1),
+					"players",
+					type,
+				).filter(filter);
+			}
+		}
+
 		return mergeByPk(
 			await getAll(
 				idb.league.transaction("players").store.index("hof"),
@@ -312,6 +423,24 @@ const getCopies = async (
 	}
 
 	if (draftYear !== undefined) {
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { draftYear });
+			if (sqlitePlayers !== null) {
+				return mergeByPk(
+					sqlitePlayers,
+					(
+						await idb.cache.players.indexGetAll("playersByTid", [
+							PLAYER.RETIRED,
+							Infinity,
+						])
+					).filter((p) => p.draft.year === draftYear),
+					"players",
+					type,
+				);
+			}
+		}
+
 		return mergeByPk(
 			await idb.league
 				.transaction("players")
@@ -331,6 +460,30 @@ const getCopies = async (
 	}
 
 	if (statsTid !== undefined) {
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { statsTid });
+			if (sqlitePlayers !== null) {
+				return mergeByPk(
+					sqlitePlayers,
+					([] as Player[])
+						.concat(
+							await idb.cache.players.indexGetAll(
+								"playersByTid",
+								PLAYER.RETIRED,
+							),
+							await idb.cache.players.indexGetAll("playersByTid", [
+								PLAYER.FREE_AGENT,
+								Infinity,
+							]),
+						)
+						.filter((p) => p.statsTids?.includes(statsTid)),
+					"players",
+					type,
+				);
+			}
+		}
+
 		return mergeByPk(
 			await getAll(
 				idb.league.transaction("players").store.index("statsTids"),
@@ -351,6 +504,19 @@ const getCopies = async (
 	}
 
 	if (note) {
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { note: true });
+			if (sqlitePlayers !== null) {
+				return mergeByPk(
+					sqlitePlayers,
+					await idb.cache.players.getAll(),
+					"players",
+					type,
+				).filter((p) => p.noteBool === 1 && filter(p));
+			}
+		}
+
 		return mergeByPk(
 			// undefined for key returns all of the players with noteBool, since the ones without noteBool are not included in this index
 			await getAll(
@@ -365,6 +531,19 @@ const getCopies = async (
 	}
 
 	if (watch) {
+		const lid = getLid();
+		if (lid !== undefined) {
+			const sqlitePlayers = await readPlayersFilter(lid, { watch: true });
+			if (sqlitePlayers !== null) {
+				return mergeByPk(
+					sqlitePlayers,
+					await idb.cache.players.getAll(),
+					"players",
+					type,
+				).filter((p) => p.watch !== undefined && filter(p));
+			}
+		}
+
 		return mergeByPk(
 			// undefined for key returns all of the players with values, since the ones with without watch are not included in this index
 			await getAll(
@@ -376,6 +555,20 @@ const getCopies = async (
 			"players",
 			type,
 		).filter((p) => p.watch !== undefined && filter(p));
+	}
+
+	// Default: all players
+	const lid = getLid();
+	if (lid !== undefined) {
+		const sqlitePlayers = await readPlayersFilter(lid, {});
+		if (sqlitePlayers !== null) {
+			return mergeByPk(
+				sqlitePlayers,
+				await idb.cache.players.getAll(),
+				"players",
+				type,
+			).filter(filter);
+		}
 	}
 
 	return mergeByPk(
