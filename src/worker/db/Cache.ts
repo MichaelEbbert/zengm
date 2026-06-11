@@ -100,7 +100,6 @@ export const STORES: Store[] = [
 	"messages",
 	"negotiations",
 	"playerFeats",
-	"players",
 	"playoffSeries",
 	"releasedPlayers",
 	"savedTrades",

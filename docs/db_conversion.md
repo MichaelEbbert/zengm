@@ -21,7 +21,7 @@ Read-only data that was fetched but not modified may be kept in browser session 
 
 - [x] Phase 1 — COMPLETE (Electron runtime, HTTP API)
 - [x] Phase 2 — COMPLETE (box scores to SQLite, reads and writes verified)
-- [ ] Phase 3 — IN PROGRESS (schema + write/read code done; pending live test + stash pop + commit)
+- [x] Phase 3 — COMPLETE (players fully normalized to SQLite; IDB players store empty and unused)
 - [ ] Phase 4+ — not started
 
 ## Research Tasks
@@ -634,9 +634,9 @@ Goal: all player data written to and read from SQLite. ALL nested arrays normali
 - [x] 3.3 Replace `Cache.flush()` dirty-record writes for `players` store with SQLite upserts
 - [x] 3.4 Replace `Cache.fill()` player load with SQLite query (IDB fallback + one-time auto-migration)
 - [x] 3.5 Replace `getCopies/players.ts` direct IDB reads with `readPlayersFilter()` (IDB fallback for all 11 query paths)
-- [ ] 3.6 Remove `players` from Cache STORES (deferred — wait until live test confirms correctness)
-- [ ] 3.7 Verify player stats, ratings, and history display correctly
-- [ ] 3.8 Commit and push
+- [x] 3.6 Remove `players` from Cache STORES
+- [x] 3.7 Verify player stats, ratings, and history display correctly (player_stats populated after game sim; IDB export confirmed players absent from IDB)
+- [x] 3.8 Commit and push
 
 ---
 
