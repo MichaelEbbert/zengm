@@ -499,6 +499,7 @@ const updateNewLeague = async ({ lid, type }: ViewInput<"newLeague">) => {
 
 	return {
 		lid: undefined,
+		suggestedLid: newLid,
 		difficulty: defaultSettings.difficulty,
 		name: `League ${newLid}`,
 		realTeamInfo: await getRealTeamInfo(),

@@ -754,58 +754,57 @@ class Cache {
 			this._data = {};
 		}
 
-		for (const store of STORES) {
-			if (store === "players" && local.autoSave) {
-				// Players come from SQLite; fall back to IDB for migration of existing leagues
-				this._deletes["players"] = new Set();
-				this._dirtyRecords["players"] = new Set();
-				this._data["players"] = {};
+		// Players are stored in SQLite (not in STORES); initialize separately.
+		if (local.autoSave) {
+			this._deletes["players"] = new Set();
+			this._dirtyRecords["players"] = new Set();
+			this._data["players"] = {};
 
-				let lid: number | undefined;
-				try {
-					lid = g.get("lid") as number;
-				} catch {}
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
 
-				let sqlitePlayers: any[] | null = null;
-				if (typeof lid === "number") {
-					const count = await countSqlitePlayers(lid);
-					if (count > 0) {
-						sqlitePlayers = await electronReadActivePlayers(lid);
-					}
+			let sqlitePlayers: any[] | null = null;
+			if (typeof lid === "number") {
+				const count = await countSqlitePlayers(lid);
+				if (count > 0) {
+					sqlitePlayers = await electronReadActivePlayers(lid);
 				}
-
-				if (sqlitePlayers !== null && sqlitePlayers.length > 0) {
-					// Primary path: load from SQLite
-					for (const player of sqlitePlayers) {
-						this._data["players"][player.pid] = player;
-					}
-				} else {
-					// Migration/fallback: load from IDB, then write to SQLite
-					await this._loadStore(
-						"players",
-						idb.league.transaction(["players"]),
-						season2,
-						false,
-					);
-					if (typeof lid === "number") {
-						const idbPlayers = Object.values(this._data["players"]);
-						if (idbPlayers.length > 0) {
-							await flushPlayers(lid, idbPlayers as any[], []);
-						}
-					}
-				}
-
-				// Seed maxId from IDB cursor (needed for new player pid assignment)
-				const cursor = await idb.league
-					.transaction(["players"])
-					.objectStore("players")
-					.openCursor(undefined, "prev");
-				this._maxIds["players"] = cursor ? cursor.value.pid : -1;
-
-				this._refreshIndexes("players");
-				continue;
 			}
 
+			if (sqlitePlayers !== null && sqlitePlayers.length > 0) {
+				// Primary path: load from SQLite
+				for (const player of sqlitePlayers) {
+					this._data["players"][player.pid] = player;
+				}
+			} else {
+				// Migration/fallback: load from IDB, then write to SQLite
+				await this._loadStore(
+					"players",
+					idb.league.transaction(["players"]),
+					season2,
+					false,
+				);
+				if (typeof lid === "number") {
+					const idbPlayers = Object.values(this._data["players"]);
+					if (idbPlayers.length > 0) {
+						await flushPlayers(lid, idbPlayers as any[], []);
+					}
+				}
+			}
+
+			// Seed maxId from IDB cursor (needed for new player pid assignment)
+			const cursor = await idb.league
+				.transaction(["players"])
+				.objectStore("players")
+				.openCursor(undefined, "prev");
+			this._maxIds["players"] = cursor ? cursor.value.pid : -1;
+
+			this._refreshIndexes("players");
+		}
+
+		for (const store of STORES) {
 			if (local.autoSave) {
 				await this._loadStore(
 					store,
@@ -859,8 +858,11 @@ class Cache {
 				this._deletes[store].size > 0 || this._dirtyRecords[store].size > 0,
 		);
 
-		// Flush players to SQLite instead of IDB
-		if (stores.includes("players")) {
+		// Flush players to SQLite instead of IDB (players is not in STORES)
+		const hasPlayerChanges =
+			(this._dirtyRecords["players"]?.size ?? 0) > 0 ||
+			(this._deletes["players"]?.size ?? 0) > 0;
+		if (hasPlayerChanges) {
 			let lid: number | undefined;
 			try {
 				lid = g.get("lid") as number;

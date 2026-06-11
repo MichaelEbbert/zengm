@@ -872,7 +872,7 @@ const NewLeague = (props: View<"newLeague">) => {
 				url: state.url,
 				keptKeys: state.keptKeys,
 				shuffleRosters: actualShuffleRosters,
-				importLid: props.lid,
+				importLid: props.lid ?? props.suggestedLid,
 				getLeagueOptions,
 				startingSeasonFromInput,
 				confs: state.confs,
