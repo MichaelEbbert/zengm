@@ -101,6 +101,166 @@ export async function countSqlitePlayers(lid: number): Promise<number> {
 	}
 }
 
+export async function flushTeams(
+	lid: number,
+	teams: any[],
+	deleteTids: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/teams/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, teams, deleteTids }),
+		});
+	} catch {}
+}
+
+export async function readAllTeams(lid: number): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/teams?lid=${lid}`);
+		if (!r.ok) return null;
+		const data = await r.json();
+		return data.teams;
+	} catch {
+		return null;
+	}
+}
+
+export async function countSqliteTeams(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/teams?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		const data = await r.json();
+		return data.count;
+	} catch {
+		return 0;
+	}
+}
+
+export async function flushTeamSeasons(
+	lid: number,
+	teamSeasons: any[],
+	deleteRids: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/team-seasons/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, teamSeasons, deleteRids }),
+		});
+	} catch {}
+}
+
+type TeamSeasonFilter =
+	| { note: true }
+	| { tid: number; season: number }
+	| { season: number }
+	| { tid: number; seasonFrom: number; seasonTo?: number }
+	| { tid: number }
+	| { seasonFrom: number }
+	| Record<string, never>;
+
+export async function readTeamSeasons(
+	lid: number,
+	filter: TeamSeasonFilter,
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if ("note" in filter) {
+			params.set("note", "1");
+		} else if ("tid" in filter && "season" in filter) {
+			params.set("tid", String((filter as any).tid));
+			params.set("season", String((filter as any).season));
+		} else if ("tid" in filter && "seasonFrom" in filter) {
+			params.set("tid", String((filter as any).tid));
+			params.set("seasonFrom", String((filter as any).seasonFrom));
+			if ((filter as any).seasonTo !== undefined)
+				params.set("seasonTo", String((filter as any).seasonTo));
+		} else if ("tid" in filter) {
+			params.set("tid", String((filter as any).tid));
+		} else if ("season" in filter) {
+			params.set("season", String((filter as any).season));
+		} else if ("seasonFrom" in filter) {
+			params.set("seasonFrom", String((filter as any).seasonFrom));
+		}
+		const r = await fetch(`${API}/team-seasons?${params}`);
+		if (!r.ok) return null;
+		const data = await r.json();
+		return data.teamSeasons;
+	} catch {
+		return null;
+	}
+}
+
+export async function countSqliteTeamSeasons(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/team-seasons?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		const data = await r.json();
+		return data.count;
+	} catch {
+		return 0;
+	}
+}
+
+export async function flushTeamStats(
+	lid: number,
+	teamStats: any[],
+	deleteRids: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/team-stats/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, teamStats, deleteRids }),
+		});
+	} catch {}
+}
+
+type TeamStatsFilter =
+	| { season: number; tid: number }
+	| { season: number }
+	| { tid: number }
+	| Record<string, never>;
+
+export async function readTeamStats(
+	lid: number,
+	filter: TeamStatsFilter,
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if ("season" in filter)
+			params.set("season", String((filter as any).season));
+		if ("tid" in filter) params.set("tid", String((filter as any).tid));
+		const r = await fetch(`${API}/team-stats?${params}`);
+		if (!r.ok) return null;
+		const data = await r.json();
+		return data.teamStats;
+	} catch {
+		return null;
+	}
+}
+
+export async function countSqliteTeamStats(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/team-stats?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		const data = await r.json();
+		return data.count;
+	} catch {
+		return 0;
+	}
+}
+
 type PlayerFilter =
 	| { pid: number }
 	| { pids: number[] }

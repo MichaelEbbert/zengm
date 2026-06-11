@@ -1,5 +1,9 @@
 import { idb } from "../db/index.ts";
 import { g, helpers } from "../util/index.ts";
+import {
+	readTeamSeasons as electronReadTeamSeasons,
+	readTeamStats as electronReadTeamStats,
+} from "../db/electronApi.ts";
 import type {
 	UpdateEvents,
 	ViewInput,
@@ -75,8 +79,16 @@ const getMostXTeamSeasons = async ({
 
 	const playoffsByConfBySeason = await getPlayoffsByConfBySeason();
 
-	for await (const { value: ts } of idb.league.transaction("teamSeasons")
-		.store) {
+	let lid: number | undefined;
+	try {
+		lid = g.get("lid") as number;
+	} catch {}
+	const allTeamSeasons =
+		typeof lid === "number"
+			? ((await electronReadTeamSeasons(lid, {})) ?? [])
+			: await idb.cache.teamSeasons.getAll();
+
+	for (const ts of allTeamSeasons) {
 		if (filter !== undefined && !filter(ts)) {
 			continue;
 		}
@@ -136,13 +148,19 @@ const getMostXTeamSeasons = async ({
 	);
 
 	// Add margin of victory, playoff seed
-	const tx = idb.league.transaction(["teamStats", "playoffSeries"]);
+	const playoffSeriesTx = idb.league.transaction(["playoffSeries"]);
 	for (const ts of teamSeasons) {
-		const teamStats = await tx
-			.objectStore("teamStats")
-			.index("season, tid")
-			.getAll([ts.season, ts.tid]);
-		const row = teamStats.find((row) => !row.playoffs);
+		const teamStatsRows =
+			typeof lid === "number"
+				? ((await electronReadTeamStats(lid, {
+						season: ts.season,
+						tid: ts.tid,
+					})) ?? [])
+				: await idb.cache.teamStats.indexGetAll("teamStatsByPlayoffsTid", [
+						[false, ts.tid],
+						[true, ts.tid],
+					]);
+		const row = teamStatsRows.find((row: any) => !row.playoffs);
 		if (row) {
 			ts.mov = team.processStats(row, ["mov"], false, "perGame").mov;
 			ts.gp = row.gp;
@@ -157,7 +175,7 @@ const getMostXTeamSeasons = async ({
 		}
 
 		if (ts.playoffRoundsWon >= 0) {
-			const playoffSeries = await tx
+			const playoffSeries = await playoffSeriesTx
 				.objectStore("playoffSeries")
 				.get(ts.season);
 			if (playoffSeries?.series[0]) {

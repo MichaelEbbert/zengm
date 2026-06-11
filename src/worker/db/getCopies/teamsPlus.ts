@@ -2,6 +2,7 @@ import { maybeDeepCopy, mergeByPk } from "./helpers.ts";
 import { team } from "../../core/index.ts";
 import { idb } from "../index.ts";
 import { g, helpers } from "../../util/index.ts";
+import { readTeamStats as electronReadTeamStats } from "../electronApi.ts";
 import type {
 	Team,
 	TeamAttr,
@@ -294,13 +295,19 @@ const processStats = async <
 		return teamStats2;
 	};
 
+	let lid: number | undefined;
+	try {
+		lid = g.get("lid") as number;
+	} catch {}
+
 	if (season === undefined) {
-		// All seasons
+		// All seasons from SQLite, merged with cache
+		const sqliteRows =
+			typeof lid === "number"
+				? ((await electronReadTeamStats(lid, { tid: t.tid })) ?? [])
+				: [];
 		teamStats = mergeByPk(
-			await idb.league
-				.transaction("teamStats")
-				.store.index("tid")
-				.getAll(t.tid),
+			sqliteRows,
 			await teamStatsFromCache(),
 			"teamStats",
 			type,
@@ -308,11 +315,11 @@ const processStats = async <
 	} else if (season === g.get("season")) {
 		teamStats = await teamStatsFromCache();
 	} else {
-		// Single season, from database
-		teamStats = await idb.league
-			.transaction("teamStats")
-			.store.index("season, tid")
-			.getAll([season, t.tid]);
+		// Single historical season from SQLite
+		teamStats =
+			typeof lid === "number"
+				? ((await electronReadTeamStats(lid, { season, tid: t.tid })) ?? [])
+				: [];
 	}
 
 	// Handle playoffs/regularSeason

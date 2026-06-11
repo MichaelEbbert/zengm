@@ -11,6 +11,15 @@ import {
 	flushPlayers,
 	readActivePlayers as electronReadActivePlayers,
 	countSqlitePlayers,
+	flushTeams,
+	readAllTeams as electronReadAllTeams,
+	countSqliteTeams,
+	flushTeamSeasons,
+	readTeamSeasons as electronReadTeamSeasons,
+	countSqliteTeamSeasons,
+	flushTeamStats,
+	readTeamStats as electronReadTeamStats,
+	countSqliteTeamStats,
 } from "./electronApi.ts";
 import type {
 	AllStars,
@@ -107,9 +116,6 @@ export const STORES: Store[] = [
 	"schedule",
 	"scheduledEvents",
 	"seasonLeaders",
-	"teamSeasons",
-	"teamStats",
-	"teams",
 	"trade",
 ];
 const AUTO_FLUSH_INTERVAL = 4000; // 4 seconds
@@ -804,6 +810,133 @@ class Cache {
 			this._refreshIndexes("players");
 		}
 
+		// Teams stored in SQLite (not in STORES); initialize separately.
+		if (local.autoSave) {
+			this._deletes["teams"] = new Set();
+			this._dirtyRecords["teams"] = new Set();
+			this._data["teams"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteTeamCount =
+				typeof lid === "number" ? await countSqliteTeams(lid) : 0;
+			if (sqliteTeamCount > 0) {
+				const sqliteTeams = await electronReadAllTeams(lid!);
+				if (sqliteTeams) {
+					for (const team of sqliteTeams) {
+						this._data["teams"][team.tid] = team;
+					}
+				}
+			} else {
+				// Migration: read all from IDB, write to SQLite
+				const allIdbTeams = await idb.league
+					.transaction(["teams"])
+					.objectStore("teams")
+					.getAll();
+				for (const team of allIdbTeams) {
+					this._data["teams"][team.tid] = team;
+				}
+				if (typeof lid === "number" && allIdbTeams.length > 0) {
+					await flushTeams(lid, allIdbTeams, []);
+				}
+			}
+			// teams.tid is not autoIncrement — no maxId needed
+			this._refreshIndexes("teams");
+		}
+
+		// TeamSeasons stored in SQLite (not in STORES); initialize separately.
+		if (local.autoSave) {
+			this._deletes["teamSeasons"] = new Set();
+			this._dirtyRecords["teamSeasons"] = new Set();
+			this._data["teamSeasons"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const seasonThreshold = season2 - NUM_PRIOR_SEASONS_TEAM_SEASONS;
+			const sqliteTsCount =
+				typeof lid === "number" ? await countSqliteTeamSeasons(lid) : 0;
+			if (sqliteTsCount > 0) {
+				const sqliteTeamSeasons = await electronReadTeamSeasons(lid!, {
+					seasonFrom: seasonThreshold,
+				});
+				if (sqliteTeamSeasons) {
+					for (const ts of sqliteTeamSeasons) {
+						this._data["teamSeasons"][ts.rid] = ts;
+					}
+				}
+			} else {
+				// Migration: read ALL from IDB, write ALL to SQLite, load recent into cache
+				const allIdbTeamSeasons = await idb.league
+					.transaction(["teamSeasons"])
+					.objectStore("teamSeasons")
+					.getAll();
+				if (typeof lid === "number" && allIdbTeamSeasons.length > 0) {
+					await flushTeamSeasons(lid, allIdbTeamSeasons, []);
+				}
+				for (const ts of allIdbTeamSeasons) {
+					if (ts.season >= seasonThreshold) {
+						this._data["teamSeasons"][ts.rid] = ts;
+					}
+				}
+			}
+			// Seed maxId from the loaded records (AUTOINCREMENT → newest season has highest rid)
+			this._maxIds["teamSeasons"] = Object.values(
+				this._data["teamSeasons"],
+			).reduce((max: number, ts: any) => Math.max(max, ts.rid ?? -1), -1);
+			this._refreshIndexes("teamSeasons");
+		}
+
+		// TeamStats stored in SQLite (not in STORES); initialize separately.
+		if (local.autoSave) {
+			this._deletes["teamStats"] = new Set();
+			this._dirtyRecords["teamStats"] = new Set();
+			this._data["teamStats"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteTstCount =
+				typeof lid === "number" ? await countSqliteTeamStats(lid) : 0;
+			if (sqliteTstCount > 0) {
+				const sqliteTeamStats = await electronReadTeamStats(lid!, {
+					season: season2,
+				});
+				if (sqliteTeamStats) {
+					for (const ts of sqliteTeamStats) {
+						this._data["teamStats"][ts.rid] = ts;
+					}
+				}
+			} else {
+				// Migration: read ALL from IDB, write ALL to SQLite, load current season into cache
+				const allIdbTeamStats = await idb.league
+					.transaction(["teamStats"])
+					.objectStore("teamStats")
+					.getAll();
+				if (typeof lid === "number" && allIdbTeamStats.length > 0) {
+					await flushTeamStats(lid, allIdbTeamStats, []);
+				}
+				for (const ts of allIdbTeamStats) {
+					if (ts.season === season2) {
+						this._data["teamStats"][ts.rid] = ts;
+					}
+				}
+			}
+			// Seed maxId from loaded records
+			this._maxIds["teamStats"] = Object.values(this._data["teamStats"]).reduce(
+				(max: number, ts: any) => Math.max(max, ts.rid ?? -1),
+				-1,
+			);
+			this._refreshIndexes("teamStats");
+		}
+
 		for (const store of STORES) {
 			if (local.autoSave) {
 				await this._loadStore(
@@ -879,6 +1012,72 @@ class Cache {
 				await flushPlayers(lid, dirtyPlayers, deletePids);
 			}
 			stores = stores.filter((s) => s !== "players");
+		}
+
+		// Flush teams to SQLite
+		const hasTeamChanges =
+			(this._dirtyRecords["teams"]?.size ?? 0) > 0 ||
+			(this._deletes["teams"]?.size ?? 0) > 0;
+		if (hasTeamChanges) {
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+			if (typeof lid === "number") {
+				const deleteTids = [...this._deletes["teams"]] as number[];
+				const dirtyTeams: any[] = [];
+				for (const id of this._dirtyRecords["teams"]) {
+					const record = this._data["teams"][id];
+					if (record !== undefined) dirtyTeams.push(record);
+				}
+				this._deletes["teams"].clear();
+				this._dirtyRecords["teams"].clear();
+				await flushTeams(lid, dirtyTeams, deleteTids);
+			}
+		}
+
+		// Flush teamSeasons to SQLite
+		const hasTeamSeasonChanges =
+			(this._dirtyRecords["teamSeasons"]?.size ?? 0) > 0 ||
+			(this._deletes["teamSeasons"]?.size ?? 0) > 0;
+		if (hasTeamSeasonChanges) {
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+			if (typeof lid === "number") {
+				const deleteRids = [...this._deletes["teamSeasons"]] as number[];
+				const dirtyTeamSeasons: any[] = [];
+				for (const id of this._dirtyRecords["teamSeasons"]) {
+					const record = this._data["teamSeasons"][id];
+					if (record !== undefined) dirtyTeamSeasons.push(record);
+				}
+				this._deletes["teamSeasons"].clear();
+				this._dirtyRecords["teamSeasons"].clear();
+				await flushTeamSeasons(lid, dirtyTeamSeasons, deleteRids);
+			}
+		}
+
+		// Flush teamStats to SQLite
+		const hasTeamStatsChanges =
+			(this._dirtyRecords["teamStats"]?.size ?? 0) > 0 ||
+			(this._deletes["teamStats"]?.size ?? 0) > 0;
+		if (hasTeamStatsChanges) {
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+			if (typeof lid === "number") {
+				const deleteRids = [...this._deletes["teamStats"]] as number[];
+				const dirtyTeamStats: any[] = [];
+				for (const id of this._dirtyRecords["teamStats"]) {
+					const record = this._data["teamStats"][id];
+					if (record !== undefined) dirtyTeamStats.push(record);
+				}
+				this._deletes["teamStats"].clear();
+				this._dirtyRecords["teamStats"].clear();
+				await flushTeamStats(lid, dirtyTeamStats, deleteRids);
+			}
 		}
 
 		if (stores.length === 0) {

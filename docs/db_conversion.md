@@ -642,11 +642,246 @@ Goal: all player data written to and read from SQLite. ALL nested arrays normali
 
 ### Phase 4 — Team Stores to SQLite (`teams`, `teamSeasons`, `teamStats`)
 
-- [ ] 4.1 Design schema for all three stores
-- [ ] 4.2 Write migration 003
-- [ ] 4.3 Replace flush/fill for all three stores
-- [ ] 4.4 Replace any getCopies direct reads
-- [ ] 4.5 Remove from Cache STORES
+**Schema (finalized in 4.1)**
+
+**Key decisions:**
+
+- `teams.depth` → JSON blob (complex sport-specific positional depth chart with pid arrays; never individually queried)
+- `teams.colors` / `team_seasons.colors` → JSON blob ([string, string, string] tuple)
+- `teams.retiredJerseyNumbers` → JSON blob (array of objects, rarely accessed)
+- `teams.playThroughInjuries` → JSON blob ([number, number])
+- `team_seasons.revenues` / `expenses` / `expenseLevels` → flattened columns (read/written every game)
+- `team_seasons.ownerMood` → flattened (only 3 fields: money, playoffs, wins)
+- `team_seasons.lastTen` → JSON blob (rolling 10-game window array; not individually queried)
+- `team_stats` Lng fields → INTEGER, MAX semantics handled at app layer (not in schema)
+- Cache loads teamSeasons for last 3 seasons only; fill() mirrors this with `WHERE season >= ?`
+- `team_seasons` needs two indexes: UNIQUE(season, tid) and INDEX(tid, season) for range queries
+
+**`teams`** — one row per team (32), static
+
+```sql
+CREATE TABLE teams (
+    tid                      INTEGER PRIMARY KEY,
+    cid                      INTEGER NOT NULL,
+    did                      INTEGER NOT NULL,
+    region                   TEXT NOT NULL DEFAULT '',
+    name                     TEXT NOT NULL DEFAULT '',
+    abbrev                   TEXT NOT NULL DEFAULT '',
+    img_url                  TEXT,
+    img_url_small            TEXT,
+    jersey                   TEXT,
+    colors                   TEXT NOT NULL DEFAULT '["#000000","#ffffff","#cccccc"]',
+    strategy                 TEXT NOT NULL DEFAULT 'contending',
+    pop                      REAL NOT NULL DEFAULT 0,
+    stadium_capacity         INTEGER NOT NULL DEFAULT 25000,
+    adjust_for_inflation     INTEGER NOT NULL DEFAULT 1,
+    disabled                 INTEGER NOT NULL DEFAULT 0,
+    keep_roster_sorted       INTEGER NOT NULL DEFAULT 1,
+    budget_ticket_price      REAL NOT NULL DEFAULT 0,
+    budget_scouting          INTEGER NOT NULL DEFAULT 0,
+    budget_coaching          INTEGER NOT NULL DEFAULT 0,
+    budget_health            INTEGER NOT NULL DEFAULT 0,
+    budget_facilities        INTEGER NOT NULL DEFAULT 0,
+    initial_budget_scouting  INTEGER NOT NULL DEFAULT 0,
+    initial_budget_coaching  INTEGER NOT NULL DEFAULT 0,
+    initial_budget_health    INTEGER NOT NULL DEFAULT 0,
+    initial_budget_facilities INTEGER NOT NULL DEFAULT 0,
+    play_through_injuries    TEXT NOT NULL DEFAULT '[0,0]',
+    depth                    TEXT,
+    first_season_after_expansion INTEGER,
+    sr_id                    TEXT,
+    auto_ticket_price        INTEGER,
+    retired_jersey_numbers   TEXT,
+    cola                     REAL,
+    cola_opt_out             INTEGER
+);
+```
+
+**`team_seasons`** — one row per (tid, season); rid is autoincrement PK
+
+```sql
+CREATE TABLE team_seasons (
+    rid                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    tid                   INTEGER NOT NULL,
+    season                INTEGER NOT NULL,
+    gp_home               INTEGER NOT NULL DEFAULT 0,
+    att                   INTEGER NOT NULL DEFAULT 0,
+    cash                  REAL NOT NULL DEFAULT 0,
+    won                   INTEGER NOT NULL DEFAULT 0,
+    lost                  INTEGER NOT NULL DEFAULT 0,
+    tied                  INTEGER NOT NULL DEFAULT 0,
+    otl                   INTEGER NOT NULL DEFAULT 0,
+    won_home              INTEGER NOT NULL DEFAULT 0,
+    lost_home             INTEGER NOT NULL DEFAULT 0,
+    tied_home             INTEGER NOT NULL DEFAULT 0,
+    otl_home              INTEGER NOT NULL DEFAULT 0,
+    won_away              INTEGER NOT NULL DEFAULT 0,
+    lost_away             INTEGER NOT NULL DEFAULT 0,
+    tied_away             INTEGER NOT NULL DEFAULT 0,
+    otl_away              INTEGER NOT NULL DEFAULT 0,
+    won_div               INTEGER NOT NULL DEFAULT 0,
+    lost_div              INTEGER NOT NULL DEFAULT 0,
+    tied_div              INTEGER NOT NULL DEFAULT 0,
+    otl_div               INTEGER NOT NULL DEFAULT 0,
+    won_conf              INTEGER NOT NULL DEFAULT 0,
+    lost_conf             INTEGER NOT NULL DEFAULT 0,
+    tied_conf             INTEGER NOT NULL DEFAULT 0,
+    otl_conf              INTEGER NOT NULL DEFAULT 0,
+    last_ten              TEXT NOT NULL DEFAULT '[]',
+    streak                INTEGER NOT NULL DEFAULT 0,
+    playoff_rounds_won    INTEGER NOT NULL DEFAULT -1,
+    hype                  REAL NOT NULL DEFAULT 0.5,
+    pop                   REAL NOT NULL DEFAULT 0,
+    stadium_capacity      INTEGER NOT NULL DEFAULT 0,
+    payroll_end_of_season REAL NOT NULL DEFAULT 0,
+    num_players_traded_away INTEGER NOT NULL DEFAULT 0,
+    note                  TEXT,
+    note_bool             INTEGER,
+    clinched_playoffs     TEXT,
+    avg_age               REAL,
+    ovr_start             INTEGER,
+    ovr_end               INTEGER,
+    rev_luxury_tax_share  REAL NOT NULL DEFAULT 0,
+    rev_merch             REAL NOT NULL DEFAULT 0,
+    rev_sponsor           REAL NOT NULL DEFAULT 0,
+    rev_ticket            REAL NOT NULL DEFAULT 0,
+    rev_national_tv       REAL NOT NULL DEFAULT 0,
+    rev_local_tv          REAL NOT NULL DEFAULT 0,
+    exp_luxury_tax        REAL NOT NULL DEFAULT 0,
+    exp_min_tax           REAL NOT NULL DEFAULT 0,
+    exp_salary            REAL NOT NULL DEFAULT 0,
+    exp_coaching          REAL NOT NULL DEFAULT 0,
+    exp_health            REAL NOT NULL DEFAULT 0,
+    exp_facilities        REAL NOT NULL DEFAULT 0,
+    exp_scouting          REAL NOT NULL DEFAULT 0,
+    exp_level_coaching    REAL NOT NULL DEFAULT 0,
+    exp_level_facilities  REAL NOT NULL DEFAULT 0,
+    exp_level_health      REAL NOT NULL DEFAULT 0,
+    exp_level_scouting    REAL NOT NULL DEFAULT 0,
+    owner_mood_money      REAL,
+    owner_mood_playoffs   REAL,
+    owner_mood_wins       REAL,
+    cid                   INTEGER NOT NULL DEFAULT 0,
+    did                   INTEGER NOT NULL DEFAULT 0,
+    region                TEXT NOT NULL DEFAULT '',
+    name                  TEXT NOT NULL DEFAULT '',
+    abbrev                TEXT NOT NULL DEFAULT '',
+    img_url               TEXT,
+    img_url_small         TEXT,
+    jersey                TEXT,
+    colors                TEXT NOT NULL DEFAULT '["#000000","#ffffff","#cccccc"]',
+    sr_id                 TEXT,
+    UNIQUE(season, tid)
+);
+CREATE INDEX idx_team_seasons_tid_season ON team_seasons(tid, season);
+CREATE INDEX idx_team_seasons_note ON team_seasons(note_bool) WHERE note_bool IS NOT NULL;
+```
+
+**`team_stats`** — one row per (tid, season, playoffs); rid is autoincrement PK
+
+```sql
+CREATE TABLE team_stats (
+    rid        INTEGER PRIMARY KEY AUTOINCREMENT,
+    tid        INTEGER NOT NULL,
+    season     INTEGER NOT NULL,
+    playoffs   INTEGER NOT NULL DEFAULT 0,
+    gp INTEGER NOT NULL DEFAULT 0, min REAL NOT NULL DEFAULT 0,
+    drives INTEGER NOT NULL DEFAULT 0, tot_start_yds INTEGER NOT NULL DEFAULT 0,
+    time_pos INTEGER NOT NULL DEFAULT 0, pts INTEGER NOT NULL DEFAULT 0,
+    fmb INTEGER NOT NULL DEFAULT 0, fmb_lost INTEGER NOT NULL DEFAULT 0,
+    pss_cmp INTEGER NOT NULL DEFAULT 0, pss INTEGER NOT NULL DEFAULT 0,
+    pss_yds INTEGER NOT NULL DEFAULT 0, pss_td INTEGER NOT NULL DEFAULT 0,
+    pss_int INTEGER NOT NULL DEFAULT 0, pss_lng INTEGER NOT NULL DEFAULT 0,
+    pss_sk INTEGER NOT NULL DEFAULT 0, pss_sk_yds INTEGER NOT NULL DEFAULT 0,
+    rus INTEGER NOT NULL DEFAULT 0, rus_yds INTEGER NOT NULL DEFAULT 0,
+    rus_td INTEGER NOT NULL DEFAULT 0, rus_lng INTEGER NOT NULL DEFAULT 0,
+    tgt INTEGER NOT NULL DEFAULT 0, rec INTEGER NOT NULL DEFAULT 0,
+    rec_yds INTEGER NOT NULL DEFAULT 0, rec_td INTEGER NOT NULL DEFAULT 0,
+    rec_lng INTEGER NOT NULL DEFAULT 0,
+    pr INTEGER NOT NULL DEFAULT 0, pr_yds INTEGER NOT NULL DEFAULT 0,
+    pr_td INTEGER NOT NULL DEFAULT 0, pr_lng INTEGER NOT NULL DEFAULT 0,
+    kr INTEGER NOT NULL DEFAULT 0, kr_yds INTEGER NOT NULL DEFAULT 0,
+    kr_td INTEGER NOT NULL DEFAULT 0, kr_lng INTEGER NOT NULL DEFAULT 0,
+    def_int INTEGER NOT NULL DEFAULT 0, def_int_yds INTEGER NOT NULL DEFAULT 0,
+    def_int_td INTEGER NOT NULL DEFAULT 0, def_int_lng INTEGER NOT NULL DEFAULT 0,
+    def_pss_def INTEGER NOT NULL DEFAULT 0,
+    def_fmb_frc INTEGER NOT NULL DEFAULT 0, def_fmb_rec INTEGER NOT NULL DEFAULT 0,
+    def_fmb_yds INTEGER NOT NULL DEFAULT 0, def_fmb_td INTEGER NOT NULL DEFAULT 0,
+    def_fmb_lng INTEGER NOT NULL DEFAULT 0,
+    def_sk INTEGER NOT NULL DEFAULT 0, def_tck_solo INTEGER NOT NULL DEFAULT 0,
+    def_tck_ast INTEGER NOT NULL DEFAULT 0, def_tck_loss INTEGER NOT NULL DEFAULT 0,
+    def_sft INTEGER NOT NULL DEFAULT 0,
+    fg0 INTEGER NOT NULL DEFAULT 0, fga0 INTEGER NOT NULL DEFAULT 0,
+    fg20 INTEGER NOT NULL DEFAULT 0, fga20 INTEGER NOT NULL DEFAULT 0,
+    fg30 INTEGER NOT NULL DEFAULT 0, fga30 INTEGER NOT NULL DEFAULT 0,
+    fg40 INTEGER NOT NULL DEFAULT 0, fga40 INTEGER NOT NULL DEFAULT 0,
+    fg50 INTEGER NOT NULL DEFAULT 0, fga50 INTEGER NOT NULL DEFAULT 0,
+    fg_lng INTEGER NOT NULL DEFAULT 0,
+    xp INTEGER NOT NULL DEFAULT 0, xpa INTEGER NOT NULL DEFAULT 0,
+    tp INTEGER NOT NULL DEFAULT 0, tpa INTEGER NOT NULL DEFAULT 0,
+    ko INTEGER NOT NULL DEFAULT 0, ko_yds INTEGER NOT NULL DEFAULT 0,
+    ko_tb INTEGER NOT NULL DEFAULT 0, ok INTEGER NOT NULL DEFAULT 0,
+    ok_rec INTEGER NOT NULL DEFAULT 0,
+    pnt INTEGER NOT NULL DEFAULT 0, pnt_yds INTEGER NOT NULL DEFAULT 0,
+    pnt_lng INTEGER NOT NULL DEFAULT 0, pnt_tb INTEGER NOT NULL DEFAULT 0,
+    pnt_in20 INTEGER NOT NULL DEFAULT 0, pnt_blk INTEGER NOT NULL DEFAULT 0,
+    pen INTEGER NOT NULL DEFAULT 0, pen_yds INTEGER NOT NULL DEFAULT 0,
+    pbw INTEGER NOT NULL DEFAULT 0, pba INTEGER NOT NULL DEFAULT 0,
+    rbw INTEGER NOT NULL DEFAULT 0, rba INTEGER NOT NULL DEFAULT 0,
+    sk_alw INTEGER NOT NULL DEFAULT 0,
+    opp_drives INTEGER NOT NULL DEFAULT 0, opp_tot_start_yds INTEGER NOT NULL DEFAULT 0,
+    opp_time_pos INTEGER NOT NULL DEFAULT 0, opp_pts INTEGER NOT NULL DEFAULT 0,
+    opp_fmb INTEGER NOT NULL DEFAULT 0, opp_fmb_lost INTEGER NOT NULL DEFAULT 0,
+    opp_pss_cmp INTEGER NOT NULL DEFAULT 0, opp_pss INTEGER NOT NULL DEFAULT 0,
+    opp_pss_yds INTEGER NOT NULL DEFAULT 0, opp_pss_td INTEGER NOT NULL DEFAULT 0,
+    opp_pss_int INTEGER NOT NULL DEFAULT 0, opp_pss_lng INTEGER NOT NULL DEFAULT 0,
+    opp_pss_sk INTEGER NOT NULL DEFAULT 0, opp_pss_sk_yds INTEGER NOT NULL DEFAULT 0,
+    opp_rus INTEGER NOT NULL DEFAULT 0, opp_rus_yds INTEGER NOT NULL DEFAULT 0,
+    opp_rus_td INTEGER NOT NULL DEFAULT 0, opp_rus_lng INTEGER NOT NULL DEFAULT 0,
+    opp_tgt INTEGER NOT NULL DEFAULT 0, opp_rec INTEGER NOT NULL DEFAULT 0,
+    opp_rec_yds INTEGER NOT NULL DEFAULT 0, opp_rec_td INTEGER NOT NULL DEFAULT 0,
+    opp_rec_lng INTEGER NOT NULL DEFAULT 0,
+    opp_pr INTEGER NOT NULL DEFAULT 0, opp_pr_yds INTEGER NOT NULL DEFAULT 0,
+    opp_pr_td INTEGER NOT NULL DEFAULT 0, opp_pr_lng INTEGER NOT NULL DEFAULT 0,
+    opp_kr INTEGER NOT NULL DEFAULT 0, opp_kr_yds INTEGER NOT NULL DEFAULT 0,
+    opp_kr_td INTEGER NOT NULL DEFAULT 0, opp_kr_lng INTEGER NOT NULL DEFAULT 0,
+    opp_def_int INTEGER NOT NULL DEFAULT 0, opp_def_int_yds INTEGER NOT NULL DEFAULT 0,
+    opp_def_int_td INTEGER NOT NULL DEFAULT 0, opp_def_int_lng INTEGER NOT NULL DEFAULT 0,
+    opp_def_pss_def INTEGER NOT NULL DEFAULT 0,
+    opp_def_fmb_frc INTEGER NOT NULL DEFAULT 0, opp_def_fmb_rec INTEGER NOT NULL DEFAULT 0,
+    opp_def_fmb_yds INTEGER NOT NULL DEFAULT 0, opp_def_fmb_td INTEGER NOT NULL DEFAULT 0,
+    opp_def_fmb_lng INTEGER NOT NULL DEFAULT 0,
+    opp_def_sk INTEGER NOT NULL DEFAULT 0, opp_def_tck_solo INTEGER NOT NULL DEFAULT 0,
+    opp_def_tck_ast INTEGER NOT NULL DEFAULT 0, opp_def_tck_loss INTEGER NOT NULL DEFAULT 0,
+    opp_def_sft INTEGER NOT NULL DEFAULT 0,
+    opp_fg0 INTEGER NOT NULL DEFAULT 0, opp_fga0 INTEGER NOT NULL DEFAULT 0,
+    opp_fg20 INTEGER NOT NULL DEFAULT 0, opp_fga20 INTEGER NOT NULL DEFAULT 0,
+    opp_fg30 INTEGER NOT NULL DEFAULT 0, opp_fga30 INTEGER NOT NULL DEFAULT 0,
+    opp_fg40 INTEGER NOT NULL DEFAULT 0, opp_fga40 INTEGER NOT NULL DEFAULT 0,
+    opp_fg50 INTEGER NOT NULL DEFAULT 0, opp_fga50 INTEGER NOT NULL DEFAULT 0,
+    opp_fg_lng INTEGER NOT NULL DEFAULT 0,
+    opp_xp INTEGER NOT NULL DEFAULT 0, opp_xpa INTEGER NOT NULL DEFAULT 0,
+    opp_tp INTEGER NOT NULL DEFAULT 0, opp_tpa INTEGER NOT NULL DEFAULT 0,
+    opp_ko INTEGER NOT NULL DEFAULT 0, opp_ko_yds INTEGER NOT NULL DEFAULT 0,
+    opp_ko_tb INTEGER NOT NULL DEFAULT 0, opp_ok INTEGER NOT NULL DEFAULT 0,
+    opp_ok_rec INTEGER NOT NULL DEFAULT 0,
+    opp_pnt INTEGER NOT NULL DEFAULT 0, opp_pnt_yds INTEGER NOT NULL DEFAULT 0,
+    opp_pnt_lng INTEGER NOT NULL DEFAULT 0, opp_pnt_tb INTEGER NOT NULL DEFAULT 0,
+    opp_pnt_in20 INTEGER NOT NULL DEFAULT 0, opp_pnt_blk INTEGER NOT NULL DEFAULT 0,
+    opp_pen INTEGER NOT NULL DEFAULT 0, opp_pen_yds INTEGER NOT NULL DEFAULT 0,
+    opp_pbw INTEGER NOT NULL DEFAULT 0, opp_pba INTEGER NOT NULL DEFAULT 0,
+    opp_rbw INTEGER NOT NULL DEFAULT 0, opp_rba INTEGER NOT NULL DEFAULT 0,
+    opp_sk_alw INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(tid, season, playoffs)
+);
+CREATE INDEX idx_team_stats_season ON team_stats(season);
+```
+
+- [x] 4.1 Design schema for all three stores
+- [x] 4.2 Write migration 003
+- [x] 4.3 Replace flush/fill for all three stores
+- [x] 4.4 Replace any getCopies direct reads
+- [x] 4.5 Remove from Cache STORES
 - [ ] 4.6 Verify standings, team history, finances display correctly
 - [ ] 4.7 Commit and push
 

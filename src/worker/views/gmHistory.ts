@@ -1,5 +1,6 @@
 import { idb } from "../db/index.ts";
 import { g } from "../util/index.ts";
+import { readTeamSeasons as electronReadTeamSeasons } from "../db/electronApi.ts";
 import type { UpdateEvents, TeamSeason, Player } from "../../common/types.ts";
 import { getHistory, getHistoryTeam } from "./teamHistory.ts";
 import { getPlayoffsByConfBySeason } from "./frivolitiesTeamSeasons.ts";
@@ -12,9 +13,10 @@ const updateGmHistory = async (inputs: unknown, updateEvents: UpdateEvents) => {
 	) {
 		const seasonsByTid: Record<number, Set<number>> = {};
 		const teamSeasonsByTeam: TeamSeason[][] = [];
-		const teamSeasonsIndex = idb.league
-			.transaction("teamSeasons")
-			.store.index("season, tid");
+		let lid: number | undefined;
+		try {
+			lid = g.get("lid") as number;
+		} catch {}
 		let prevTid: number | undefined;
 		for (
 			let season = g.get("startingSeason");
@@ -34,7 +36,11 @@ const updateGmHistory = async (inputs: unknown, updateEvents: UpdateEvents) => {
 					g.get("season"),
 				]);
 			} else {
-				ts = await teamSeasonsIndex.get([season, tid]);
+				const rows =
+					typeof lid === "number"
+						? ((await electronReadTeamSeasons(lid, { tid, season })) ?? [])
+						: [];
+				ts = rows[0];
 			}
 			if (ts) {
 				teamSeasonsByTeam.at(-1)!.push(ts);

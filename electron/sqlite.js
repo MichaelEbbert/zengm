@@ -213,6 +213,209 @@ const CAREER_DERIVED_KEYS = ["av", "qbW", "qbL", "qbT", "qbOTL"];
 const CAREER_STAT_KEYS = [...CAREER_DERIVED_KEYS, ...PLAYER_STAT_KEYS, "skAlw"];
 const CAREER_STAT_COLS = CAREER_STAT_KEYS.map(toSnake);
 
+// ---- Team-domain constants -------------------------------------------
+
+const TEAM_SEASON_STAT_RAW = [
+	"drives",
+	"totStartYds",
+	"timePos",
+	"pts",
+	"fmb",
+	"fmbLost",
+	"pssCmp",
+	"pss",
+	"pssYds",
+	"pssTD",
+	"pssInt",
+	"pssLng",
+	"pssSk",
+	"pssSkYds",
+	"rus",
+	"rusYds",
+	"rusTD",
+	"rusLng",
+	"tgt",
+	"rec",
+	"recYds",
+	"recTD",
+	"recLng",
+	"pr",
+	"prYds",
+	"prTD",
+	"prLng",
+	"kr",
+	"krYds",
+	"krTD",
+	"krLng",
+	"defInt",
+	"defIntYds",
+	"defIntTD",
+	"defIntLng",
+	"defPssDef",
+	"defFmbFrc",
+	"defFmbRec",
+	"defFmbYds",
+	"defFmbTD",
+	"defFmbLng",
+	"defSk",
+	"defTckSolo",
+	"defTckAst",
+	"defTckLoss",
+	"defSft",
+	"fg0",
+	"fga0",
+	"fg20",
+	"fga20",
+	"fg30",
+	"fga30",
+	"fg40",
+	"fga40",
+	"fg50",
+	"fga50",
+	"fgLng",
+	"xp",
+	"xpa",
+	"tp",
+	"tpa",
+	"ko",
+	"koYds",
+	"koTB",
+	"ok",
+	"okRec",
+	"pnt",
+	"pntYds",
+	"pntLng",
+	"pntTB",
+	"pntIn20",
+	"pntBlk",
+	"pen",
+	"penYds",
+	"pbw",
+	"pba",
+	"rbw",
+	"rba",
+	"skAlw",
+];
+const _upperFirst = (s) => s[0].toUpperCase() + s.slice(1);
+const TEAM_STATS_KEYS = [
+	"gp",
+	"min",
+	...TEAM_SEASON_STAT_RAW,
+	...TEAM_SEASON_STAT_RAW.map((s) => `opp${_upperFirst(s)}`),
+];
+const TEAM_STATS_COLS = TEAM_STATS_KEYS.map(toSnake);
+
+const TEAM_TABLE_COLS = [
+	"tid",
+	"cid",
+	"did",
+	"region",
+	"name",
+	"abbrev",
+	"img_url",
+	"img_url_small",
+	"jersey",
+	"colors",
+	"strategy",
+	"pop",
+	"stadium_capacity",
+	"adjust_for_inflation",
+	"disabled",
+	"keep_roster_sorted",
+	"budget_ticket_price",
+	"budget_scouting",
+	"budget_coaching",
+	"budget_health",
+	"budget_facilities",
+	"initial_budget_scouting",
+	"initial_budget_coaching",
+	"initial_budget_health",
+	"initial_budget_facilities",
+	"play_through_injuries",
+	"depth",
+	"first_season_after_expansion",
+	"sr_id",
+	"auto_ticket_price",
+	"retired_jersey_numbers",
+	"cola",
+	"cola_opt_out",
+];
+
+const TS_FIXED_COLS = [
+	"rid",
+	"tid",
+	"season",
+	"gp_home",
+	"att",
+	"cash",
+	"won",
+	"lost",
+	"tied",
+	"otl",
+	"won_home",
+	"lost_home",
+	"tied_home",
+	"otl_home",
+	"won_away",
+	"lost_away",
+	"tied_away",
+	"otl_away",
+	"won_div",
+	"lost_div",
+	"tied_div",
+	"otl_div",
+	"won_conf",
+	"lost_conf",
+	"tied_conf",
+	"otl_conf",
+	"last_ten",
+	"streak",
+	"playoff_rounds_won",
+	"hype",
+	"pop",
+	"stadium_capacity",
+	"payroll_end_of_season",
+	"num_players_traded_away",
+	"note",
+	"note_bool",
+	"clinched_playoffs",
+	"avg_age",
+	"ovr_start",
+	"ovr_end",
+	"rev_luxury_tax_share",
+	"rev_merch",
+	"rev_sponsor",
+	"rev_ticket",
+	"rev_national_tv",
+	"rev_local_tv",
+	"exp_luxury_tax",
+	"exp_min_tax",
+	"exp_salary",
+	"exp_coaching",
+	"exp_health",
+	"exp_facilities",
+	"exp_scouting",
+	"exp_level_coaching",
+	"exp_level_facilities",
+	"exp_level_health",
+	"exp_level_scouting",
+	"owner_mood_money",
+	"owner_mood_playoffs",
+	"owner_mood_wins",
+	"cid",
+	"did",
+	"region",
+	"name",
+	"abbrev",
+	"img_url",
+	"img_url_small",
+	"jersey",
+	"colors",
+	"sr_id",
+];
+
+const TST_ALL_COLS = ["rid", "tid", "season", "playoffs", ...TEAM_STATS_COLS];
+
 // Column lists for prepared statements (players domain)
 const PLAYER_TABLE_COLS = [
 	"pid",
@@ -672,6 +875,221 @@ function runMigrations(db) {
 			`);
 			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
 				"002_players",
+				new Date().toISOString(),
+			);
+		})();
+	}
+	if (!applied.has("003_teams")) {
+		db.transaction(() => {
+			db.exec(`
+				CREATE TABLE teams (
+					tid                       INTEGER PRIMARY KEY,
+					cid                       INTEGER NOT NULL,
+					did                       INTEGER NOT NULL,
+					region                    TEXT NOT NULL DEFAULT '',
+					name                      TEXT NOT NULL DEFAULT '',
+					abbrev                    TEXT NOT NULL DEFAULT '',
+					img_url                   TEXT,
+					img_url_small             TEXT,
+					jersey                    TEXT,
+					colors                    TEXT NOT NULL DEFAULT '["#000000","#ffffff","#cccccc"]',
+					strategy                  TEXT NOT NULL DEFAULT 'contending',
+					pop                       REAL NOT NULL DEFAULT 0,
+					stadium_capacity          INTEGER NOT NULL DEFAULT 25000,
+					adjust_for_inflation      INTEGER NOT NULL DEFAULT 1,
+					disabled                  INTEGER NOT NULL DEFAULT 0,
+					keep_roster_sorted        INTEGER NOT NULL DEFAULT 1,
+					budget_ticket_price       REAL NOT NULL DEFAULT 0,
+					budget_scouting           INTEGER NOT NULL DEFAULT 0,
+					budget_coaching           INTEGER NOT NULL DEFAULT 0,
+					budget_health             INTEGER NOT NULL DEFAULT 0,
+					budget_facilities         INTEGER NOT NULL DEFAULT 0,
+					initial_budget_scouting   INTEGER NOT NULL DEFAULT 0,
+					initial_budget_coaching   INTEGER NOT NULL DEFAULT 0,
+					initial_budget_health     INTEGER NOT NULL DEFAULT 0,
+					initial_budget_facilities INTEGER NOT NULL DEFAULT 0,
+					play_through_injuries     TEXT NOT NULL DEFAULT '[0,0]',
+					depth                     TEXT,
+					first_season_after_expansion INTEGER,
+					sr_id                     TEXT,
+					auto_ticket_price         INTEGER,
+					retired_jersey_numbers    TEXT,
+					cola                      REAL,
+					cola_opt_out              INTEGER
+				);
+				CREATE TABLE team_seasons (
+					rid                   INTEGER PRIMARY KEY AUTOINCREMENT,
+					tid                   INTEGER NOT NULL,
+					season                INTEGER NOT NULL,
+					gp_home               INTEGER NOT NULL DEFAULT 0,
+					att                   INTEGER NOT NULL DEFAULT 0,
+					cash                  REAL NOT NULL DEFAULT 0,
+					won                   INTEGER NOT NULL DEFAULT 0,
+					lost                  INTEGER NOT NULL DEFAULT 0,
+					tied                  INTEGER NOT NULL DEFAULT 0,
+					otl                   INTEGER NOT NULL DEFAULT 0,
+					won_home              INTEGER NOT NULL DEFAULT 0,
+					lost_home             INTEGER NOT NULL DEFAULT 0,
+					tied_home             INTEGER NOT NULL DEFAULT 0,
+					otl_home              INTEGER NOT NULL DEFAULT 0,
+					won_away              INTEGER NOT NULL DEFAULT 0,
+					lost_away             INTEGER NOT NULL DEFAULT 0,
+					tied_away             INTEGER NOT NULL DEFAULT 0,
+					otl_away              INTEGER NOT NULL DEFAULT 0,
+					won_div               INTEGER NOT NULL DEFAULT 0,
+					lost_div              INTEGER NOT NULL DEFAULT 0,
+					tied_div              INTEGER NOT NULL DEFAULT 0,
+					otl_div               INTEGER NOT NULL DEFAULT 0,
+					won_conf              INTEGER NOT NULL DEFAULT 0,
+					lost_conf             INTEGER NOT NULL DEFAULT 0,
+					tied_conf             INTEGER NOT NULL DEFAULT 0,
+					otl_conf              INTEGER NOT NULL DEFAULT 0,
+					last_ten              TEXT NOT NULL DEFAULT '[]',
+					streak                INTEGER NOT NULL DEFAULT 0,
+					playoff_rounds_won    INTEGER NOT NULL DEFAULT -1,
+					hype                  REAL NOT NULL DEFAULT 0.5,
+					pop                   REAL NOT NULL DEFAULT 0,
+					stadium_capacity      INTEGER NOT NULL DEFAULT 0,
+					payroll_end_of_season REAL NOT NULL DEFAULT 0,
+					num_players_traded_away INTEGER NOT NULL DEFAULT 0,
+					note                  TEXT,
+					note_bool             INTEGER,
+					clinched_playoffs     TEXT,
+					avg_age               REAL,
+					ovr_start             INTEGER,
+					ovr_end               INTEGER,
+					rev_luxury_tax_share  REAL NOT NULL DEFAULT 0,
+					rev_merch             REAL NOT NULL DEFAULT 0,
+					rev_sponsor           REAL NOT NULL DEFAULT 0,
+					rev_ticket            REAL NOT NULL DEFAULT 0,
+					rev_national_tv       REAL NOT NULL DEFAULT 0,
+					rev_local_tv          REAL NOT NULL DEFAULT 0,
+					exp_luxury_tax        REAL NOT NULL DEFAULT 0,
+					exp_min_tax           REAL NOT NULL DEFAULT 0,
+					exp_salary            REAL NOT NULL DEFAULT 0,
+					exp_coaching          REAL NOT NULL DEFAULT 0,
+					exp_health            REAL NOT NULL DEFAULT 0,
+					exp_facilities        REAL NOT NULL DEFAULT 0,
+					exp_scouting          REAL NOT NULL DEFAULT 0,
+					exp_level_coaching    REAL NOT NULL DEFAULT 0,
+					exp_level_facilities  REAL NOT NULL DEFAULT 0,
+					exp_level_health      REAL NOT NULL DEFAULT 0,
+					exp_level_scouting    REAL NOT NULL DEFAULT 0,
+					owner_mood_money      REAL,
+					owner_mood_playoffs   REAL,
+					owner_mood_wins       REAL,
+					cid                   INTEGER NOT NULL DEFAULT 0,
+					did                   INTEGER NOT NULL DEFAULT 0,
+					region                TEXT NOT NULL DEFAULT '',
+					name                  TEXT NOT NULL DEFAULT '',
+					abbrev                TEXT NOT NULL DEFAULT '',
+					img_url               TEXT,
+					img_url_small         TEXT,
+					jersey                TEXT,
+					colors                TEXT NOT NULL DEFAULT '["#000000","#ffffff","#cccccc"]',
+					sr_id                 TEXT,
+					UNIQUE(season, tid)
+				);
+				CREATE INDEX idx_team_seasons_tid_season ON team_seasons(tid, season);
+				CREATE INDEX idx_team_seasons_note ON team_seasons(note_bool) WHERE note_bool IS NOT NULL;
+				CREATE TABLE team_stats (
+					rid        INTEGER PRIMARY KEY AUTOINCREMENT,
+					tid        INTEGER NOT NULL,
+					season     INTEGER NOT NULL,
+					playoffs   INTEGER NOT NULL DEFAULT 0,
+					gp INTEGER NOT NULL DEFAULT 0, min REAL NOT NULL DEFAULT 0,
+					drives INTEGER NOT NULL DEFAULT 0, tot_start_yds INTEGER NOT NULL DEFAULT 0,
+					time_pos INTEGER NOT NULL DEFAULT 0, pts INTEGER NOT NULL DEFAULT 0,
+					fmb INTEGER NOT NULL DEFAULT 0, fmb_lost INTEGER NOT NULL DEFAULT 0,
+					pss_cmp INTEGER NOT NULL DEFAULT 0, pss INTEGER NOT NULL DEFAULT 0,
+					pss_yds INTEGER NOT NULL DEFAULT 0, pss_td INTEGER NOT NULL DEFAULT 0,
+					pss_int INTEGER NOT NULL DEFAULT 0, pss_lng INTEGER NOT NULL DEFAULT 0,
+					pss_sk INTEGER NOT NULL DEFAULT 0, pss_sk_yds INTEGER NOT NULL DEFAULT 0,
+					rus INTEGER NOT NULL DEFAULT 0, rus_yds INTEGER NOT NULL DEFAULT 0,
+					rus_td INTEGER NOT NULL DEFAULT 0, rus_lng INTEGER NOT NULL DEFAULT 0,
+					tgt INTEGER NOT NULL DEFAULT 0, rec INTEGER NOT NULL DEFAULT 0,
+					rec_yds INTEGER NOT NULL DEFAULT 0, rec_td INTEGER NOT NULL DEFAULT 0,
+					rec_lng INTEGER NOT NULL DEFAULT 0,
+					pr INTEGER NOT NULL DEFAULT 0, pr_yds INTEGER NOT NULL DEFAULT 0,
+					pr_td INTEGER NOT NULL DEFAULT 0, pr_lng INTEGER NOT NULL DEFAULT 0,
+					kr INTEGER NOT NULL DEFAULT 0, kr_yds INTEGER NOT NULL DEFAULT 0,
+					kr_td INTEGER NOT NULL DEFAULT 0, kr_lng INTEGER NOT NULL DEFAULT 0,
+					def_int INTEGER NOT NULL DEFAULT 0, def_int_yds INTEGER NOT NULL DEFAULT 0,
+					def_int_td INTEGER NOT NULL DEFAULT 0, def_int_lng INTEGER NOT NULL DEFAULT 0,
+					def_pss_def INTEGER NOT NULL DEFAULT 0,
+					def_fmb_frc INTEGER NOT NULL DEFAULT 0, def_fmb_rec INTEGER NOT NULL DEFAULT 0,
+					def_fmb_yds INTEGER NOT NULL DEFAULT 0, def_fmb_td INTEGER NOT NULL DEFAULT 0,
+					def_fmb_lng INTEGER NOT NULL DEFAULT 0,
+					def_sk INTEGER NOT NULL DEFAULT 0, def_tck_solo INTEGER NOT NULL DEFAULT 0,
+					def_tck_ast INTEGER NOT NULL DEFAULT 0, def_tck_loss INTEGER NOT NULL DEFAULT 0,
+					def_sft INTEGER NOT NULL DEFAULT 0,
+					fg0 INTEGER NOT NULL DEFAULT 0, fga0 INTEGER NOT NULL DEFAULT 0,
+					fg20 INTEGER NOT NULL DEFAULT 0, fga20 INTEGER NOT NULL DEFAULT 0,
+					fg30 INTEGER NOT NULL DEFAULT 0, fga30 INTEGER NOT NULL DEFAULT 0,
+					fg40 INTEGER NOT NULL DEFAULT 0, fga40 INTEGER NOT NULL DEFAULT 0,
+					fg50 INTEGER NOT NULL DEFAULT 0, fga50 INTEGER NOT NULL DEFAULT 0,
+					fg_lng INTEGER NOT NULL DEFAULT 0,
+					xp INTEGER NOT NULL DEFAULT 0, xpa INTEGER NOT NULL DEFAULT 0,
+					tp INTEGER NOT NULL DEFAULT 0, tpa INTEGER NOT NULL DEFAULT 0,
+					ko INTEGER NOT NULL DEFAULT 0, ko_yds INTEGER NOT NULL DEFAULT 0,
+					ko_tb INTEGER NOT NULL DEFAULT 0, ok INTEGER NOT NULL DEFAULT 0,
+					ok_rec INTEGER NOT NULL DEFAULT 0,
+					pnt INTEGER NOT NULL DEFAULT 0, pnt_yds INTEGER NOT NULL DEFAULT 0,
+					pnt_lng INTEGER NOT NULL DEFAULT 0, pnt_tb INTEGER NOT NULL DEFAULT 0,
+					pnt_in20 INTEGER NOT NULL DEFAULT 0, pnt_blk INTEGER NOT NULL DEFAULT 0,
+					pen INTEGER NOT NULL DEFAULT 0, pen_yds INTEGER NOT NULL DEFAULT 0,
+					pbw INTEGER NOT NULL DEFAULT 0, pba INTEGER NOT NULL DEFAULT 0,
+					rbw INTEGER NOT NULL DEFAULT 0, rba INTEGER NOT NULL DEFAULT 0,
+					sk_alw INTEGER NOT NULL DEFAULT 0,
+					opp_drives INTEGER NOT NULL DEFAULT 0, opp_tot_start_yds INTEGER NOT NULL DEFAULT 0,
+					opp_time_pos INTEGER NOT NULL DEFAULT 0, opp_pts INTEGER NOT NULL DEFAULT 0,
+					opp_fmb INTEGER NOT NULL DEFAULT 0, opp_fmb_lost INTEGER NOT NULL DEFAULT 0,
+					opp_pss_cmp INTEGER NOT NULL DEFAULT 0, opp_pss INTEGER NOT NULL DEFAULT 0,
+					opp_pss_yds INTEGER NOT NULL DEFAULT 0, opp_pss_td INTEGER NOT NULL DEFAULT 0,
+					opp_pss_int INTEGER NOT NULL DEFAULT 0, opp_pss_lng INTEGER NOT NULL DEFAULT 0,
+					opp_pss_sk INTEGER NOT NULL DEFAULT 0, opp_pss_sk_yds INTEGER NOT NULL DEFAULT 0,
+					opp_rus INTEGER NOT NULL DEFAULT 0, opp_rus_yds INTEGER NOT NULL DEFAULT 0,
+					opp_rus_td INTEGER NOT NULL DEFAULT 0, opp_rus_lng INTEGER NOT NULL DEFAULT 0,
+					opp_tgt INTEGER NOT NULL DEFAULT 0, opp_rec INTEGER NOT NULL DEFAULT 0,
+					opp_rec_yds INTEGER NOT NULL DEFAULT 0, opp_rec_td INTEGER NOT NULL DEFAULT 0,
+					opp_rec_lng INTEGER NOT NULL DEFAULT 0,
+					opp_pr INTEGER NOT NULL DEFAULT 0, opp_pr_yds INTEGER NOT NULL DEFAULT 0,
+					opp_pr_td INTEGER NOT NULL DEFAULT 0, opp_pr_lng INTEGER NOT NULL DEFAULT 0,
+					opp_kr INTEGER NOT NULL DEFAULT 0, opp_kr_yds INTEGER NOT NULL DEFAULT 0,
+					opp_kr_td INTEGER NOT NULL DEFAULT 0, opp_kr_lng INTEGER NOT NULL DEFAULT 0,
+					opp_def_int INTEGER NOT NULL DEFAULT 0, opp_def_int_yds INTEGER NOT NULL DEFAULT 0,
+					opp_def_int_td INTEGER NOT NULL DEFAULT 0, opp_def_int_lng INTEGER NOT NULL DEFAULT 0,
+					opp_def_pss_def INTEGER NOT NULL DEFAULT 0,
+					opp_def_fmb_frc INTEGER NOT NULL DEFAULT 0, opp_def_fmb_rec INTEGER NOT NULL DEFAULT 0,
+					opp_def_fmb_yds INTEGER NOT NULL DEFAULT 0, opp_def_fmb_td INTEGER NOT NULL DEFAULT 0,
+					opp_def_fmb_lng INTEGER NOT NULL DEFAULT 0,
+					opp_def_sk INTEGER NOT NULL DEFAULT 0, opp_def_tck_solo INTEGER NOT NULL DEFAULT 0,
+					opp_def_tck_ast INTEGER NOT NULL DEFAULT 0, opp_def_tck_loss INTEGER NOT NULL DEFAULT 0,
+					opp_def_sft INTEGER NOT NULL DEFAULT 0,
+					opp_fg0 INTEGER NOT NULL DEFAULT 0, opp_fga0 INTEGER NOT NULL DEFAULT 0,
+					opp_fg20 INTEGER NOT NULL DEFAULT 0, opp_fga20 INTEGER NOT NULL DEFAULT 0,
+					opp_fg30 INTEGER NOT NULL DEFAULT 0, opp_fga30 INTEGER NOT NULL DEFAULT 0,
+					opp_fg40 INTEGER NOT NULL DEFAULT 0, opp_fga40 INTEGER NOT NULL DEFAULT 0,
+					opp_fg50 INTEGER NOT NULL DEFAULT 0, opp_fga50 INTEGER NOT NULL DEFAULT 0,
+					opp_fg_lng INTEGER NOT NULL DEFAULT 0,
+					opp_xp INTEGER NOT NULL DEFAULT 0, opp_xpa INTEGER NOT NULL DEFAULT 0,
+					opp_tp INTEGER NOT NULL DEFAULT 0, opp_tpa INTEGER NOT NULL DEFAULT 0,
+					opp_ko INTEGER NOT NULL DEFAULT 0, opp_ko_yds INTEGER NOT NULL DEFAULT 0,
+					opp_ko_tb INTEGER NOT NULL DEFAULT 0, opp_ok INTEGER NOT NULL DEFAULT 0,
+					opp_ok_rec INTEGER NOT NULL DEFAULT 0,
+					opp_pnt INTEGER NOT NULL DEFAULT 0, opp_pnt_yds INTEGER NOT NULL DEFAULT 0,
+					opp_pnt_lng INTEGER NOT NULL DEFAULT 0, opp_pnt_tb INTEGER NOT NULL DEFAULT 0,
+					opp_pnt_in20 INTEGER NOT NULL DEFAULT 0, opp_pnt_blk INTEGER NOT NULL DEFAULT 0,
+					opp_pen INTEGER NOT NULL DEFAULT 0, opp_pen_yds INTEGER NOT NULL DEFAULT 0,
+					opp_pbw INTEGER NOT NULL DEFAULT 0, opp_pba INTEGER NOT NULL DEFAULT 0,
+					opp_rbw INTEGER NOT NULL DEFAULT 0, opp_rba INTEGER NOT NULL DEFAULT 0,
+					opp_sk_alw INTEGER NOT NULL DEFAULT 0,
+					UNIQUE(tid, season, playoffs)
+				);
+				CREATE INDEX idx_team_stats_season ON team_stats(season);
+			`);
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"003_teams",
 				new Date().toISOString(),
 			);
 		})();
@@ -1200,6 +1618,399 @@ export function countPlayers(db) {
 }
 
 // ---- End player helpers --------------------------------------------------
+
+// ---- Team serialization helpers -----------------------------------------
+
+function teamToRow(t) {
+	return {
+		tid: t.tid,
+		cid: t.cid,
+		did: t.did,
+		region: t.region ?? "",
+		name: t.name ?? "",
+		abbrev: t.abbrev ?? "",
+		img_url: t.imgURL ?? null,
+		img_url_small: t.imgURLSmall ?? null,
+		jersey: t.jersey ?? null,
+		colors: JSON.stringify(t.colors ?? ["#000000", "#ffffff", "#cccccc"]),
+		strategy: t.strategy ?? "contending",
+		pop: t.pop ?? 0,
+		stadium_capacity: t.stadiumCapacity ?? 25000,
+		adjust_for_inflation: t.adjustForInflation ? 1 : 0,
+		disabled: t.disabled ? 1 : 0,
+		keep_roster_sorted: t.keepRosterSorted ? 1 : 0,
+		budget_ticket_price: t.budget?.ticketPrice ?? 0,
+		budget_scouting: t.budget?.scouting ?? 0,
+		budget_coaching: t.budget?.coaching ?? 0,
+		budget_health: t.budget?.health ?? 0,
+		budget_facilities: t.budget?.facilities ?? 0,
+		initial_budget_scouting: t.initialBudget?.scouting ?? 0,
+		initial_budget_coaching: t.initialBudget?.coaching ?? 0,
+		initial_budget_health: t.initialBudget?.health ?? 0,
+		initial_budget_facilities: t.initialBudget?.facilities ?? 0,
+		play_through_injuries: JSON.stringify(t.playThroughInjuries ?? [0, 0]),
+		depth: t.depth != null ? JSON.stringify(t.depth) : null,
+		first_season_after_expansion: t.firstSeasonAfterExpansion ?? null,
+		sr_id: t.srID ?? null,
+		auto_ticket_price:
+			t.autoTicketPrice != null ? (t.autoTicketPrice ? 1 : 0) : null,
+		retired_jersey_numbers:
+			t.retiredJerseyNumbers != null
+				? JSON.stringify(t.retiredJerseyNumbers)
+				: null,
+		cola: t.cola ?? null,
+		cola_opt_out: t.colaOptOut != null ? (t.colaOptOut ? 1 : 0) : null,
+	};
+}
+
+function rowToTeam(row) {
+	const t = {
+		tid: row.tid,
+		cid: row.cid,
+		did: row.did,
+		region: row.region,
+		name: row.name,
+		abbrev: row.abbrev,
+		imgURL: row.img_url ?? undefined,
+		imgURLSmall: row.img_url_small ?? undefined,
+		jersey: row.jersey ?? undefined,
+		colors: JSON.parse(row.colors ?? '["#000000","#ffffff","#cccccc"]'),
+		strategy: row.strategy,
+		pop: row.pop,
+		stadiumCapacity: row.stadium_capacity,
+		adjustForInflation: row.adjust_for_inflation === 1,
+		disabled: row.disabled === 1,
+		keepRosterSorted: row.keep_roster_sorted === 1,
+		budget: {
+			ticketPrice: row.budget_ticket_price,
+			scouting: row.budget_scouting,
+			coaching: row.budget_coaching,
+			health: row.budget_health,
+			facilities: row.budget_facilities,
+		},
+		initialBudget: {
+			scouting: row.initial_budget_scouting,
+			coaching: row.initial_budget_coaching,
+			health: row.initial_budget_health,
+			facilities: row.initial_budget_facilities,
+		},
+		playThroughInjuries: JSON.parse(row.play_through_injuries ?? "[0,0]"),
+		depth: row.depth != null ? JSON.parse(row.depth) : undefined,
+		firstSeasonAfterExpansion: row.first_season_after_expansion ?? undefined,
+		srID: row.sr_id ?? undefined,
+		autoTicketPrice:
+			row.auto_ticket_price != null ? row.auto_ticket_price === 1 : undefined,
+		retiredJerseyNumbers:
+			row.retired_jersey_numbers != null
+				? JSON.parse(row.retired_jersey_numbers)
+				: undefined,
+		cola: row.cola ?? undefined,
+		colaOptOut: row.cola_opt_out != null ? row.cola_opt_out === 1 : undefined,
+	};
+	for (const k of Object.keys(t)) {
+		if (t[k] === undefined) delete t[k];
+	}
+	return t;
+}
+
+function teamSeasonToRow(ts) {
+	return {
+		rid: ts.rid ?? null,
+		tid: ts.tid,
+		season: ts.season,
+		gp_home: ts.gpHome ?? 0,
+		att: ts.att ?? 0,
+		cash: ts.cash ?? 0,
+		won: ts.won ?? 0,
+		lost: ts.lost ?? 0,
+		tied: ts.tied ?? 0,
+		otl: ts.otl ?? 0,
+		won_home: ts.wonHome ?? 0,
+		lost_home: ts.lostHome ?? 0,
+		tied_home: ts.tiedHome ?? 0,
+		otl_home: ts.otlHome ?? 0,
+		won_away: ts.wonAway ?? 0,
+		lost_away: ts.lostAway ?? 0,
+		tied_away: ts.tiedAway ?? 0,
+		otl_away: ts.otlAway ?? 0,
+		won_div: ts.wonDiv ?? 0,
+		lost_div: ts.lostDiv ?? 0,
+		tied_div: ts.tiedDiv ?? 0,
+		otl_div: ts.otlDiv ?? 0,
+		won_conf: ts.wonConf ?? 0,
+		lost_conf: ts.lostConf ?? 0,
+		tied_conf: ts.tiedConf ?? 0,
+		otl_conf: ts.otlConf ?? 0,
+		last_ten: JSON.stringify(ts.lastTen ?? []),
+		streak: ts.streak ?? 0,
+		playoff_rounds_won: ts.playoffRoundsWon ?? -1,
+		hype: ts.hype ?? 0.5,
+		pop: ts.pop ?? 0,
+		stadium_capacity: ts.stadiumCapacity ?? 0,
+		payroll_end_of_season: ts.payrollEndOfSeason ?? 0,
+		num_players_traded_away: ts.numPlayersTradedAway ?? 0,
+		note: ts.note ?? null,
+		note_bool: ts.noteBool ?? null,
+		clinched_playoffs: ts.clinchedPlayoffs ?? null,
+		avg_age: ts.avgAge ?? null,
+		ovr_start: ts.ovrStart ?? null,
+		ovr_end: ts.ovrEnd ?? null,
+		rev_luxury_tax_share: ts.revenues?.luxuryTaxShare ?? 0,
+		rev_merch: ts.revenues?.merch ?? 0,
+		rev_sponsor: ts.revenues?.sponsor ?? 0,
+		rev_ticket: ts.revenues?.ticket ?? 0,
+		rev_national_tv: ts.revenues?.nationalTv ?? 0,
+		rev_local_tv: ts.revenues?.localTv ?? 0,
+		exp_luxury_tax: ts.expenses?.luxuryTax ?? 0,
+		exp_min_tax: ts.expenses?.minTax ?? 0,
+		exp_salary: ts.expenses?.salary ?? 0,
+		exp_coaching: ts.expenses?.coaching ?? 0,
+		exp_health: ts.expenses?.health ?? 0,
+		exp_facilities: ts.expenses?.facilities ?? 0,
+		exp_scouting: ts.expenses?.scouting ?? 0,
+		exp_level_coaching: ts.expenseLevels?.coaching ?? 0,
+		exp_level_facilities: ts.expenseLevels?.facilities ?? 0,
+		exp_level_health: ts.expenseLevels?.health ?? 0,
+		exp_level_scouting: ts.expenseLevels?.scouting ?? 0,
+		owner_mood_money: ts.ownerMood?.money ?? null,
+		owner_mood_playoffs: ts.ownerMood?.playoffs ?? null,
+		owner_mood_wins: ts.ownerMood?.wins ?? null,
+		cid: ts.cid ?? 0,
+		did: ts.did ?? 0,
+		region: ts.region ?? "",
+		name: ts.name ?? "",
+		abbrev: ts.abbrev ?? "",
+		img_url: ts.imgURL ?? null,
+		img_url_small: ts.imgURLSmall ?? null,
+		jersey: ts.jersey ?? null,
+		colors: JSON.stringify(ts.colors ?? ["#000000", "#ffffff", "#cccccc"]),
+		sr_id: ts.srID ?? null,
+	};
+}
+
+function rowToTeamSeason(row) {
+	return {
+		rid: row.rid,
+		tid: row.tid,
+		season: row.season,
+		gpHome: row.gp_home,
+		att: row.att,
+		cash: row.cash,
+		won: row.won,
+		lost: row.lost,
+		tied: row.tied,
+		otl: row.otl,
+		wonHome: row.won_home,
+		lostHome: row.lost_home,
+		tiedHome: row.tied_home,
+		otlHome: row.otl_home,
+		wonAway: row.won_away,
+		lostAway: row.lost_away,
+		tiedAway: row.tied_away,
+		otlAway: row.otl_away,
+		wonDiv: row.won_div,
+		lostDiv: row.lost_div,
+		tiedDiv: row.tied_div,
+		otlDiv: row.otl_div,
+		wonConf: row.won_conf,
+		lostConf: row.lost_conf,
+		tiedConf: row.tied_conf,
+		otlConf: row.otl_conf,
+		lastTen: JSON.parse(row.last_ten ?? "[]"),
+		streak: row.streak,
+		playoffRoundsWon: row.playoff_rounds_won,
+		hype: row.hype,
+		pop: row.pop,
+		stadiumCapacity: row.stadium_capacity,
+		payrollEndOfSeason: row.payroll_end_of_season,
+		numPlayersTradedAway: row.num_players_traded_away,
+		note: row.note ?? undefined,
+		noteBool: row.note_bool ?? undefined,
+		clinchedPlayoffs: row.clinched_playoffs ?? undefined,
+		avgAge: row.avg_age ?? undefined,
+		ovrStart: row.ovr_start ?? undefined,
+		ovrEnd: row.ovr_end ?? undefined,
+		revenues: {
+			luxuryTaxShare: row.rev_luxury_tax_share,
+			merch: row.rev_merch,
+			sponsor: row.rev_sponsor,
+			ticket: row.rev_ticket,
+			nationalTv: row.rev_national_tv,
+			localTv: row.rev_local_tv,
+		},
+		expenses: {
+			luxuryTax: row.exp_luxury_tax,
+			minTax: row.exp_min_tax,
+			salary: row.exp_salary,
+			coaching: row.exp_coaching,
+			health: row.exp_health,
+			facilities: row.exp_facilities,
+			scouting: row.exp_scouting,
+		},
+		expenseLevels: {
+			coaching: row.exp_level_coaching,
+			facilities: row.exp_level_facilities,
+			health: row.exp_level_health,
+			scouting: row.exp_level_scouting,
+		},
+		ownerMood:
+			row.owner_mood_money != null
+				? {
+						money: row.owner_mood_money,
+						playoffs: row.owner_mood_playoffs,
+						wins: row.owner_mood_wins,
+					}
+				: undefined,
+		cid: row.cid,
+		did: row.did,
+		region: row.region,
+		name: row.name,
+		abbrev: row.abbrev,
+		imgURL: row.img_url ?? undefined,
+		imgURLSmall: row.img_url_small ?? undefined,
+		jersey: row.jersey ?? undefined,
+		colors: JSON.parse(row.colors ?? '["#000000","#ffffff","#cccccc"]'),
+		srID: row.sr_id ?? undefined,
+	};
+}
+
+function teamStatsToRow(ts) {
+	const row = {
+		rid: ts.rid ?? null,
+		tid: ts.tid,
+		season: ts.season,
+		playoffs: ts.playoffs ? 1 : 0,
+	};
+	for (let i = 0; i < TEAM_STATS_KEYS.length; i++) {
+		row[TEAM_STATS_COLS[i]] = ts[TEAM_STATS_KEYS[i]] ?? 0;
+	}
+	return row;
+}
+
+function rowToTeamStats(row) {
+	const ts = {
+		rid: row.rid,
+		tid: row.tid,
+		season: row.season,
+		playoffs: row.playoffs === 1,
+	};
+	for (let i = 0; i < TEAM_STATS_KEYS.length; i++) {
+		ts[TEAM_STATS_KEYS[i]] = row[TEAM_STATS_COLS[i]] ?? 0;
+	}
+	return ts;
+}
+
+export function writeTeams(db, teams, deleteTids = []) {
+	const upsert = db.prepare(
+		`INSERT OR REPLACE INTO teams (${TEAM_TABLE_COLS.join(", ")}) VALUES (${TEAM_TABLE_COLS.map((c) => "@" + c).join(", ")})`,
+	);
+	db.transaction(() => {
+		for (const tid of deleteTids) {
+			db.prepare("DELETE FROM teams WHERE tid = ?").run(tid);
+		}
+		for (const t of teams) {
+			upsert.run(teamToRow(t));
+		}
+	})();
+}
+
+export function readAllTeams(db) {
+	return db.prepare("SELECT * FROM teams").all().map(rowToTeam);
+}
+
+export function countTeams(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM teams").get()?.n ?? 0;
+}
+
+export function writeTeamSeasons(db, teamSeasons, deleteRids = []) {
+	const upsert = db.prepare(
+		`INSERT OR REPLACE INTO team_seasons (${TS_FIXED_COLS.join(", ")}) VALUES (${TS_FIXED_COLS.map((c) => "@" + c).join(", ")})`,
+	);
+	db.transaction(() => {
+		for (const rid of deleteRids) {
+			db.prepare("DELETE FROM team_seasons WHERE rid = ?").run(rid);
+		}
+		for (const ts of teamSeasons) {
+			upsert.run(teamSeasonToRow(ts));
+		}
+	})();
+}
+
+export function readTeamSeasons(db, filter = {}) {
+	let rows;
+	if (filter.note) {
+		rows = db
+			.prepare("SELECT * FROM team_seasons WHERE note_bool IS NOT NULL")
+			.all();
+	} else if (filter.tid !== undefined && filter.season !== undefined) {
+		rows = db
+			.prepare("SELECT * FROM team_seasons WHERE tid = ? AND season = ?")
+			.all(filter.tid, filter.season);
+	} else if (filter.season !== undefined) {
+		rows = db
+			.prepare("SELECT * FROM team_seasons WHERE season = ?")
+			.all(filter.season);
+	} else if (filter.tid !== undefined && filter.seasonFrom !== undefined) {
+		rows = db
+			.prepare(
+				"SELECT * FROM team_seasons WHERE tid = ? AND season >= ? AND season <= ?",
+			)
+			.all(filter.tid, filter.seasonFrom, filter.seasonTo ?? 9999);
+	} else if (filter.tid !== undefined) {
+		rows = db
+			.prepare("SELECT * FROM team_seasons WHERE tid = ?")
+			.all(filter.tid);
+	} else if (filter.seasonFrom !== undefined) {
+		rows = db
+			.prepare("SELECT * FROM team_seasons WHERE season >= ?")
+			.all(filter.seasonFrom);
+	} else {
+		rows = db.prepare("SELECT * FROM team_seasons").all();
+	}
+	return rows.map(rowToTeamSeason);
+}
+
+export function countTeamSeasons(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM team_seasons").get()?.n ?? 0;
+}
+
+export function writeTeamStats(db, teamStats, deleteRids = []) {
+	const upsert = db.prepare(
+		`INSERT OR REPLACE INTO team_stats (${TST_ALL_COLS.join(", ")}) VALUES (${TST_ALL_COLS.map((c) => "@" + c).join(", ")})`,
+	);
+	db.transaction(() => {
+		for (const rid of deleteRids) {
+			db.prepare("DELETE FROM team_stats WHERE rid = ?").run(rid);
+		}
+		for (const ts of teamStats) {
+			upsert.run(teamStatsToRow(ts));
+		}
+	})();
+}
+
+export function readTeamStats(db, filter = {}) {
+	let rows;
+	if (filter.season !== undefined && filter.tid !== undefined) {
+		rows = db
+			.prepare("SELECT * FROM team_stats WHERE season = ? AND tid = ?")
+			.all(filter.season, filter.tid);
+	} else if (filter.season !== undefined) {
+		rows = db
+			.prepare("SELECT * FROM team_stats WHERE season = ?")
+			.all(filter.season);
+	} else if (filter.tid !== undefined) {
+		rows = db.prepare("SELECT * FROM team_stats WHERE tid = ?").all(filter.tid);
+	} else {
+		rows = db.prepare("SELECT * FROM team_stats").all();
+	}
+	return rows.map(rowToTeamStats);
+}
+
+export function countTeamStats(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM team_stats").get()?.n ?? 0;
+}
+
+// ---- End team helpers ----------------------------------------------------
 
 const _dbs = new Map();
 

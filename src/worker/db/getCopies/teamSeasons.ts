@@ -3,6 +3,7 @@ import { maybeDeepCopy, mergeByPk } from "./helpers.ts";
 import { g } from "../../util/index.ts";
 import type { GetCopyType, TeamSeason } from "../../../common/types.ts";
 import { NUM_PRIOR_SEASONS_TEAM_SEASONS } from "../Cache.ts";
+import { readTeamSeasons as electronReadTeamSeasons } from "../electronApi.ts";
 
 const getCopies = async (
 	{
@@ -18,13 +19,18 @@ const getCopies = async (
 	} = {},
 	type?: GetCopyType,
 ): Promise<TeamSeason[]> => {
+	let lid: number | undefined;
+	try {
+		lid = g.get("lid") as number;
+	} catch {}
+
 	if (note) {
+		const sqliteRows =
+			typeof lid === "number"
+				? ((await electronReadTeamSeasons(lid, { note: true })) ?? [])
+				: [];
 		return mergeByPk(
-			await idb.league
-				.transaction("teamSeasons")
-				.store.index("noteBool")
-				// undefined for key returns all of the players with noteBool, since the ones without noteBool are not included in this index
-				.getAll(),
+			sqliteRows,
 			await idb.cache.teamSeasons.getAll(),
 			"teamSeasons",
 			type,
@@ -43,10 +49,11 @@ const getCopies = async (
 				type,
 			);
 		} else {
-			teamSeason = await idb.league
-				.transaction("teamSeasons")
-				.store.index("season, tid")
-				.get([season, tid]);
+			const rows =
+				typeof lid === "number"
+					? ((await electronReadTeamSeasons(lid, { tid, season })) ?? [])
+					: [];
+			teamSeason = rows[0];
 		}
 
 		if (teamSeason) {
@@ -68,11 +75,12 @@ const getCopies = async (
 				);
 			}
 
-			// Single season, from database
-			return idb.league
-				.transaction("teamSeasons")
-				.store.index("season, tid")
-				.getAll(IDBKeyRange.bound([season], [season, ""]));
+			// Single season, from SQLite
+			return (
+				(typeof lid === "number"
+					? await electronReadTeamSeasons(lid, { season })
+					: null) ?? []
+			);
 		}
 
 		throw new Error(
@@ -81,11 +89,16 @@ const getCopies = async (
 	}
 
 	if (seasons !== undefined) {
+		const sqliteRows =
+			typeof lid === "number"
+				? ((await electronReadTeamSeasons(lid, {
+						tid,
+						seasonFrom: seasons[0],
+						seasonTo: seasons[1],
+					})) ?? [])
+				: [];
 		return mergeByPk(
-			await idb.league
-				.transaction("teamSeasons")
-				.store.index("tid, season")
-				.getAll(IDBKeyRange.bound([tid, seasons[0]], [tid, seasons[1]])),
+			sqliteRows,
 			await idb.cache.teamSeasons.indexGetAll("teamSeasonsByTidSeason", [
 				[tid, seasons[0]],
 				[tid, seasons[1]],
@@ -95,11 +108,12 @@ const getCopies = async (
 		);
 	}
 
+	const sqliteRows =
+		typeof lid === "number"
+			? ((await electronReadTeamSeasons(lid, { tid })) ?? [])
+			: [];
 	return mergeByPk(
-		await idb.league
-			.transaction("teamSeasons")
-			.store.index("tid, season")
-			.getAll(IDBKeyRange.bound([tid], [tid, ""])),
+		sqliteRows,
 		await idb.cache.teamSeasons.indexGetAll("teamSeasonsByTidSeason", [
 			[tid],
 			[tid, "Z"],

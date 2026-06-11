@@ -61,13 +61,20 @@ export const resetCache = async (data?: Partial<Record<Store, any[]>>) => {
 
 	idb.cache.flush = async () => {};
 
-	// Players is not in STORES (handled by SQLite), but tests still need it initialized.
-	for (const store of [...STORES, "players"] as Store | "players") {
+	// These stores are not in STORES (handled by SQLite), but tests still need them initialized.
+	const allStores: Store[] = [
+		...STORES,
+		"players",
+		"teams",
+		"teamSeasons",
+		"teamStats",
+	];
+	for (const store of allStores) {
 		// This stuff is all needed because a real Cache.fill is not called.
-		idb.cache._data[store as Store] = {};
-		idb.cache._deletes[store as Store] = new Set();
-		idb.cache._dirtyRecords[store as Store] = new Set();
-		idb.cache._maxIds[store as Store] = -1;
+		idb.cache._data[store] = {};
+		idb.cache._deletes[store] = new Set();
+		idb.cache._dirtyRecords[store] = new Set();
+		idb.cache._maxIds[store] = -1;
 
 		idb.cache._markDirtyIndexes(store);
 	}

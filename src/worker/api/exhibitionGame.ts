@@ -19,6 +19,10 @@ import { processTeam } from "../core/game/loadTeams.ts";
 import { gameSimToBoxScore } from "../core/game/writeGameStats.ts";
 import { getRosterOrderByPid } from "../core/team/rosterAutoSort.basketball.ts";
 import { connectLeague, idb } from "../db/index.ts";
+import {
+	readAllTeams as electronReadAllTeams,
+	readTeamSeasons as electronReadTeamSeasons,
+} from "../db/electronApi.ts";
 import { getPlayersActiveSeason } from "../db/getCopies/players.ts";
 import {
 	defaultGameAttributes,
@@ -108,11 +112,18 @@ const getSeasonInfoLeague = async ({
 	const isCurrentOngoingSeason =
 		season === currentSeason && currentPhase < PHASE.DRAFT;
 
-	const teams = await league.transaction("teams").store.getAll();
-	const teamSeasons = await league
-		.transaction("teamSeasons")
-		.store.index("season, tid")
-		.getAll(IDBKeyRange.bound([season], [season, ""]));
+	const teamsFromElectron = await electronReadAllTeams(lid);
+	const teams =
+		teamsFromElectron ?? (await league.transaction("teams").store.getAll());
+	const teamSeasonsFromElectron = await electronReadTeamSeasons(lid, {
+		season,
+	});
+	const teamSeasons =
+		teamSeasonsFromElectron ??
+		(await league
+			.transaction("teamSeasons")
+			.store.index("season, tid")
+			.getAll(IDBKeyRange.bound([season], [season, ""])));
 
 	let pid = pidOffset;
 

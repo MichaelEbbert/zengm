@@ -1,5 +1,6 @@
 import { idb } from "../db/index.ts";
 import { g, helpers, processPlayersHallOfFame } from "../util/index.ts";
+import { readTeamSeasons as electronReadTeamSeasons } from "../db/electronApi.ts";
 import type { UpdateEvents, Player, ViewInput } from "../../common/types.ts";
 import { orderBy, type OrderBySortParams } from "../../common/utils.ts";
 import { player } from "../core/index.ts";
@@ -137,22 +138,30 @@ const tidAndSeasonToAbbrev = async (most: Most) => {
 	const extra = most.extra as any;
 	const tid = extra.tid;
 	const season = extra.bestSeasonOverride ?? extra.season;
-	const teamSeason = await idb.league
-		.transaction("teamSeasons")
-		.store.index("season, tid")
-		.get([season, tid]);
+	let lid: number | undefined;
+	try {
+		lid = g.get("lid") as number;
+	} catch {}
+	const tsRows1 =
+		typeof lid === "number"
+			? ((await electronReadTeamSeasons(lid, { tid, season })) ?? [])
+			: [];
+	const teamSeason = tsRows1[0];
 	if (teamSeason) {
 		abbrev = teamSeason.abbrev;
 	}
 
 	if (abbrev === undefined) {
 		if (season < g.get("startingSeason")) {
-			const teamSeason = await idb.league
-				.transaction("teamSeasons")
-				.store.index("season, tid")
-				.get([g.get("startingSeason"), tid]);
-			if (teamSeason) {
-				abbrev = teamSeason.abbrev;
+			const tsRows2 =
+				typeof lid === "number"
+					? ((await electronReadTeamSeasons(lid, {
+							tid,
+							season: g.get("startingSeason"),
+						})) ?? [])
+					: [];
+			if (tsRows2[0]) {
+				abbrev = tsRows2[0].abbrev;
 			}
 		}
 
