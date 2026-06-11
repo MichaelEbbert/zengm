@@ -22,7 +22,8 @@ Read-only data that was fetched but not modified may be kept in browser session 
 - [x] Phase 1 — COMPLETE (Electron runtime, HTTP API)
 - [x] Phase 2 — COMPLETE (box scores to SQLite, reads and writes verified)
 - [x] Phase 3 — COMPLETE (players fully normalized to SQLite; IDB players store empty and unused)
-- [ ] Phase 4+ — not started
+- [x] Phase 4 — COMPLETE (teams/teamSeasons/teamStats fully normalized to SQLite)
+- [ ] Phase 5+ — not started
 
 ## Research Tasks
 
@@ -882,8 +883,8 @@ CREATE INDEX idx_team_stats_season ON team_stats(season);
 - [x] 4.3 Replace flush/fill for all three stores
 - [x] 4.4 Replace any getCopies direct reads
 - [x] 4.5 Remove from Cache STORES
-- [ ] 4.6 Verify standings, team history, finances display correctly
-- [ ] 4.7 Commit and push
+- [x] 4.6 Verify standings, team history, finances display correctly
+- [x] 4.7 Commit and push
 
 ---
 
