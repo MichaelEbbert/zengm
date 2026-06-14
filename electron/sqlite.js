@@ -1175,6 +1175,66 @@ function runMigrations(db) {
 			);
 		})();
 	}
+	if (!applied.has("005_per_season_stores")) {
+		db.transaction(() => {
+			db.exec(`
+				CREATE TABLE all_stars (
+					season INTEGER PRIMARY KEY,
+					data   TEXT NOT NULL
+				);
+
+				CREATE TABLE awards (
+					season INTEGER PRIMARY KEY,
+					data   TEXT NOT NULL
+				);
+
+				CREATE TABLE draft_lottery_results (
+					season INTEGER PRIMARY KEY,
+					data   TEXT NOT NULL
+				);
+
+				CREATE TABLE events (
+					eid    INTEGER PRIMARY KEY,
+					season INTEGER NOT NULL,
+					pids   TEXT,
+					dpids  TEXT,
+					data   TEXT NOT NULL
+				);
+				CREATE INDEX events_season ON events(season);
+
+				CREATE TABLE head_to_heads (
+					season INTEGER PRIMARY KEY,
+					data   TEXT NOT NULL
+				);
+
+				CREATE TABLE player_feats (
+					fid  INTEGER PRIMARY KEY,
+					data TEXT NOT NULL
+				);
+
+				CREATE TABLE playoff_series (
+					season INTEGER PRIMARY KEY,
+					data   TEXT NOT NULL
+				);
+
+				CREATE TABLE scheduled_events (
+					id     INTEGER PRIMARY KEY,
+					season INTEGER NOT NULL,
+					data   TEXT NOT NULL
+				);
+				CREATE INDEX scheduled_events_season ON scheduled_events(season);
+
+				CREATE TABLE season_leaders (
+					season INTEGER PRIMARY KEY,
+					data   TEXT NOT NULL
+				);
+			`);
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"005_per_season_stores",
+				new Date().toISOString(),
+			);
+		})();
+	}
 }
 
 // ---- Phase 5A store serialization helpers ----------------------------------------
@@ -2665,4 +2725,345 @@ export function readGames(db, filter) {
 export function getMaxGid(db) {
 	const row = db.prepare("SELECT MAX(gid) AS max FROM games").get();
 	return row?.max ?? -1;
+}
+
+// ---- Phase 5B store serialization helpers ----------------------------------------
+
+function allStarsToRow(as) {
+	return { season: as.season, data: JSON.stringify(as) };
+}
+function rowToAllStars(row) {
+	return JSON.parse(row.data);
+}
+
+function awardsToRow(a) {
+	return { season: a.season, data: JSON.stringify(a) };
+}
+function rowToAwards(row) {
+	return JSON.parse(row.data);
+}
+
+function draftLotteryResultToRow(dlr) {
+	return { season: dlr.season, data: JSON.stringify(dlr) };
+}
+function rowToDraftLotteryResult(row) {
+	return JSON.parse(row.data);
+}
+
+function eventToRow(ev) {
+	return {
+		eid: ev.eid,
+		season: ev.season,
+		pids: ev.pids ? JSON.stringify(ev.pids) : null,
+		dpids: ev.dpids ? JSON.stringify(ev.dpids) : null,
+		data: JSON.stringify(ev),
+	};
+}
+function rowToEvent(row) {
+	return JSON.parse(row.data);
+}
+
+function headToHeadToRow(h) {
+	return { season: h.season, data: JSON.stringify(h) };
+}
+function rowToHeadToHead(row) {
+	return JSON.parse(row.data);
+}
+
+function playerFeatToRow(pf) {
+	return { fid: pf.fid, data: JSON.stringify(pf) };
+}
+function rowToPlayerFeat(row) {
+	return JSON.parse(row.data);
+}
+
+function playoffSeriesToRow(ps) {
+	return { season: ps.season, data: JSON.stringify(ps) };
+}
+function rowToPlayoffSeries(row) {
+	return JSON.parse(row.data);
+}
+
+function scheduledEventToRow(se) {
+	return { id: se.id, season: se.season, data: JSON.stringify(se) };
+}
+function rowToScheduledEvent(row) {
+	return JSON.parse(row.data);
+}
+
+function seasonLeadersToRow(sl) {
+	return { season: sl.season, data: JSON.stringify(sl) };
+}
+function rowToSeasonLeaders(row) {
+	return JSON.parse(row.data);
+}
+
+// ---- Phase 5B CRUD functions ----------------------------------------
+
+export function writeAllStars(db, records, deleteSeasons = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO all_stars (season, data) VALUES (@season, @data)",
+	);
+	db.transaction(() => {
+		for (const season of deleteSeasons) {
+			db.prepare("DELETE FROM all_stars WHERE season = ?").run(season);
+		}
+		for (const r of records) upsert.run(allStarsToRow(r));
+	})();
+}
+export function readAllStars(db, season) {
+	if (season !== undefined) {
+		const row = db
+			.prepare("SELECT * FROM all_stars WHERE season = ?")
+			.get(season);
+		return row ? [rowToAllStars(row)] : [];
+	}
+	return db
+		.prepare("SELECT * FROM all_stars ORDER BY season ASC")
+		.all()
+		.map(rowToAllStars);
+}
+export function countAllStars(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM all_stars").get()?.n ?? 0;
+}
+
+export function writeAwards(db, records, deleteSeasons = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO awards (season, data) VALUES (@season, @data)",
+	);
+	db.transaction(() => {
+		for (const season of deleteSeasons) {
+			db.prepare("DELETE FROM awards WHERE season = ?").run(season);
+		}
+		for (const r of records) upsert.run(awardsToRow(r));
+	})();
+}
+export function readAwards(db, season) {
+	if (season !== undefined) {
+		const row = db.prepare("SELECT * FROM awards WHERE season = ?").get(season);
+		return row ? [rowToAwards(row)] : [];
+	}
+	return db
+		.prepare("SELECT * FROM awards ORDER BY season ASC")
+		.all()
+		.map(rowToAwards);
+}
+export function countAwards(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM awards").get()?.n ?? 0;
+}
+
+export function writeDraftLotteryResults(db, records, deleteSeasons = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO draft_lottery_results (season, data) VALUES (@season, @data)",
+	);
+	db.transaction(() => {
+		for (const season of deleteSeasons) {
+			db.prepare("DELETE FROM draft_lottery_results WHERE season = ?").run(
+				season,
+			);
+		}
+		for (const r of records) upsert.run(draftLotteryResultToRow(r));
+	})();
+}
+export function readDraftLotteryResults(db, season) {
+	if (season !== undefined) {
+		const row = db
+			.prepare("SELECT * FROM draft_lottery_results WHERE season = ?")
+			.get(season);
+		return row ? [rowToDraftLotteryResult(row)] : [];
+	}
+	return db
+		.prepare("SELECT * FROM draft_lottery_results ORDER BY season ASC")
+		.all()
+		.map(rowToDraftLotteryResult);
+}
+export function countDraftLotteryResults(db) {
+	return (
+		db.prepare("SELECT COUNT(*) AS n FROM draft_lottery_results").get()?.n ?? 0
+	);
+}
+
+export function writeEvents(db, records, deleteEids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO events (eid, season, pids, dpids, data) VALUES (@eid, @season, @pids, @dpids, @data)",
+	);
+	db.transaction(() => {
+		for (const eid of deleteEids) {
+			db.prepare("DELETE FROM events WHERE eid = ?").run(eid);
+		}
+		for (const r of records) upsert.run(eventToRow(r));
+	})();
+}
+export function readEvents(db, filter = {}) {
+	if (filter.eid !== undefined) {
+		const row = db
+			.prepare("SELECT * FROM events WHERE eid = ?")
+			.get(filter.eid);
+		return row ? [rowToEvent(row)] : [];
+	}
+	if (filter.season !== undefined) {
+		return db
+			.prepare("SELECT * FROM events WHERE season = ? ORDER BY eid ASC")
+			.all(filter.season)
+			.map(rowToEvent);
+	}
+	if (filter.pid !== undefined) {
+		return db
+			.prepare(
+				"SELECT * FROM events WHERE pids IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(pids) WHERE value = ?) ORDER BY eid ASC",
+			)
+			.all(filter.pid)
+			.map(rowToEvent);
+	}
+	if (filter.dpid !== undefined) {
+		return db
+			.prepare(
+				"SELECT * FROM events WHERE dpids IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(dpids) WHERE value = ?) ORDER BY eid ASC",
+			)
+			.all(filter.dpid)
+			.map(rowToEvent);
+	}
+	return db
+		.prepare("SELECT * FROM events ORDER BY eid ASC")
+		.all()
+		.map(rowToEvent);
+}
+export function countEvents(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM events").get()?.n ?? 0;
+}
+export function maxEventEid(db) {
+	return db.prepare("SELECT MAX(eid) AS m FROM events").get()?.m ?? -1;
+}
+
+export function writeHeadToHeads(db, records, deleteSeasons = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO head_to_heads (season, data) VALUES (@season, @data)",
+	);
+	db.transaction(() => {
+		for (const season of deleteSeasons) {
+			db.prepare("DELETE FROM head_to_heads WHERE season = ?").run(season);
+		}
+		for (const r of records) upsert.run(headToHeadToRow(r));
+	})();
+}
+export function readHeadToHeads(db, season) {
+	if (season !== undefined) {
+		const row = db
+			.prepare("SELECT * FROM head_to_heads WHERE season = ?")
+			.get(season);
+		return row ? [rowToHeadToHead(row)] : [];
+	}
+	return db
+		.prepare("SELECT * FROM head_to_heads ORDER BY season ASC")
+		.all()
+		.map(rowToHeadToHead);
+}
+export function countHeadToHeads(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM head_to_heads").get()?.n ?? 0;
+}
+
+export function writePlayerFeats(db, records, deleteFids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO player_feats (fid, data) VALUES (@fid, @data)",
+	);
+	db.transaction(() => {
+		for (const fid of deleteFids) {
+			db.prepare("DELETE FROM player_feats WHERE fid = ?").run(fid);
+		}
+		for (const r of records) upsert.run(playerFeatToRow(r));
+	})();
+}
+export function readPlayerFeats(db) {
+	return db
+		.prepare("SELECT * FROM player_feats ORDER BY fid ASC")
+		.all()
+		.map(rowToPlayerFeat);
+}
+export function countPlayerFeats(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM player_feats").get()?.n ?? 0;
+}
+export function maxPlayerFeatFid(db) {
+	return db.prepare("SELECT MAX(fid) AS m FROM player_feats").get()?.m ?? -1;
+}
+
+export function writePlayoffSeries(db, records, deleteSeasons = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO playoff_series (season, data) VALUES (@season, @data)",
+	);
+	db.transaction(() => {
+		for (const season of deleteSeasons) {
+			db.prepare("DELETE FROM playoff_series WHERE season = ?").run(season);
+		}
+		for (const r of records) upsert.run(playoffSeriesToRow(r));
+	})();
+}
+export function readPlayoffSeries(db) {
+	return db
+		.prepare("SELECT * FROM playoff_series ORDER BY season ASC")
+		.all()
+		.map(rowToPlayoffSeries);
+}
+export function countPlayoffSeries(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM playoff_series").get()?.n ?? 0;
+}
+
+export function writeScheduledEvents(db, records, deleteIds = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO scheduled_events (id, season, data) VALUES (@id, @season, @data)",
+	);
+	db.transaction(() => {
+		for (const id of deleteIds) {
+			db.prepare("DELETE FROM scheduled_events WHERE id = ?").run(id);
+		}
+		for (const r of records) upsert.run(scheduledEventToRow(r));
+	})();
+}
+export function readScheduledEvents(db, season) {
+	if (season !== undefined) {
+		return db
+			.prepare(
+				"SELECT * FROM scheduled_events WHERE season = ? ORDER BY id ASC",
+			)
+			.all(season)
+			.map(rowToScheduledEvent);
+	}
+	return db
+		.prepare("SELECT * FROM scheduled_events ORDER BY id ASC")
+		.all()
+		.map(rowToScheduledEvent);
+}
+export function countScheduledEvents(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM scheduled_events").get()?.n ?? 0;
+}
+export function maxScheduledEventId(db) {
+	return db.prepare("SELECT MAX(id) AS m FROM scheduled_events").get()?.m ?? -1;
+}
+
+export function writeSeasonLeaders(db, records, deleteSeasons = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO season_leaders (season, data) VALUES (@season, @data)",
+	);
+	db.transaction(() => {
+		for (const season of deleteSeasons) {
+			db.prepare("DELETE FROM season_leaders WHERE season = ?").run(season);
+		}
+		for (const r of records) upsert.run(seasonLeadersToRow(r));
+	})();
+}
+export function readSeasonLeaders(db, fromSeason) {
+	if (fromSeason !== undefined) {
+		return db
+			.prepare(
+				"SELECT * FROM season_leaders WHERE season >= ? ORDER BY season ASC",
+			)
+			.all(fromSeason)
+			.map(rowToSeasonLeaders);
+	}
+	return db
+		.prepare("SELECT * FROM season_leaders ORDER BY season ASC")
+		.all()
+		.map(rowToSeasonLeaders);
+}
+export function countSeasonLeaders(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM season_leaders").get()?.n ?? 0;
 }

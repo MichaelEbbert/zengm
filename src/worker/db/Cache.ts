@@ -46,6 +46,34 @@ import {
 	flushMessages,
 	countSqliteMessages,
 	getMaxMessageMid,
+	flushAllStars,
+	readAllStars as electronReadAllStars,
+	countSqliteAllStars,
+	flushAwards,
+	readAwards as electronReadAwards,
+	countSqliteAwards,
+	flushDraftLotteryResults,
+	readDraftLotteryResults as electronReadDraftLotteryResults,
+	countSqliteDraftLotteryResults,
+	flushEvents,
+	countSqliteEvents,
+	getMaxEventEid,
+	flushHeadToHeads,
+	readHeadToHeads as electronReadHeadToHeads,
+	countSqliteHeadToHeads,
+	flushPlayerFeats,
+	countSqlitePlayerFeats,
+	getMaxPlayerFeatFid,
+	flushPlayoffSeries,
+	readAllPlayoffSeries as electronReadAllPlayoffSeries,
+	countSqlitePlayoffSeries,
+	flushScheduledEvents,
+	readScheduledEvents as electronReadScheduledEvents,
+	countSqliteScheduledEvents,
+	getMaxScheduledEventId,
+	flushSeasonLeaders,
+	readSeasonLeaders as electronReadSeasonLeaders,
+	countSqliteSeasonLeaders,
 } from "./electronApi.ts";
 import type {
 	AllStars,
@@ -124,17 +152,7 @@ type Index =
 	| "teamSeasonsByTidSeason"
 	| "teamStatsByPlayoffsTid";
 
-export const STORES: Store[] = [
-	"allStars",
-	"awards",
-	"draftLotteryResults",
-	"events",
-	"headToHeads",
-	"playerFeats",
-	"playoffSeries",
-	"scheduledEvents",
-	"seasonLeaders",
-];
+export const STORES: Store[] = [];
 const AUTO_FLUSH_INTERVAL = 4000; // 4 seconds
 
 export const NUM_PRIOR_SEASONS_TEAM_SEASONS = 2;
@@ -1272,6 +1290,271 @@ class Cache {
 				typeof lid === "number" ? await getMaxMessageMid(lid) : -1;
 		}
 
+		// allStars stored in SQLite; preload current season into cache.
+		if (local.autoSave) {
+			this._deletes["allStars"] = new Set();
+			this._dirtyRecords["allStars"] = new Set();
+			this._data["allStars"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteAsCount =
+				typeof lid === "number" ? await countSqliteAllStars(lid) : 0;
+			if (sqliteAsCount > 0) {
+				const rows = await electronReadAllStars(lid!, { season: season2 });
+				if (rows) {
+					for (const r of rows) this._data["allStars"][r.season] = r;
+				}
+			} else {
+				const allIdb = await idb.league
+					.transaction(["allStars"])
+					.objectStore("allStars")
+					.getAll();
+				if (typeof lid === "number" && allIdb.length > 0) {
+					await flushAllStars(lid, allIdb, []);
+				}
+				for (const r of allIdb) {
+					if (r.season === season2) this._data["allStars"][r.season] = r;
+				}
+			}
+			// season PK, not autoIncrement — no maxId needed
+		}
+
+		// awards stored in SQLite; not preloaded into cache.
+		if (local.autoSave) {
+			this._deletes["awards"] = new Set();
+			this._dirtyRecords["awards"] = new Set();
+			this._data["awards"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteAwCount =
+				typeof lid === "number" ? await countSqliteAwards(lid) : 0;
+			if (sqliteAwCount === 0 && typeof lid === "number") {
+				const allIdb = await idb.league
+					.transaction(["awards"])
+					.objectStore("awards")
+					.getAll();
+				if (allIdb.length > 0) await flushAwards(lid, allIdb, []);
+			}
+			// awards not preloaded; season PK, no maxId needed
+		}
+
+		// draftLotteryResults stored in SQLite; not preloaded into cache.
+		if (local.autoSave) {
+			this._deletes["draftLotteryResults"] = new Set();
+			this._dirtyRecords["draftLotteryResults"] = new Set();
+			this._data["draftLotteryResults"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteDlrCount =
+				typeof lid === "number" ? await countSqliteDraftLotteryResults(lid) : 0;
+			if (sqliteDlrCount === 0 && typeof lid === "number") {
+				const allIdb = await idb.league
+					.transaction(["draftLotteryResults"])
+					.objectStore("draftLotteryResults")
+					.getAll();
+				if (allIdb.length > 0) await flushDraftLotteryResults(lid, allIdb, []);
+			}
+			// not preloaded; season PK, no maxId needed
+		}
+
+		// events stored in SQLite; not preloaded into cache. Seed maxId from SQLite.
+		if (local.autoSave) {
+			this._deletes["events"] = new Set();
+			this._dirtyRecords["events"] = new Set();
+			this._data["events"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteEvCount =
+				typeof lid === "number" ? await countSqliteEvents(lid) : 0;
+			if (sqliteEvCount === 0 && typeof lid === "number") {
+				const allIdb = await idb.league
+					.transaction(["events"])
+					.objectStore("events")
+					.getAll();
+				if (allIdb.length > 0) await flushEvents(lid, allIdb, []);
+			}
+			this._maxIds["events"] =
+				typeof lid === "number" ? await getMaxEventEid(lid) : -1;
+		}
+
+		// headToHeads stored in SQLite; preload current season into cache.
+		if (local.autoSave) {
+			this._deletes["headToHeads"] = new Set();
+			this._dirtyRecords["headToHeads"] = new Set();
+			this._data["headToHeads"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteH2hCount =
+				typeof lid === "number" ? await countSqliteHeadToHeads(lid) : 0;
+			if (sqliteH2hCount > 0) {
+				const rows = await electronReadHeadToHeads(lid!, { season: season2 });
+				if (rows) {
+					for (const r of rows) this._data["headToHeads"][r.season] = r;
+				}
+			} else {
+				const allIdb = await idb.league
+					.transaction(["headToHeads"])
+					.objectStore("headToHeads")
+					.getAll();
+				if (typeof lid === "number" && allIdb.length > 0) {
+					await flushHeadToHeads(lid, allIdb, []);
+				}
+				for (const r of allIdb) {
+					if (r.season === season2) this._data["headToHeads"][r.season] = r;
+				}
+			}
+			// season PK, not autoIncrement — no maxId needed
+		}
+
+		// playerFeats stored in SQLite; not preloaded into cache. Seed maxId from SQLite.
+		if (local.autoSave) {
+			this._deletes["playerFeats"] = new Set();
+			this._dirtyRecords["playerFeats"] = new Set();
+			this._data["playerFeats"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqlitePfCount =
+				typeof lid === "number" ? await countSqlitePlayerFeats(lid) : 0;
+			if (sqlitePfCount === 0 && typeof lid === "number") {
+				const allIdb = await idb.league
+					.transaction(["playerFeats"])
+					.objectStore("playerFeats")
+					.getAll();
+				if (allIdb.length > 0) await flushPlayerFeats(lid, allIdb, []);
+			}
+			this._maxIds["playerFeats"] =
+				typeof lid === "number" ? await getMaxPlayerFeatFid(lid) : -1;
+		}
+
+		// playoffSeries stored in SQLite; preload current season into cache.
+		if (local.autoSave) {
+			this._deletes["playoffSeries"] = new Set();
+			this._dirtyRecords["playoffSeries"] = new Set();
+			this._data["playoffSeries"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqlitePsCount =
+				typeof lid === "number" ? await countSqlitePlayoffSeries(lid) : 0;
+			if (sqlitePsCount > 0) {
+				const rows = await electronReadAllPlayoffSeries(lid!);
+				if (rows) {
+					for (const r of rows) {
+						if (r.season === season2) this._data["playoffSeries"][r.season] = r;
+					}
+				}
+			} else {
+				const allIdb = await idb.league
+					.transaction(["playoffSeries"])
+					.objectStore("playoffSeries")
+					.getAll();
+				if (typeof lid === "number" && allIdb.length > 0) {
+					await flushPlayoffSeries(lid, allIdb, []);
+				}
+				for (const r of allIdb) {
+					if (r.season === season2) this._data["playoffSeries"][r.season] = r;
+				}
+			}
+			// season PK, not autoIncrement — no maxId needed
+		}
+
+		// scheduledEvents stored in SQLite; preload current season into cache.
+		if (local.autoSave) {
+			this._deletes["scheduledEvents"] = new Set();
+			this._dirtyRecords["scheduledEvents"] = new Set();
+			this._data["scheduledEvents"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const sqliteSeCount =
+				typeof lid === "number" ? await countSqliteScheduledEvents(lid) : 0;
+			if (sqliteSeCount > 0) {
+				const rows = await electronReadScheduledEvents(lid!, {
+					season: season2,
+				});
+				if (rows) {
+					for (const r of rows) this._data["scheduledEvents"][r.id] = r;
+				}
+			} else {
+				const allIdb = await idb.league
+					.transaction(["scheduledEvents"])
+					.objectStore("scheduledEvents")
+					.getAll();
+				if (typeof lid === "number" && allIdb.length > 0) {
+					await flushScheduledEvents(lid, allIdb, []);
+				}
+				for (const r of allIdb) {
+					if (r.season === season2) this._data["scheduledEvents"][r.id] = r;
+				}
+			}
+			this._maxIds["scheduledEvents"] =
+				typeof lid === "number" ? await getMaxScheduledEventId(lid) : -1;
+		}
+
+		// seasonLeaders stored in SQLite; preload last NUM_SEASON_LEADERS_CACHE seasons.
+		if (local.autoSave) {
+			this._deletes["seasonLeaders"] = new Set();
+			this._dirtyRecords["seasonLeaders"] = new Set();
+			this._data["seasonLeaders"] = {};
+
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid") as number;
+			} catch {}
+
+			const fromSeason = season2 - NUM_SEASON_LEADERS_CACHE;
+			const sqliteSlCount =
+				typeof lid === "number" ? await countSqliteSeasonLeaders(lid) : 0;
+			if (sqliteSlCount > 0) {
+				const rows = await electronReadSeasonLeaders(lid!, { fromSeason });
+				if (rows) {
+					for (const r of rows) this._data["seasonLeaders"][r.season] = r;
+				}
+			} else {
+				const allIdb = await idb.league
+					.transaction(["seasonLeaders"])
+					.objectStore("seasonLeaders")
+					.getAll();
+				if (typeof lid === "number" && allIdb.length > 0) {
+					await flushSeasonLeaders(lid, allIdb, []);
+				}
+				for (const r of allIdb) {
+					if (r.season >= fromSeason) this._data["seasonLeaders"][r.season] = r;
+				}
+			}
+			// season PK, not autoIncrement — no maxId needed
+		}
+
 		for (const store of STORES) {
 			if (local.autoSave) {
 				await this._loadStore(
@@ -1449,6 +1732,15 @@ class Cache {
 		await flushSqliteStore("savedTrades", flushSavedTrades);
 		await flushSqliteStore("savedTradingBlock", flushSavedTradingBlock);
 		await flushSqliteStore("messages", flushMessages);
+		await flushSqliteStore("allStars", flushAllStars);
+		await flushSqliteStore("awards", flushAwards);
+		await flushSqliteStore("draftLotteryResults", flushDraftLotteryResults);
+		await flushSqliteStore("events", flushEvents);
+		await flushSqliteStore("headToHeads", flushHeadToHeads);
+		await flushSqliteStore("playerFeats", flushPlayerFeats);
+		await flushSqliteStore("playoffSeries", flushPlayoffSeries);
+		await flushSqliteStore("scheduledEvents", flushScheduledEvents);
+		await flushSqliteStore("seasonLeaders", flushSeasonLeaders);
 
 		if (stores.length === 0) {
 			// Not sure if this is needed - prior to this short circuit, if this._dirty was somehow true it would have been set false at the bottom of this function. So put it here just in case.

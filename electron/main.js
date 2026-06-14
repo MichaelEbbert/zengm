@@ -50,6 +50,36 @@ import {
 	readMessages,
 	countMessages,
 	maxMessageMid,
+	writeAllStars,
+	readAllStars,
+	countAllStars,
+	writeAwards,
+	readAwards,
+	countAwards,
+	writeDraftLotteryResults,
+	readDraftLotteryResults,
+	countDraftLotteryResults,
+	writeEvents,
+	readEvents,
+	countEvents,
+	maxEventEid,
+	writeHeadToHeads,
+	readHeadToHeads,
+	countHeadToHeads,
+	writePlayerFeats,
+	readPlayerFeats,
+	countPlayerFeats,
+	maxPlayerFeatFid,
+	writePlayoffSeries,
+	readPlayoffSeries,
+	countPlayoffSeries,
+	writeScheduledEvents,
+	readScheduledEvents,
+	countScheduledEvents,
+	maxScheduledEventId,
+	writeSeasonLeaders,
+	readSeasonLeaders,
+	countSeasonLeaders,
 } from "./sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -600,6 +630,288 @@ function startApiServer(win) {
 				else if (url2.searchParams.has("limit"))
 					filter.limit = Number(url2.searchParams.get("limit"));
 				send(200, { messages: readMessages(db, filter) });
+				return;
+			}
+
+			if (key === "POST /all-stars/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, allStars, deleteSeasons } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeAllStars(db, allStars, deleteSeasons ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /all-stars") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countAllStars(db) });
+					return;
+				}
+				const season = url2.searchParams.has("season")
+					? Number(url2.searchParams.get("season"))
+					: undefined;
+				send(200, { allStars: readAllStars(db, season) });
+				return;
+			}
+
+			if (key === "POST /awards/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, awards, deleteSeasons } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeAwards(db, awards, deleteSeasons ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /awards") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countAwards(db) });
+					return;
+				}
+				const season = url2.searchParams.has("season")
+					? Number(url2.searchParams.get("season"))
+					: undefined;
+				send(200, { awards: readAwards(db, season) });
+				return;
+			}
+
+			if (key === "POST /draft-lottery-results/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, draftLotteryResults, deleteSeasons } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeDraftLotteryResults(db, draftLotteryResults, deleteSeasons ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /draft-lottery-results") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countDraftLotteryResults(db) });
+					return;
+				}
+				const season = url2.searchParams.has("season")
+					? Number(url2.searchParams.get("season"))
+					: undefined;
+				send(200, { draftLotteryResults: readDraftLotteryResults(db, season) });
+				return;
+			}
+
+			if (key === "POST /events/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, events, deleteEids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeEvents(db, events, deleteEids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /events") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countEvents(db) });
+					return;
+				}
+				if (url2.searchParams.get("mode") === "maxeid") {
+					send(200, { maxEid: maxEventEid(db) });
+					return;
+				}
+				const filter = {};
+				if (url2.searchParams.has("eid"))
+					filter.eid = Number(url2.searchParams.get("eid"));
+				else if (url2.searchParams.has("season"))
+					filter.season = Number(url2.searchParams.get("season"));
+				else if (url2.searchParams.has("pid"))
+					filter.pid = Number(url2.searchParams.get("pid"));
+				else if (url2.searchParams.has("dpid"))
+					filter.dpid = Number(url2.searchParams.get("dpid"));
+				send(200, { events: readEvents(db, filter) });
+				return;
+			}
+
+			if (key === "POST /head-to-heads/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, headToHeads, deleteSeasons } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeHeadToHeads(db, headToHeads, deleteSeasons ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /head-to-heads") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countHeadToHeads(db) });
+					return;
+				}
+				const season = url2.searchParams.has("season")
+					? Number(url2.searchParams.get("season"))
+					: undefined;
+				send(200, { headToHeads: readHeadToHeads(db, season) });
+				return;
+			}
+
+			if (key === "POST /player-feats/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, playerFeats, deleteFids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writePlayerFeats(db, playerFeats, deleteFids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /player-feats") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countPlayerFeats(db) });
+					return;
+				}
+				if (url2.searchParams.get("mode") === "maxfid") {
+					send(200, { maxFid: maxPlayerFeatFid(db) });
+					return;
+				}
+				send(200, { playerFeats: readPlayerFeats(db) });
+				return;
+			}
+
+			if (key === "POST /playoff-series/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, playoffSeries, deleteSeasons } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writePlayoffSeries(db, playoffSeries, deleteSeasons ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /playoff-series") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countPlayoffSeries(db) });
+					return;
+				}
+				send(200, { playoffSeries: readPlayoffSeries(db) });
+				return;
+			}
+
+			if (key === "POST /scheduled-events/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, scheduledEvents, deleteIds } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeScheduledEvents(db, scheduledEvents, deleteIds ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /scheduled-events") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countScheduledEvents(db) });
+					return;
+				}
+				if (url2.searchParams.get("mode") === "maxid") {
+					send(200, { maxId: maxScheduledEventId(db) });
+					return;
+				}
+				const season = url2.searchParams.has("season")
+					? Number(url2.searchParams.get("season"))
+					: undefined;
+				send(200, { scheduledEvents: readScheduledEvents(db, season) });
+				return;
+			}
+
+			if (key === "POST /season-leaders/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, seasonLeaders, deleteSeasons } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeSeasonLeaders(db, seasonLeaders, deleteSeasons ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /season-leaders") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countSeasonLeaders(db) });
+					return;
+				}
+				const fromSeason = url2.searchParams.has("fromSeason")
+					? Number(url2.searchParams.get("fromSeason"))
+					: undefined;
+				send(200, { seasonLeaders: readSeasonLeaders(db, fromSeason) });
 				return;
 			}
 

@@ -685,3 +685,397 @@ export async function readPlayersFilter(
 		return null;
 	}
 }
+
+// ---- Phase 5B client functions ----------------------------------------
+
+export async function flushAllStars(
+	lid: number,
+	allStars: any[],
+	deleteSeasons: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/all-stars/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, allStars, deleteSeasons }),
+		});
+	} catch {}
+}
+export async function readAllStars(
+	lid: number,
+	filter: { season?: number } = {},
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if (filter.season !== undefined)
+			params.set("season", String(filter.season));
+		const r = await fetch(`${API}/all-stars?${params}`);
+		if (!r.ok) return null;
+		return (await r.json()).allStars;
+	} catch {
+		return null;
+	}
+}
+export async function countSqliteAllStars(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/all-stars?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+
+export async function flushAwards(
+	lid: number,
+	awards: any[],
+	deleteSeasons: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/awards/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, awards, deleteSeasons }),
+		});
+	} catch {}
+}
+export async function readAwards(
+	lid: number,
+	filter: { season?: number } = {},
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if (filter.season !== undefined)
+			params.set("season", String(filter.season));
+		const r = await fetch(`${API}/awards?${params}`);
+		if (!r.ok) return null;
+		return (await r.json()).awards;
+	} catch {
+		return null;
+	}
+}
+export async function countSqliteAwards(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/awards?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+
+export async function flushDraftLotteryResults(
+	lid: number,
+	draftLotteryResults: any[],
+	deleteSeasons: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/draft-lottery-results/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, draftLotteryResults, deleteSeasons }),
+		});
+	} catch {}
+}
+export async function readDraftLotteryResults(
+	lid: number,
+	filter: { season?: number } = {},
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if (filter.season !== undefined)
+			params.set("season", String(filter.season));
+		const r = await fetch(`${API}/draft-lottery-results?${params}`);
+		if (!r.ok) return null;
+		return (await r.json()).draftLotteryResults;
+	} catch {
+		return null;
+	}
+}
+export async function countSqliteDraftLotteryResults(
+	lid: number,
+): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/draft-lottery-results?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+
+export async function flushEvents(
+	lid: number,
+	events: any[],
+	deleteEids: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/events/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, events, deleteEids }),
+		});
+	} catch {}
+}
+export async function readEvents(
+	lid: number,
+	filter: { eid?: number; season?: number; pid?: number; dpid?: number } = {},
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if (filter.eid !== undefined) params.set("eid", String(filter.eid));
+		else if (filter.season !== undefined)
+			params.set("season", String(filter.season));
+		else if (filter.pid !== undefined) params.set("pid", String(filter.pid));
+		else if (filter.dpid !== undefined) params.set("dpid", String(filter.dpid));
+		const r = await fetch(`${API}/events?${params}`);
+		if (!r.ok) return null;
+		return (await r.json()).events;
+	} catch {
+		return null;
+	}
+}
+export async function countSqliteEvents(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/events?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+export async function getMaxEventEid(lid: number): Promise<number> {
+	if (!(await isAvailable())) return -1;
+	try {
+		const r = await fetch(`${API}/events?lid=${lid}&mode=maxeid`);
+		if (!r.ok) return -1;
+		return (await r.json()).maxEid ?? -1;
+	} catch {
+		return -1;
+	}
+}
+
+export async function flushHeadToHeads(
+	lid: number,
+	headToHeads: any[],
+	deleteSeasons: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/head-to-heads/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, headToHeads, deleteSeasons }),
+		});
+	} catch {}
+}
+export async function readHeadToHeads(
+	lid: number,
+	filter: { season?: number } = {},
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if (filter.season !== undefined)
+			params.set("season", String(filter.season));
+		const r = await fetch(`${API}/head-to-heads?${params}`);
+		if (!r.ok) return null;
+		return (await r.json()).headToHeads;
+	} catch {
+		return null;
+	}
+}
+export async function countSqliteHeadToHeads(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/head-to-heads?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+
+export async function flushPlayerFeats(
+	lid: number,
+	playerFeats: any[],
+	deleteFids: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/player-feats/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, playerFeats, deleteFids }),
+		});
+	} catch {}
+}
+export async function readAllPlayerFeats(lid: number): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/player-feats?lid=${lid}`);
+		if (!r.ok) return null;
+		return (await r.json()).playerFeats;
+	} catch {
+		return null;
+	}
+}
+export async function countSqlitePlayerFeats(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/player-feats?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+export async function getMaxPlayerFeatFid(lid: number): Promise<number> {
+	if (!(await isAvailable())) return -1;
+	try {
+		const r = await fetch(`${API}/player-feats?lid=${lid}&mode=maxfid`);
+		if (!r.ok) return -1;
+		return (await r.json()).maxFid ?? -1;
+	} catch {
+		return -1;
+	}
+}
+
+export async function flushPlayoffSeries(
+	lid: number,
+	playoffSeries: any[],
+	deleteSeasons: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/playoff-series/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, playoffSeries, deleteSeasons }),
+		});
+	} catch {}
+}
+export async function readAllPlayoffSeries(lid: number): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/playoff-series?lid=${lid}`);
+		if (!r.ok) return null;
+		return (await r.json()).playoffSeries;
+	} catch {
+		return null;
+	}
+}
+export async function countSqlitePlayoffSeries(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/playoff-series?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+
+export async function flushScheduledEvents(
+	lid: number,
+	scheduledEvents: any[],
+	deleteIds: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/scheduled-events/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, scheduledEvents, deleteIds }),
+		});
+	} catch {}
+}
+export async function readScheduledEvents(
+	lid: number,
+	filter: { season?: number } = {},
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if (filter.season !== undefined)
+			params.set("season", String(filter.season));
+		const r = await fetch(`${API}/scheduled-events?${params}`);
+		if (!r.ok) return null;
+		return (await r.json()).scheduledEvents;
+	} catch {
+		return null;
+	}
+}
+export async function countSqliteScheduledEvents(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/scheduled-events?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
+export async function getMaxScheduledEventId(lid: number): Promise<number> {
+	if (!(await isAvailable())) return -1;
+	try {
+		const r = await fetch(`${API}/scheduled-events?lid=${lid}&mode=maxid`);
+		if (!r.ok) return -1;
+		return (await r.json()).maxId ?? -1;
+	} catch {
+		return -1;
+	}
+}
+
+export async function flushSeasonLeaders(
+	lid: number,
+	seasonLeaders: any[],
+	deleteSeasons: number[] = [],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/season-leaders/flush`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, seasonLeaders, deleteSeasons }),
+		});
+	} catch {}
+}
+export async function readSeasonLeaders(
+	lid: number,
+	filter: { fromSeason?: number } = {},
+): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const params = new URLSearchParams({ lid: String(lid) });
+		if (filter.fromSeason !== undefined)
+			params.set("fromSeason", String(filter.fromSeason));
+		const r = await fetch(`${API}/season-leaders?${params}`);
+		if (!r.ok) return null;
+		return (await r.json()).seasonLeaders;
+	} catch {
+		return null;
+	}
+}
+export async function countSqliteSeasonLeaders(lid: number): Promise<number> {
+	if (!(await isAvailable())) return 0;
+	try {
+		const r = await fetch(`${API}/season-leaders?lid=${lid}&mode=count`);
+		if (!r.ok) return 0;
+		return (await r.json()).count;
+	} catch {
+		return 0;
+	}
+}
