@@ -1,6 +1,8 @@
 import { getAll, idb } from "../index.ts";
+import { readMessages as electronReadMessages } from "../electronApi.ts";
 import { maybeDeepCopy, mergeByPk } from "./helpers.ts";
 import type { GetCopyType, Message } from "../../../common/types.ts";
+import { g } from "../../util/index.ts";
 
 const getLastEntries = <T>(arr: T[], limit: number): T[] => {
 	return arr.slice(arr.length - limit);
@@ -16,10 +18,20 @@ const getCopies = async (
 	} = {},
 	type?: GetCopyType,
 ): Promise<Message[]> => {
+	let lid: number | undefined;
+	try {
+		lid = g.get("lid") as number;
+	} catch {}
+
 	if (mid !== undefined) {
 		const message = await idb.cache.messages.get(mid);
 		if (message) {
 			return [maybeDeepCopy(message, type)];
+		}
+
+		if (typeof lid === "number") {
+			const sqliteMsgs = await electronReadMessages(lid, { mid });
+			if (sqliteMsgs && sqliteMsgs.length > 0) return sqliteMsgs as Message[];
 		}
 
 		const message2 = await idb.league.get("messages", mid);
@@ -31,13 +43,19 @@ const getCopies = async (
 	}
 
 	if (limit !== undefined) {
-		const fromDb: Message[] = [];
-		for await (const { value: message } of idb.league
-			.transaction("messages")
-			.store.iterate(undefined, "prev")) {
-			fromDb.unshift(message);
-			if (fromDb.length >= limit) {
-				break;
+		let fromDb: Message[];
+		if (typeof lid === "number") {
+			fromDb =
+				((await electronReadMessages(lid, { limit })) as Message[]) ?? [];
+		} else {
+			fromDb = [];
+			for await (const { value: message } of idb.league
+				.transaction("messages")
+				.store.iterate(undefined, "prev")) {
+				fromDb.unshift(message);
+				if (fromDb.length >= limit) {
+					break;
+				}
 			}
 		}
 
@@ -50,16 +68,17 @@ const getCopies = async (
 			type,
 		);
 
-		// Need another getLastEntries because DB and cache will probably combine for (2 * limit) entries
 		return getLastEntries(messages, limit);
 	}
 
-	return mergeByPk(
-		await getAll(idb.league.transaction("messages").store),
-		await idb.cache.messages.getAll(),
-		"messages",
-		type,
-	);
+	let fromDb: Message[];
+	if (typeof lid === "number") {
+		fromDb = ((await electronReadMessages(lid)) as Message[]) ?? [];
+	} else {
+		fromDb = await getAll(idb.league.transaction("messages").store);
+	}
+
+	return mergeByPk(fromDb, await idb.cache.messages.getAll(), "messages", type);
 };
 
 export default getCopies;

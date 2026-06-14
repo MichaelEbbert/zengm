@@ -68,6 +68,15 @@ export const resetCache = async (data?: Partial<Record<Store, any[]>>) => {
 		"teams",
 		"teamSeasons",
 		"teamStats",
+		"gameAttributes",
+		"schedule",
+		"draftPicks",
+		"negotiations",
+		"releasedPlayers",
+		"trade",
+		"savedTrades",
+		"savedTradingBlock",
+		"messages",
 	];
 	for (const store of allStores) {
 		// This stuff is all needed because a real Cache.fill is not called.

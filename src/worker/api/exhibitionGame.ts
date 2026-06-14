@@ -22,6 +22,7 @@ import { connectLeague, idb } from "../db/index.ts";
 import {
 	readAllTeams as electronReadAllTeams,
 	readTeamSeasons as electronReadTeamSeasons,
+	readAllGameAttributes as electronReadAllGameAttributes,
 } from "../db/electronApi.ts";
 import { getPlayersActiveSeason } from "../db/getCopies/players.ts";
 import {
@@ -48,23 +49,41 @@ export const getLeagues = async () => {
 };
 
 export const getSeasons = async (lid: number) => {
-	const league = await connectLeague(lid);
-	const store = league.transaction("gameAttributes").store;
-	const season = await store.get("season");
-	const startingSeason = await store.get("startingSeason");
-
-	league.close();
-
-	if (!season || typeof season.value !== "number") {
-		throw new Error("Invalid season");
+	// Try SQLite first, fall back to IDB
+	const sqliteGa = await electronReadAllGameAttributes(lid);
+	let seasonValue: number | undefined;
+	let startingSeasonValue: number | undefined;
+	if (sqliteGa) {
+		seasonValue = sqliteGa.find((ga: any) => ga.key === "season")?.value;
+		startingSeasonValue = sqliteGa.find(
+			(ga: any) => ga.key === "startingSeason",
+		)?.value;
 	}
-	if (!startingSeason || typeof startingSeason.value !== "number") {
+
+	if (seasonValue === undefined || startingSeasonValue === undefined) {
+		const league = await connectLeague(lid);
+		const store = league.transaction("gameAttributes").store;
+		const season = await store.get("season");
+		const startingSeason = await store.get("startingSeason");
+		league.close();
+
+		if (!season || typeof season.value !== "number") {
+			throw new Error("Invalid season");
+		}
+		if (!startingSeason || typeof startingSeason.value !== "number") {
+			throw new Error("Invalid startingSeason");
+		}
+		seasonValue = season.value;
+		startingSeasonValue = startingSeason.value;
+	}
+
+	if (typeof seasonValue !== "number") throw new Error("Invalid season");
+	if (typeof startingSeasonValue !== "number")
 		throw new Error("Invalid startingSeason");
-	}
 
 	return {
-		seasonStart: startingSeason.value,
-		seasonEnd: season.value,
+		seasonStart: startingSeasonValue,
+		seasonEnd: seasonValue,
 	};
 };
 
@@ -83,11 +102,28 @@ const getSeasonInfoLeague = async ({
 }) => {
 	const league = await connectLeague(lid);
 
+	// Load gameAttributes: try SQLite first, fall back to IDB
+	const sqliteGaList = await electronReadAllGameAttributes(lid);
+	const sqliteGaMap: Record<string, any> = {};
+	if (sqliteGaList) {
+		for (const ga of sqliteGaList) {
+			sqliteGaMap[ga.key] = ga.value;
+		}
+	}
+
+	const gameAttributesStore = league.transaction("gameAttributes").store;
+
 	const getGameAttribute = async <T extends keyof GameAttributesLeague>(
 		key: T,
 	): Promise<GameAttributesLeague[T]> => {
-		const value =
-			(await gameAttributesStore.get(key))?.value ?? defaultGameAttributes[key];
+		let value: any;
+		if (Object.hasOwn(sqliteGaMap, key)) {
+			value = sqliteGaMap[key];
+		} else {
+			value =
+				(await gameAttributesStore.get(key))?.value ??
+				defaultGameAttributes[key];
+		}
 		return unwrapGameAttribute(
 			{
 				[key]: value,
@@ -97,7 +133,6 @@ const getSeasonInfoLeague = async ({
 	};
 
 	const gameAttributes: Partial<GameAttributesLeague> = {};
-	const gameAttributesStore = league.transaction("gameAttributes").store;
 	for (const key of EXHIBITION_GAME_SETTINGS) {
 		const value = await getGameAttribute(key);
 		gameAttributes[key] = value as any;

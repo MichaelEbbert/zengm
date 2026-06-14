@@ -21,6 +21,35 @@ import {
 	writeTeamStats,
 	readTeamStats,
 	countTeamStats,
+	writeGameAttributes,
+	readGameAttributes,
+	countGameAttributes,
+	writeSchedule,
+	readSchedule,
+	countSchedule,
+	maxScheduleGid,
+	writeDraftPicks,
+	readDraftPicks,
+	countDraftPicks,
+	writeNegotiations,
+	readNegotiations,
+	countNegotiations,
+	writeReleasedPlayers,
+	readReleasedPlayers,
+	countReleasedPlayers,
+	writeTrade,
+	readTrade,
+	countTrade,
+	writeSavedTrades,
+	readSavedTrades,
+	countSavedTrades,
+	writeSavedTradingBlock,
+	readSavedTradingBlock,
+	countSavedTradingBlock,
+	writeMessages,
+	readMessages,
+	countMessages,
+	maxMessageMid,
 } from "./sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -315,6 +344,262 @@ function startApiServer(win) {
 				if (url2.searchParams.has("tid"))
 					filter.tid = Number(url2.searchParams.get("tid"));
 				send(200, { teamStats: readTeamStats(db, filter) });
+				return;
+			}
+
+			if (key === "POST /game-attributes/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, gameAttributes, deleteKeys } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeGameAttributes(db, gameAttributes, deleteKeys ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /game-attributes") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countGameAttributes(db) });
+					return;
+				}
+				send(200, { gameAttributes: readGameAttributes(db) });
+				return;
+			}
+
+			if (key === "POST /schedule/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, scheduleGames, deleteGids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeSchedule(db, scheduleGames, deleteGids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /schedule") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countSchedule(db) });
+					return;
+				}
+				if (url2.searchParams.get("mode") === "maxgid") {
+					send(200, { maxGid: maxScheduleGid(db) });
+					return;
+				}
+				send(200, { scheduleGames: readSchedule(db) });
+				return;
+			}
+
+			if (key === "POST /draft-picks/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, draftPicks, deleteDpids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeDraftPicks(db, draftPicks, deleteDpids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /draft-picks") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countDraftPicks(db) });
+					return;
+				}
+				send(200, { draftPicks: readDraftPicks(db) });
+				return;
+			}
+
+			if (key === "POST /negotiations/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, negotiations, deletePids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeNegotiations(db, negotiations, deletePids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /negotiations") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countNegotiations(db) });
+					return;
+				}
+				send(200, { negotiations: readNegotiations(db) });
+				return;
+			}
+
+			if (key === "POST /released-players/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, releasedPlayers, deleteRids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeReleasedPlayers(db, releasedPlayers, deleteRids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /released-players") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countReleasedPlayers(db) });
+					return;
+				}
+				send(200, { releasedPlayers: readReleasedPlayers(db) });
+				return;
+			}
+
+			if (key === "POST /trade/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, trades, deleteRids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeTrade(db, trades, deleteRids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /trade") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countTrade(db) });
+					return;
+				}
+				send(200, { trades: readTrade(db) });
+				return;
+			}
+
+			if (key === "POST /saved-trades/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, savedTrades, deleteHashes } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeSavedTrades(db, savedTrades, deleteHashes ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /saved-trades") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countSavedTrades(db) });
+					return;
+				}
+				send(200, { savedTrades: readSavedTrades(db) });
+				return;
+			}
+
+			if (key === "POST /saved-trading-block/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, blocks, deleteRids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeSavedTradingBlock(db, blocks, deleteRids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /saved-trading-block") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countSavedTradingBlock(db) });
+					return;
+				}
+				send(200, { blocks: readSavedTradingBlock(db) });
+				return;
+			}
+
+			if (key === "POST /messages/flush") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, messages, deleteMids } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writeMessages(db, messages, deleteMids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /messages") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				if (!lid) {
+					send(400, { error: "lid required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				if (url2.searchParams.get("mode") === "count") {
+					send(200, { count: countMessages(db) });
+					return;
+				}
+				if (url2.searchParams.get("mode") === "maxmid") {
+					send(200, { maxMid: maxMessageMid(db) });
+					return;
+				}
+				const filter = {};
+				if (url2.searchParams.has("mid"))
+					filter.mid = Number(url2.searchParams.get("mid"));
+				else if (url2.searchParams.has("limit"))
+					filter.limit = Number(url2.searchParams.get("limit"));
+				send(200, { messages: readMessages(db, filter) });
 				return;
 			}
 

@@ -1094,6 +1094,448 @@ function runMigrations(db) {
 			);
 		})();
 	}
+	if (!applied.has("004_simple_stores")) {
+		db.transaction(() => {
+			db.exec(`
+				CREATE TABLE game_attributes (
+					key   TEXT PRIMARY KEY,
+					value TEXT NOT NULL
+				);
+
+				CREATE TABLE schedule (
+					gid       INTEGER PRIMARY KEY,
+					away_tid  INTEGER NOT NULL DEFAULT 0,
+					home_tid  INTEGER NOT NULL DEFAULT 0,
+					day       INTEGER NOT NULL DEFAULT 0,
+					force_win TEXT,
+					finals    INTEGER
+				);
+
+				CREATE TABLE draft_picks (
+					dpid         INTEGER PRIMARY KEY,
+					tid          INTEGER NOT NULL DEFAULT 0,
+					original_tid INTEGER NOT NULL DEFAULT 0,
+					round        INTEGER NOT NULL DEFAULT 1,
+					pick         INTEGER NOT NULL DEFAULT 0,
+					season       TEXT NOT NULL DEFAULT '',
+					note         TEXT,
+					note_bool    INTEGER
+				);
+				CREATE INDEX idx_draft_picks_tid ON draft_picks(tid);
+				CREATE INDEX idx_draft_picks_season ON draft_picks(season);
+
+				CREATE TABLE negotiations (
+					pid       INTEGER PRIMARY KEY,
+					tid       INTEGER NOT NULL DEFAULT 0,
+					resigning INTEGER NOT NULL DEFAULT 0
+				);
+
+				CREATE TABLE released_players (
+					rid             INTEGER PRIMARY KEY,
+					pid             INTEGER NOT NULL DEFAULT 0,
+					tid             INTEGER NOT NULL DEFAULT 0,
+					contract_amount REAL NOT NULL DEFAULT 0,
+					contract_exp    INTEGER NOT NULL DEFAULT 0
+				);
+				CREATE INDEX idx_released_players_tid ON released_players(tid);
+
+				CREATE TABLE trade (
+					rid   INTEGER PRIMARY KEY,
+					teams TEXT NOT NULL DEFAULT '[]'
+				);
+
+				CREATE TABLE saved_trades (
+					hash TEXT PRIMARY KEY,
+					tid  INTEGER NOT NULL DEFAULT 0
+				);
+
+				CREATE TABLE saved_trading_block (
+					rid         INTEGER PRIMARY KEY,
+					dpids       TEXT NOT NULL DEFAULT '[]',
+					pids        TEXT NOT NULL DEFAULT '[]',
+					tid         INTEGER NOT NULL DEFAULT 0,
+					offers      TEXT NOT NULL DEFAULT '[]',
+					looking_for TEXT
+				);
+
+				CREATE TABLE messages (
+					mid         INTEGER PRIMARY KEY,
+					sender      TEXT NOT NULL DEFAULT '',
+					read        INTEGER NOT NULL DEFAULT 0,
+					text        TEXT NOT NULL DEFAULT '',
+					year        INTEGER NOT NULL DEFAULT 0,
+					tid         INTEGER,
+					subject     TEXT,
+					owner_moods TEXT
+				);
+			`);
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"004_simple_stores",
+				new Date().toISOString(),
+			);
+		})();
+	}
+}
+
+// ---- Phase 5A store serialization helpers ----------------------------------------
+
+function gameAttributeToRow(ga) {
+	return { key: ga.key, value: JSON.stringify(ga.value) };
+}
+function rowToGameAttribute(row) {
+	return { key: row.key, value: JSON.parse(row.value) };
+}
+
+function scheduleGameToRow(sg) {
+	return {
+		gid: sg.gid ?? null,
+		away_tid: sg.awayTid,
+		home_tid: sg.homeTid,
+		day: sg.day ?? 0,
+		force_win: sg.forceWin !== undefined ? JSON.stringify(sg.forceWin) : null,
+		finals: sg.finals !== undefined ? (sg.finals ? 1 : 0) : null,
+	};
+}
+function rowToScheduleGame(row) {
+	const sg = {
+		gid: row.gid,
+		awayTid: row.away_tid,
+		homeTid: row.home_tid,
+		day: row.day,
+	};
+	if (row.force_win !== null) sg.forceWin = JSON.parse(row.force_win);
+	if (row.finals !== null) sg.finals = row.finals === 1;
+	return sg;
+}
+
+function draftPickToRow(dp) {
+	return {
+		dpid: dp.dpid ?? null,
+		tid: dp.tid,
+		original_tid: dp.originalTid,
+		round: dp.round ?? 1,
+		pick: dp.pick ?? 0,
+		season: String(dp.season),
+		note: dp.note ?? null,
+		note_bool: dp.noteBool ?? null,
+	};
+}
+function rowToDraftPick(row) {
+	const dp = {
+		dpid: row.dpid,
+		tid: row.tid,
+		originalTid: row.original_tid,
+		round: row.round,
+		pick: row.pick,
+		season: /^\d+$/.test(row.season) ? Number(row.season) : row.season,
+	};
+	if (row.note !== null) dp.note = row.note;
+	if (row.note_bool !== null) dp.noteBool = row.note_bool;
+	return dp;
+}
+
+function negotiationToRow(n) {
+	return { pid: n.pid, tid: n.tid, resigning: n.resigning ? 1 : 0 };
+}
+function rowToNegotiation(row) {
+	return { pid: row.pid, tid: row.tid, resigning: row.resigning === 1 };
+}
+
+function releasedPlayerToRow(rp) {
+	return {
+		rid: rp.rid ?? null,
+		pid: rp.pid,
+		tid: rp.tid,
+		contract_amount: rp.contract?.amount ?? 0,
+		contract_exp: rp.contract?.exp ?? 0,
+	};
+}
+function rowToReleasedPlayer(row) {
+	return {
+		rid: row.rid,
+		pid: row.pid,
+		tid: row.tid,
+		contract: { amount: row.contract_amount, exp: row.contract_exp },
+	};
+}
+
+function tradeToRow(t) {
+	return { rid: t.rid, teams: JSON.stringify(t.teams ?? []) };
+}
+function rowToTrade(row) {
+	return { rid: row.rid, teams: JSON.parse(row.teams ?? "[]") };
+}
+
+function savedTradeToRow(st) {
+	return { hash: st.hash, tid: st.tid };
+}
+function rowToSavedTrade(row) {
+	return { hash: row.hash, tid: row.tid };
+}
+
+function savedTradingBlockToRow(stb) {
+	return {
+		rid: stb.rid,
+		dpids: JSON.stringify(stb.dpids ?? []),
+		pids: JSON.stringify(stb.pids ?? []),
+		tid: stb.tid ?? 0,
+		offers: JSON.stringify(stb.offers ?? []),
+		looking_for:
+			stb.lookingFor !== undefined ? JSON.stringify(stb.lookingFor) : null,
+	};
+}
+function rowToSavedTradingBlock(row) {
+	const stb = {
+		rid: row.rid,
+		dpids: JSON.parse(row.dpids ?? "[]"),
+		pids: JSON.parse(row.pids ?? "[]"),
+		tid: row.tid,
+		offers: JSON.parse(row.offers ?? "[]"),
+	};
+	if (row.looking_for !== null) stb.lookingFor = JSON.parse(row.looking_for);
+	return stb;
+}
+
+function messageToRow(m) {
+	return {
+		mid: m.mid ?? null,
+		sender: m.from ?? "",
+		read: m.read ? 1 : 0,
+		text: m.text ?? "",
+		year: m.year ?? 0,
+		tid: m.tid ?? null,
+		subject: m.subject ?? null,
+		owner_moods:
+			m.ownerMoods !== undefined ? JSON.stringify(m.ownerMoods) : null,
+	};
+}
+function rowToMessage(row) {
+	const m = {
+		mid: row.mid,
+		from: row.sender,
+		read: row.read === 1,
+		text: row.text,
+		year: row.year,
+	};
+	if (row.tid !== null) m.tid = row.tid;
+	if (row.subject !== null) m.subject = row.subject;
+	if (row.owner_moods !== null) m.ownerMoods = JSON.parse(row.owner_moods);
+	return m;
+}
+
+// ---- Phase 5A export functions ----------------------------------------
+
+export function writeGameAttributes(db, gameAttributes, deleteKeys = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO game_attributes (key, value) VALUES (@key, @value)",
+	);
+	db.transaction(() => {
+		for (const key of deleteKeys) {
+			db.prepare("DELETE FROM game_attributes WHERE key = ?").run(key);
+		}
+		for (const ga of gameAttributes) {
+			upsert.run(gameAttributeToRow(ga));
+		}
+	})();
+}
+export function readGameAttributes(db) {
+	return db
+		.prepare("SELECT * FROM game_attributes")
+		.all()
+		.map(rowToGameAttribute);
+}
+export function countGameAttributes(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM game_attributes").get()?.n ?? 0;
+}
+
+export function writeSchedule(db, scheduleGames, deleteGids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO schedule (gid, away_tid, home_tid, day, force_win, finals) VALUES (@gid, @away_tid, @home_tid, @day, @force_win, @finals)",
+	);
+	db.transaction(() => {
+		for (const gid of deleteGids) {
+			db.prepare("DELETE FROM schedule WHERE gid = ?").run(gid);
+		}
+		for (const sg of scheduleGames) {
+			upsert.run(scheduleGameToRow(sg));
+		}
+	})();
+}
+export function readSchedule(db) {
+	return db.prepare("SELECT * FROM schedule").all().map(rowToScheduleGame);
+}
+export function countSchedule(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM schedule").get()?.n ?? 0;
+}
+export function maxScheduleGid(db) {
+	return db.prepare("SELECT MAX(gid) AS m FROM schedule").get()?.m ?? -1;
+}
+
+export function writeDraftPicks(db, draftPicks, deleteDpids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO draft_picks (dpid, tid, original_tid, round, pick, season, note, note_bool) VALUES (@dpid, @tid, @original_tid, @round, @pick, @season, @note, @note_bool)",
+	);
+	db.transaction(() => {
+		for (const dpid of deleteDpids) {
+			db.prepare("DELETE FROM draft_picks WHERE dpid = ?").run(dpid);
+		}
+		for (const dp of draftPicks) {
+			upsert.run(draftPickToRow(dp));
+		}
+	})();
+}
+export function readDraftPicks(db) {
+	return db.prepare("SELECT * FROM draft_picks").all().map(rowToDraftPick);
+}
+export function countDraftPicks(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM draft_picks").get()?.n ?? 0;
+}
+
+export function writeNegotiations(db, negotiations, deletePids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO negotiations (pid, tid, resigning) VALUES (@pid, @tid, @resigning)",
+	);
+	db.transaction(() => {
+		for (const pid of deletePids) {
+			db.prepare("DELETE FROM negotiations WHERE pid = ?").run(pid);
+		}
+		for (const n of negotiations) {
+			upsert.run(negotiationToRow(n));
+		}
+	})();
+}
+export function readNegotiations(db) {
+	return db.prepare("SELECT * FROM negotiations").all().map(rowToNegotiation);
+}
+export function countNegotiations(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM negotiations").get()?.n ?? 0;
+}
+
+export function writeReleasedPlayers(db, releasedPlayers, deleteRids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO released_players (rid, pid, tid, contract_amount, contract_exp) VALUES (@rid, @pid, @tid, @contract_amount, @contract_exp)",
+	);
+	db.transaction(() => {
+		for (const rid of deleteRids) {
+			db.prepare("DELETE FROM released_players WHERE rid = ?").run(rid);
+		}
+		for (const rp of releasedPlayers) {
+			upsert.run(releasedPlayerToRow(rp));
+		}
+	})();
+}
+export function readReleasedPlayers(db) {
+	return db
+		.prepare("SELECT * FROM released_players")
+		.all()
+		.map(rowToReleasedPlayer);
+}
+export function countReleasedPlayers(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM released_players").get()?.n ?? 0;
+}
+
+export function writeTrade(db, trades, deleteRids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO trade (rid, teams) VALUES (@rid, @teams)",
+	);
+	db.transaction(() => {
+		for (const rid of deleteRids) {
+			db.prepare("DELETE FROM trade WHERE rid = ?").run(rid);
+		}
+		for (const t of trades) {
+			upsert.run(tradeToRow(t));
+		}
+	})();
+}
+export function readTrade(db) {
+	return db.prepare("SELECT * FROM trade").all().map(rowToTrade);
+}
+export function countTrade(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM trade").get()?.n ?? 0;
+}
+
+export function writeSavedTrades(db, savedTrades, deleteHashes = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO saved_trades (hash, tid) VALUES (@hash, @tid)",
+	);
+	db.transaction(() => {
+		for (const hash of deleteHashes) {
+			db.prepare("DELETE FROM saved_trades WHERE hash = ?").run(hash);
+		}
+		for (const st of savedTrades) {
+			upsert.run(savedTradeToRow(st));
+		}
+	})();
+}
+export function readSavedTrades(db) {
+	return db.prepare("SELECT * FROM saved_trades").all().map(rowToSavedTrade);
+}
+export function countSavedTrades(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM saved_trades").get()?.n ?? 0;
+}
+
+export function writeSavedTradingBlock(db, blocks, deleteRids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO saved_trading_block (rid, dpids, pids, tid, offers, looking_for) VALUES (@rid, @dpids, @pids, @tid, @offers, @looking_for)",
+	);
+	db.transaction(() => {
+		for (const rid of deleteRids) {
+			db.prepare("DELETE FROM saved_trading_block WHERE rid = ?").run(rid);
+		}
+		for (const stb of blocks) {
+			upsert.run(savedTradingBlockToRow(stb));
+		}
+	})();
+}
+export function readSavedTradingBlock(db) {
+	return db
+		.prepare("SELECT * FROM saved_trading_block")
+		.all()
+		.map(rowToSavedTradingBlock);
+}
+export function countSavedTradingBlock(db) {
+	return (
+		db.prepare("SELECT COUNT(*) AS n FROM saved_trading_block").get()?.n ?? 0
+	);
+}
+
+export function writeMessages(db, messages, deleteMids = []) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO messages (mid, sender, read, text, year, tid, subject, owner_moods) VALUES (@mid, @sender, @read, @text, @year, @tid, @subject, @owner_moods)",
+	);
+	db.transaction(() => {
+		for (const mid of deleteMids) {
+			db.prepare("DELETE FROM messages WHERE mid = ?").run(mid);
+		}
+		for (const m of messages) {
+			upsert.run(messageToRow(m));
+		}
+	})();
+}
+export function readMessages(db, filter = {}) {
+	if (filter.mid !== undefined) {
+		const row = db
+			.prepare("SELECT * FROM messages WHERE mid = ?")
+			.get(filter.mid);
+		return row ? [rowToMessage(row)] : [];
+	}
+	if (filter.limit !== undefined) {
+		return db
+			.prepare("SELECT * FROM messages ORDER BY mid DESC LIMIT ?")
+			.all(filter.limit)
+			.map(rowToMessage)
+			.reverse();
+	}
+	return db
+		.prepare("SELECT * FROM messages ORDER BY mid")
+		.all()
+		.map(rowToMessage);
+}
+export function countMessages(db) {
+	return db.prepare("SELECT COUNT(*) AS n FROM messages").get()?.n ?? 0;
+}
+export function maxMessageMid(db) {
+	return db.prepare("SELECT MAX(mid) AS m FROM messages").get()?.m ?? -1;
 }
 
 // ---- Player serialization helpers ----------------------------------------
