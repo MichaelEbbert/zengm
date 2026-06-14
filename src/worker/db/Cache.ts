@@ -22,7 +22,6 @@ import {
 	countSqliteTeamStats,
 	flushGameAttributes,
 	readAllGameAttributes,
-	countSqliteGameAttributes,
 	flushSchedule,
 	readAllSchedule,
 	countSqliteSchedule,
@@ -966,14 +965,15 @@ class Cache {
 				lid = g.get("lid") as number;
 			} catch {}
 
-			const sqliteGaCount =
-				typeof lid === "number" ? await countSqliteGameAttributes(lid) : 0;
-			if (sqliteGaCount > 0) {
-				const sqliteGa = await readAllGameAttributes(lid!);
-				if (sqliteGa) {
-					for (const ga of sqliteGa) {
-						this._data["gameAttributes"][ga.key] = ga;
-					}
+			// Check for "season" key specifically — a partial migration (e.g. only
+			// "phase" was flushed) has count > 0 but is incomplete.
+			const sqliteGa =
+				typeof lid === "number" ? await readAllGameAttributes(lid) : null;
+			const sqliteGaHasSeason =
+				sqliteGa !== null && sqliteGa.some((ga) => ga.key === "season");
+			if (sqliteGaHasSeason) {
+				for (const ga of sqliteGa!) {
+					this._data["gameAttributes"][ga.key] = ga;
 				}
 			} else {
 				const allIdbGa = await idb.league

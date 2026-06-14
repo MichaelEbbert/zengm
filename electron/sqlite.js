@@ -1180,10 +1180,13 @@ function runMigrations(db) {
 // ---- Phase 5A store serialization helpers ----------------------------------------
 
 function gameAttributeToRow(ga) {
-	return { key: ga.key, value: JSON.stringify(ga.value) };
+	return { key: ga.key, value: JSON.stringify(ga.value ?? null) };
 }
 function rowToGameAttribute(row) {
-	return { key: row.key, value: JSON.parse(row.value) };
+	return {
+		key: row.key,
+		value: row.value !== null ? JSON.parse(row.value) : undefined,
+	};
 }
 
 function scheduleGameToRow(sg) {
