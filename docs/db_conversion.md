@@ -23,7 +23,8 @@ Read-only data that was fetched but not modified may be kept in browser session 
 - [x] Phase 2 — COMPLETE (box scores to SQLite, reads and writes verified)
 - [x] Phase 3 — COMPLETE (players fully normalized to SQLite; IDB players store empty and unused)
 - [x] Phase 4 — COMPLETE (teams/teamSeasons/teamStats fully normalized to SQLite)
-- [ ] Phase 5+ — not started
+- [x] Phase 5A — COMPLETE (gameAttributes, schedule, draftPicks, negotiations, releasedPlayers, trade, savedTrades, savedTradingBlock, messages)
+- [ ] Phase 5B — not started (events, playerFeats, headToHeads, playoffSeries, allStars, awards, draftLotteryResults, seasonLeaders, scheduledEvents)
 
 ## Research Tasks
 
@@ -888,16 +889,35 @@ CREATE INDEX idx_team_stats_season ON team_stats(season);
 
 ---
 
-### Phase 5 — Remaining Game Stores
+### Phase 5A — Simple Game Stores — COMPLETE
 
-Stores: `schedule`, `draftPicks`, `playoffSeries`, `events`, `playerFeats`, `headToHeads`, `awards`, `draftLotteryResults`, `seasonLeaders`, `allStars`, `negotiations`, `releasedPlayers`, `messages`, `trade`, `savedTrades`, `savedTradingBlock`, `scheduledEvents`, `gameAttributes`
+Stores migrated: `gameAttributes`, `schedule`, `draftPicks`, `negotiations`, `releasedPlayers`, `trade`, `savedTrades`, `savedTradingBlock`, `messages`
 
-- [ ] 5.1 Design schemas for all remaining stores
-- [ ] 5.2 Write migration 004
-- [ ] 5.3 Replace flush/fill and any getCopies reads for each store
-- [ ] 5.4 Remove each store from Cache STORES as it is cut over
-- [ ] 5.5 Verify full game cycle: preseason → regular season → playoffs → draft → free agency
-- [ ] 5.6 Commit and push
+- [x] Design schemas for all 9 stores
+- [x] Write migration 004 (9 new tables in sqlite.js)
+- [x] Add serializer pairs (toRow/fromRow) for each store
+- [x] Add HTTP routes in main.js (flush + read per store)
+- [x] Add client functions in electronApi.ts
+- [x] Replace flush/fill blocks in Cache.ts; remove from STORES array
+- [x] Rewrite getCopies/messages.ts to use SQLite-first reads
+- [x] Update exhibitionGame.ts for SQLite-first gameAttributes reads
+- [x] Update test/helpers.ts resetCache()
+- [x] TypeScript check clean, 363 tests passing
+- [x] Commit and push
+
+---
+
+### Phase 5B — Complex Per-Season Stores
+
+Stores: `events`, `playerFeats`, `headToHeads`, `playoffSeries`, `allStars`, `awards`, `draftLotteryResults`, `seasonLeaders`, `scheduledEvents`
+
+- [ ] 5B.1 Design schemas for all 9 stores
+- [ ] 5B.2 Write migration 005
+- [ ] 5B.3 Add serializers, HTTP routes, electronApi client functions
+- [ ] 5B.4 Replace flush/fill blocks in Cache.ts; remove all from STORES array
+- [ ] 5B.5 Update any getCopies files that bypass cache
+- [ ] 5B.6 Verify full game cycle: preseason → regular season → playoffs → draft → free agency
+- [ ] 5B.7 Commit and push
 
 ---
 
