@@ -190,7 +190,16 @@ function startApiServer(win) {
 				await new Promise((resolve) => req.on("end", resolve));
 				const { lid, gameStats } = JSON.parse(body);
 				const db = openDb(process.env.ZENGM_DB_DIR, lid);
-				writeGame(db, gameStats);
+				try {
+					writeGame(db, gameStats);
+					console.log(
+						`[writeGame] ok gid=${gameStats?.gid} season=${gameStats?.season}`,
+					);
+				} catch (writeErr) {
+					console.error(`[writeGame] FAILED gid=${gameStats?.gid}:`, writeErr);
+					send(500, { error: String(writeErr) });
+					return;
+				}
 				send(200, { ok: true });
 				return;
 			}

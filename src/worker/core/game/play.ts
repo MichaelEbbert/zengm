@@ -120,8 +120,16 @@ const play = async (
 		}
 
 		// Before writeGameStats, so injury is set correctly
+		let writePlayerStatsResult: Awaited<ReturnType<typeof writePlayerStats>>;
+		try {
+			writePlayerStatsResult = await writePlayerStats(results, conditions);
+		} catch (err) {
+			const { wlog } = await import("../../db/workerLog.ts");
+			await wlog(`cbSaveResults: writePlayerStats THREW: ${err}`);
+			throw err;
+		}
 		const { injuryTexts, pidsInjuredOneGameOrLess, stopPlay } =
-			await writePlayerStats(results, conditions);
+			writePlayerStatsResult;
 
 		let gameToUi: LocalStateUI["games"][number] | undefined;
 		const gidsFinished = await Promise.all(

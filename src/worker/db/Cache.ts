@@ -771,24 +771,69 @@ class Cache {
 
 		let season2 = season;
 
+		let lid2: number | undefined;
+		try {
+			lid2 = g.get("lid") as number;
+		} catch {}
+
+		const { wlog: wlog2 } = await import("../db/workerLog.ts");
+		await wlog2(`fill() called season=${season} lid=${lid2}`);
+
 		if (season2 === undefined) {
 			try {
 				season2 = g.get("season");
 			} catch {}
+			await wlog2(`fill() g.get("season") -> ${season2}`);
 		}
 
 		if (season2 === undefined) {
 			const seasonAttr = await idb.league.get("gameAttributes", "season");
+			await wlog2(`fill() idb.league.get season -> ${seasonAttr?.value}`);
 
 			if (seasonAttr) {
 				season2 = seasonAttr.value;
+			} else {
+				// IDB gameAttributes may be empty when migrated to SQLite.
+				// Bypass isAvailable() here — this is a bootstrap call where the API
+				// server may not have been confirmed available yet.
+				if (typeof lid2 === "number") {
+					try {
+						const r = await fetch(
+							`http://127.0.0.1:3001/game-attributes?lid=${lid2}`,
+						);
+						if (r.ok) {
+							const data = await r.json();
+							const seasonRow = (data.gameAttributes as any[])?.find(
+								(ga) => ga.key === "season",
+							);
+							await wlog2(
+								`fill() direct fetch lid=${lid2} seasonRow=${seasonRow?.value} count=${data.gameAttributes?.length}`,
+							);
+							if (seasonRow) {
+								season2 = seasonRow.value;
+							}
+						} else {
+							const errBody = await r.text().catch(() => "(no body)");
+							await wlog2(
+								`fill() direct fetch failed status=${r.status} body=${errBody}`,
+							);
+						}
+					} catch (fetchErr) {
+						await wlog2(`fill() direct fetch threw: ${fetchErr}`);
+					}
+				} else {
+					await wlog2(`fill() SQLite fallback skipped — lid not available`);
+				}
 			}
 		}
 
 		if (season2 === undefined) {
+			await wlog2(`fill() THROWING Undefined season`);
 			// Seems that gameAttributes is empty when this happens, possibly due to Chrome inappropriately deleting things?
 			throw new Error(ERROR_MESSAGE_UNDEFINED_SEASON);
 		}
+
+		await wlog2(`fill() season resolved to ${season2}`);
 
 		if (local.autoSave) {
 			// @ts-expect-error

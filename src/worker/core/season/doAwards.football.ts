@@ -377,8 +377,7 @@ const royFilter = (p: PlayerFiltered) => {
 	const repeatSeason = g.get("repeatSeason");
 	return (
 		p.draft.year === p.currentStats.season - 1 ||
-		(repeatSeason !== undefined &&
-			p.draft.year === repeatSeason.startingSeason - 1)
+		(repeatSeason != null && p.draft.year === repeatSeason.startingSeason - 1)
 	);
 };
 

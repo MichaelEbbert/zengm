@@ -1,30 +1,41 @@
 // HTTP client for SQLite operations delegated to the Electron main process.
 // All calls return null/void silently when not running in Electron.
 
+import { wlog } from "./workerLog.ts";
+
 const API = "http://127.0.0.1:3001";
 
 let _available: boolean | undefined;
 
 async function isAvailable(): Promise<boolean> {
-	if (_available !== undefined) return _available;
+	if (_available === true) return true; // only cache success
 	try {
 		const r = await fetch(`${API}/config`);
-		_available = r.ok;
-	} catch {
-		_available = false;
-	}
-	return _available;
+		if (r.ok) {
+			_available = true;
+			return true;
+		}
+	} catch {}
+	return false;
 }
 
 export async function writeGame(lid: number, gameStats: any): Promise<void> {
 	if (!(await isAvailable())) return;
 	try {
-		await fetch(`${API}/game`, {
+		const r = await fetch(`${API}/game`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ lid, gameStats }),
 		});
-	} catch {}
+		if (!r.ok) {
+			const text = await r.text().catch(() => "(no body)");
+			await wlog(
+				`writeGame FAILED gid=${gameStats.gid} status=${r.status} body=${text}`,
+			);
+		}
+	} catch (err) {
+		await wlog(`writeGame EXCEPTION gid=${gameStats.gid} err=${err}`);
+	}
 }
 
 export async function readGames(

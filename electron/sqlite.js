@@ -1235,12 +1235,46 @@ function runMigrations(db) {
 			);
 		})();
 	}
+
+	if (!applied.has("006_fix_undefined_game_attributes")) {
+		db.transaction(() => {
+			// Early serialization stored undefined gameAttribute values as the JSON
+			// string "null" instead of SQL NULL. Fix all known optional-feature keys
+			// so guards like `repeatSeason !== undefined` work correctly.
+			const undefinedKeys = [
+				"autoExpand",
+				"autoRelocate",
+				"goatFormula",
+				"goatSeasonFormula",
+				"injuries",
+				"maxOvertimesPlayoffs",
+				"nextPhase",
+				"numDraftPicksCurrent",
+				"playerBioInfo",
+				"repeatSeason",
+				"riggedLottery",
+				"thanosCooldownEnd",
+				"tragicDeaths",
+			];
+			const ph = undefinedKeys.map(() => "?").join(", ");
+			db.prepare(
+				`DELETE FROM game_attributes WHERE value = 'null' AND key IN (${ph})`,
+			).run(...undefinedKeys);
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"006_fix_undefined_game_attributes",
+				new Date().toISOString(),
+			);
+		})();
+	}
 }
 
 // ---- Phase 5A store serialization helpers ----------------------------------------
 
 function gameAttributeToRow(ga) {
-	return { key: ga.key, value: JSON.stringify(ga.value ?? null) };
+	return {
+		key: ga.key,
+		value: ga.value === undefined ? null : JSON.stringify(ga.value),
+	};
 }
 function rowToGameAttribute(row) {
 	return {
@@ -1397,7 +1431,11 @@ export function writeGameAttributes(db, gameAttributes, deleteKeys = []) {
 			db.prepare("DELETE FROM game_attributes WHERE key = ?").run(key);
 		}
 		for (const ga of gameAttributes) {
-			upsert.run(gameAttributeToRow(ga));
+			if (ga.value === undefined) {
+				db.prepare("DELETE FROM game_attributes WHERE key = ?").run(ga.key);
+			} else {
+				upsert.run(gameAttributeToRow(ga));
+			}
 		}
 	})();
 }
@@ -1780,6 +1818,7 @@ function rowToPlayer(row, childRows) {
 			}
 			return s;
 		}),
+		statsTids: Array.from(new Set(stats.map((sr) => sr.tid))),
 		ratings: ratings.map((rr) => {
 			const r = {
 				season: rr.season,
