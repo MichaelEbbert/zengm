@@ -114,7 +114,7 @@ function assembleGames(
 						},
 					};
 					if (pr.injury_at_start !== null) {
-						player.injuryAtStart = pr.injury_at_start;
+						player.injuryAtStart = JSON.parse(pr.injury_at_start);
 					}
 					for (let i = 0; i < PLAYER_STAT_KEYS.length; i++) {
 						const v = pr[PLAYER_STAT_COLS[i]!];

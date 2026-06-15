@@ -16,18 +16,28 @@ import expansionDraft from "../expansionDraft/index.ts";
 import { getNumPlayersTradedAwayNormalizedAll } from "../player/getNumPlayersTradedAwayNormalized.ts";
 
 const afterPicks = async (draftOver: boolean, conditions: Conditions = {}) => {
+	const { wlog } = await import("../../db/workerLog.ts");
+	await wlog(`afterPicks called draftOver=${draftOver}`);
 	if (draftOver) {
 		await league.setGameAttributes({
 			numDraftPicksCurrent: undefined,
 		});
 
 		const currentPhase = g.get("phase");
+		await wlog(`afterPicks currentPhase=${currentPhase}`);
 
 		if (
 			currentPhase !== PHASE.FANTASY_DRAFT &&
 			currentPhase !== PHASE.EXPANSION_DRAFT
 		) {
-			await phase.newPhase(PHASE.AFTER_DRAFT, conditions);
+			await wlog("afterPicks calling phase.newPhase(AFTER_DRAFT)");
+			try {
+				await phase.newPhase(PHASE.AFTER_DRAFT, conditions);
+			} catch (err) {
+				await wlog(`afterPicks phase.newPhase THREW: ${err}`);
+				throw err;
+			}
+			await wlog("afterPicks phase.newPhase(AFTER_DRAFT) complete");
 			return;
 		}
 

@@ -2653,7 +2653,10 @@ export function writeGame(db, gameStats) {
 					injury_games_remaining: player.injury?.gamesRemaining ?? null,
 					injury_new_this_game: player.injury?.newThisGame ? 1 : null,
 					injury_playing_through: player.injury?.playingThrough ? 1 : null,
-					injury_at_start: player.injuryAtStart ?? null,
+					injury_at_start:
+						player.injuryAtStart != null
+							? JSON.stringify(player.injuryAtStart)
+							: null,
 				};
 				for (let i = 0; i < PLAYER_STAT_KEYS.length; i++) {
 					row[PLAYER_STAT_COLS[i]] = player[PLAYER_STAT_KEYS[i]] ?? null;

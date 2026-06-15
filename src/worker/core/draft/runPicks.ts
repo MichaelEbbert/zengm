@@ -83,13 +83,18 @@ const runPicks = async (
 		  },
 	conditions?: Conditions,
 ) => {
+	const { wlog } = await import("../../db/workerLog.ts");
+	await wlog(`runPicks called action=${JSON.stringify(action)}`);
+
 	if (lock.get("drafting")) {
+		await wlog("runPicks: lock held, returning early");
 		return [];
 	}
 
 	await lock.set("drafting", true);
 	const pids: number[] = [];
 	let draftPicks = await getOrder();
+	await wlog(`runPicks: got ${draftPicks.length} draft picks`);
 
 	const expansionDraft = g.get("expansionDraft");
 
