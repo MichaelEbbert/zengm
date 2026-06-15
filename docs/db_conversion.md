@@ -923,13 +923,15 @@ Side effect: emptying STORES resolved 3 pre-existing smoke test failures.
 
 ---
 
-### Phase 6 — Meta DB to SQLite (`leagues`, `attributes`)
+### Phase 6 — Meta DB to SQLite (`leagues`, `attributes`, `achievements`)
 
-- [ ] 6.1 Design `leagues` and `attributes` tables
-- [ ] 6.2 Write migration 005
-- [ ] 6.3 Replace all 12 `idb.meta` write sites
+- [ ] 6.1 Design `leagues`, `attributes`, and `achievements` tables
+- [ ] 6.2 Write migration in sqlite.js (meta DB)
+- [ ] 6.3 Replace all `idb.meta` write sites (leagues, attributes, achievements)
+  - Note: `checkAccount.ts` has a path that reads IDB achievements and syncs them to the remote server on login — disable/comment this out rather than rewriting it (the SQLite achievements are local-only; remote sync is a future concern)
+  - Note: `realTeamInfo` and `realPlayerPhotos` are large user-pasted JSON blobs (Global Settings feature). Not used in this fork — their read/write sites can be no-ops.
 - [ ] 6.4 Replace `idb.meta` read sites
-- [ ] 6.5 Verify league creation, deletion, dashboard display
+- [ ] 6.5 Verify league creation, deletion, dashboard display, achievements display
 - [ ] 6.6 Commit and push
 
 ---
