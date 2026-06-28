@@ -1,3 +1,4 @@
+import { metaGetAttribute, metaGetLeague } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import type { ViewInput, RealTeamInfo } from "../../common/types.ts";
 import {
@@ -458,9 +459,8 @@ export const getDefaultSettings = () => {
 };
 
 export const getRealTeamInfo = async () => {
-	const realTeamInfo = (await idb.meta.get("attributes", "realTeamInfo")) as
-		| RealTeamInfo
-		| undefined;
+	// realTeamInfo not used in this fork
+	const realTeamInfo = undefined as RealTeamInfo | undefined;
 
 	return realTeamInfo;
 };
@@ -468,10 +468,10 @@ export const getRealTeamInfo = async () => {
 const updateNewLeague = async ({ lid, type }: ViewInput<"newLeague">) => {
 	const godModeLimits = newLeagueGodModeLimits();
 
-	const overrides = (await idb.meta.get(
-		"attributes",
-		"defaultSettingsOverrides",
-	)) as Settings | undefined;
+	const overrides = ((await metaGetAttribute("defaultSettingsOverrides")) ??
+		(await idb.meta.get("attributes", "defaultSettingsOverrides"))) as
+		| Settings
+		| undefined;
 
 	const defaultSettings = {
 		...getDefaultSettings(),
@@ -480,7 +480,8 @@ const updateNewLeague = async ({ lid, type }: ViewInput<"newLeague">) => {
 
 	if (lid !== undefined) {
 		// Importing!
-		const l = await idb.meta.get("leagues", lid);
+		const l =
+			(await metaGetLeague(lid)) ?? (await idb.meta.get("leagues", lid));
 
 		if (l) {
 			return {

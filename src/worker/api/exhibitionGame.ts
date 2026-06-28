@@ -23,6 +23,7 @@ import {
 	readAllTeams as electronReadAllTeams,
 	readTeamSeasons as electronReadTeamSeasons,
 	readAllGameAttributes as electronReadAllGameAttributes,
+	metaGetAllLeagues,
 } from "../db/electronApi.ts";
 import { getPlayersActiveSeason } from "../db/getCopies/players.ts";
 import {
@@ -39,7 +40,8 @@ import { unwrapGameAttribute } from "../../common/unwrapGameAttribute.ts";
 import { isSport } from "../../common/sportFunctions.ts";
 
 export const getLeagues = async () => {
-	const leagues = await idb.meta.getAll("leagues");
+	const leagues =
+		(await metaGetAllLeagues()) ?? (await idb.meta.getAll("leagues"));
 	return leagues
 		.map((league) => ({
 			lid: league.lid,

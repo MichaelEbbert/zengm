@@ -1,4 +1,8 @@
 import { ACCOUNT_API_URL, DIFFICULTY } from "../../common/constants.ts";
+import {
+	metaAddAchievements,
+	metaGetAllAchievements,
+} from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import achievements from "./achievements.ts";
 import g from "./g.ts";
@@ -74,6 +78,7 @@ async function add(
 	};
 
 	const addToIndexedDB = async (slugs2: string[]) => {
+		await metaAddAchievements(slugs2.map((slug) => ({ slug, difficulty })));
 		const tx = await idb.meta.transaction("achievements", "readwrite");
 		for (const slug of slugs2) {
 			tx.store.add({
@@ -133,11 +138,15 @@ async function getAll(): Promise<
 		};
 	});
 
-	// Handle any achivements stored in IndexedDB
-	const achievementsLocal = await idb.meta.getAll("achievements");
+	// Handle any achievements stored locally
+	const achievementsLocal =
+		(await metaGetAllAchievements()) ?? (await idb.meta.getAll("achievements"));
 
 	for (const achievementLocal of achievementsLocal) {
-		const difficulty = achievementLocal.difficulty ?? "normal";
+		const difficulty = (achievementLocal.difficulty ?? "normal") as
+			| "normal"
+			| "hard"
+			| "insane";
 		for (const achievement of achievements2) {
 			if (achievement.slug === achievementLocal.slug) {
 				achievement[difficulty] += 1;

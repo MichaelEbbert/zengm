@@ -27,12 +27,15 @@ export const fetchWrapper = async ({
 		body = undefined;
 	}
 
+	const ac = new AbortController();
+	const timer = setTimeout(() => ac.abort(), 8000);
 	const response = await fetch(url, {
 		method,
 		headers: headers ? new Headers(headers) : undefined,
 		body,
 		credentials,
-	});
+		signal: ac.signal,
+	}).finally(() => clearTimeout(timer));
 	if (!response.ok) {
 		throw new Error(`HTTP error ${response.status}`);
 	}

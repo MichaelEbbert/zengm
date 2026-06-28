@@ -500,9 +500,8 @@ const processScheduledEvents = async (
 	const scheduledEvents = await idb.cache.scheduledEvents.getAll();
 	const eventLogTexts: string[] = [];
 
-	const realTeamInfo = (await idb.meta.get("attributes", "realTeamInfo")) as
-		| RealTeamInfo
-		| undefined;
+	// realTeamInfo not used in this fork
+	const realTeamInfo = undefined as RealTeamInfo | undefined;
 
 	const unretiredPids = [];
 

@@ -1,3 +1,4 @@
+import { metaGetAttribute } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import type { UpdateEvents } from "../../common/types.ts";
 import type { KeyboardShortcutsLocal } from "../../ui/util/keyboardShortcuts.ts";
@@ -7,11 +8,12 @@ const updateKeyboardShortcuts = async (
 	updateEvents: UpdateEvents,
 ) => {
 	if (updateEvents.includes("firstRun")) {
-		const attributesStore = (await idb.meta.transaction("attributes")).store;
-
-		const keyboardShortcutsLocal = (await attributesStore.get(
+		const keyboardShortcutsLocal = ((await metaGetAttribute(
 			"keyboardShortcuts",
-		)) as KeyboardShortcutsLocal | undefined;
+		)) ??
+			(await (
+				await idb.meta.transaction("attributes")
+			).store.get("keyboardShortcuts"))) as KeyboardShortcutsLocal | undefined;
 
 		return {
 			keyboardShortcutsLocal,

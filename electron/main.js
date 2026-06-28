@@ -80,6 +80,19 @@ import {
 	writeSeasonLeaders,
 	readSeasonLeaders,
 	countSeasonLeaders,
+	openMetaDb,
+	getAllLeagues,
+	getLeague,
+	putLeague,
+	deleteLeague,
+	clearLeagues,
+	getMaxLeagueLid,
+	getAttribute,
+	putAttribute,
+	deleteAttribute,
+	getAllAchievements,
+	addAchievements,
+	clearAchievements,
 } from "./sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -921,6 +934,108 @@ function startApiServer(win) {
 					? Number(url2.searchParams.get("fromSeason"))
 					: undefined;
 				send(200, { seasonLeaders: readSeasonLeaders(db, fromSeason) });
+				return;
+			}
+
+			// ---- Meta DB routes ------------------------------------------------
+
+			if (key === "GET /meta/leagues") {
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				send(200, { leagues: getAllLeagues(mdb) });
+				return;
+			}
+
+			if (key === "GET /meta/league") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				send(200, { league: getLeague(mdb, lid) ?? null });
+				return;
+			}
+
+			if (key === "GET /meta/league/maxlid") {
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				send(200, { maxLid: getMaxLeagueLid(mdb) });
+				return;
+			}
+
+			if (key === "POST /meta/league") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { league: l } = JSON.parse(body);
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				putLeague(mdb, l);
+				send(200, { ok: true, lid: l.lid });
+				return;
+			}
+
+			if (key === "DELETE /meta/league") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				deleteLeague(mdb, lid);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "DELETE /meta/leagues") {
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				clearLeagues(mdb);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /meta/attribute") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const attrKey = url2.searchParams.get("key");
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				const value = getAttribute(mdb, attrKey);
+				send(200, { found: value !== undefined, value: value ?? null });
+				return;
+			}
+
+			if (key === "PUT /meta/attribute") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { key: attrKey, value } = JSON.parse(body);
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				putAttribute(mdb, attrKey, value);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "DELETE /meta/attribute") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const attrKey = url2.searchParams.get("key");
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				deleteAttribute(mdb, attrKey);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "GET /meta/achievements") {
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				send(200, { achievements: getAllAchievements(mdb) });
+				return;
+			}
+
+			if (key === "POST /meta/achievements") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { achievements } = JSON.parse(body);
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				addAchievements(mdb, achievements);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "DELETE /meta/achievements") {
+				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
+				clearAchievements(mdb);
+				send(200, { ok: true });
 				return;
 			}
 

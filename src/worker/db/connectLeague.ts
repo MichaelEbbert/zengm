@@ -9,6 +9,7 @@ import {
 	PLAYER,
 } from "../../common/constants.ts";
 import { player, season } from "../core/index.ts";
+import { metaGetLeague, metaPutLeague } from "./electronApi.ts";
 import { idb } from "./index.ts";
 import { defaultGameAttributes, helpers, logEvent } from "../util/index.ts";
 import connectIndexedDB from "./connectIndexedDB.ts";
@@ -964,6 +965,12 @@ const migrate = async ({
 						const l = event2.target.result;
 						l.difficulty = difficulty;
 						idb.meta.put("leagues", l);
+						metaGetLeague(lid).then((sqliteLeague) => {
+							if (sqliteLeague) {
+								sqliteLeague.difficulty = difficulty;
+								metaPutLeague(sqliteLeague);
+							}
+						});
 					};
 				});
 			};

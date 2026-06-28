@@ -3109,3 +3109,185 @@ export function readSeasonLeaders(db, fromSeason) {
 export function countSeasonLeaders(db) {
 	return db.prepare("SELECT COUNT(*) AS n FROM season_leaders").get()?.n ?? 0;
 }
+
+// ---- Meta DB (leagues, attributes, achievements) ----------------------------
+
+function runMetaMigrations(db) {
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS _meta_migrations (
+			id     INTEGER PRIMARY KEY AUTOINCREMENT,
+			name   TEXT NOT NULL UNIQUE,
+			run_at TEXT NOT NULL
+		)
+	`);
+	const applied = new Set(
+		db
+			.prepare("SELECT name FROM _meta_migrations")
+			.all()
+			.map((r) => r.name),
+	);
+	if (!applied.has("001_meta_tables")) {
+		db.transaction(() => {
+			db.exec(`
+				CREATE TABLE leagues (
+					lid                 INTEGER PRIMARY KEY,
+					name                TEXT NOT NULL DEFAULT '',
+					tid                 INTEGER NOT NULL DEFAULT 0,
+					phase_text          TEXT NOT NULL DEFAULT '',
+					team_name           TEXT NOT NULL DEFAULT '',
+					team_region         TEXT NOT NULL DEFAULT '',
+					heartbeat_id        TEXT,
+					heartbeat_timestamp INTEGER,
+					difficulty          REAL,
+					starred             INTEGER NOT NULL DEFAULT 0,
+					created             TEXT,
+					last_played         TEXT,
+					starting_season     INTEGER,
+					season              INTEGER,
+					img_url             TEXT
+				);
+
+				CREATE TABLE attributes (
+					key   TEXT PRIMARY KEY,
+					value TEXT NOT NULL
+				);
+
+				CREATE TABLE achievements (
+					id         INTEGER PRIMARY KEY AUTOINCREMENT,
+					slug       TEXT NOT NULL,
+					difficulty TEXT NOT NULL DEFAULT 'normal'
+				);
+			`);
+			db.prepare(
+				"INSERT INTO _meta_migrations (name, run_at) VALUES (?, ?)",
+			).run("001_meta_tables", new Date().toISOString());
+		})();
+	}
+}
+
+let _metaDb = null;
+
+export function openMetaDb(dbDir) {
+	if (_metaDb) return _metaDb;
+	fs.mkdirSync(dbDir, { recursive: true });
+	const dbPath = path.join(dbDir, "meta.db");
+	const db = new Database(dbPath);
+	db.pragma("journal_mode = WAL");
+	db.pragma("foreign_keys = ON");
+	runMetaMigrations(db);
+	_metaDb = db;
+	console.log(`[SQLite] opened ${dbPath}`);
+	return db;
+}
+
+function leagueToRow(l) {
+	return {
+		lid: l.lid,
+		name: l.name ?? "",
+		tid: l.tid ?? 0,
+		phase_text: l.phaseText ?? "",
+		team_name: l.teamName ?? "",
+		team_region: l.teamRegion ?? "",
+		heartbeat_id: l.heartbeatID ?? null,
+		heartbeat_timestamp: l.heartbeatTimestamp ?? null,
+		difficulty: l.difficulty ?? null,
+		starred: l.starred ? 1 : 0,
+		created:
+			l.created instanceof Date ? l.created.toISOString() : (l.created ?? null),
+		last_played:
+			l.lastPlayed instanceof Date
+				? l.lastPlayed.toISOString()
+				: (l.lastPlayed ?? null),
+		starting_season: l.startingSeason ?? null,
+		season: l.season ?? null,
+		img_url: l.imgURL ?? null,
+	};
+}
+
+function rowToLeague(row) {
+	const l = {
+		lid: row.lid,
+		name: row.name,
+		tid: row.tid,
+		phaseText: row.phase_text,
+		teamName: row.team_name,
+		teamRegion: row.team_region,
+	};
+	if (row.heartbeat_id != null) l.heartbeatID = row.heartbeat_id;
+	if (row.heartbeat_timestamp != null)
+		l.heartbeatTimestamp = row.heartbeat_timestamp;
+	if (row.difficulty != null) l.difficulty = row.difficulty;
+	if (row.starred) l.starred = true;
+	if (row.created != null) l.created = new Date(row.created);
+	if (row.last_played != null) l.lastPlayed = new Date(row.last_played);
+	if (row.starting_season != null) l.startingSeason = row.starting_season;
+	if (row.season != null) l.season = row.season;
+	if (row.img_url != null) l.imgURL = row.img_url;
+	return l;
+}
+
+export function getAllLeagues(db) {
+	return db
+		.prepare("SELECT * FROM leagues ORDER BY lid ASC")
+		.all()
+		.map(rowToLeague);
+}
+
+export function getLeague(db, lid) {
+	const row = db.prepare("SELECT * FROM leagues WHERE lid = ?").get(lid);
+	return row ? rowToLeague(row) : undefined;
+}
+
+export function putLeague(db, l) {
+	const row = leagueToRow(l);
+	const cols = Object.keys(row);
+	db.prepare(
+		`INSERT OR REPLACE INTO leagues (${cols.join(", ")}) VALUES (${cols.map((c) => "@" + c).join(", ")})`,
+	).run(row);
+}
+
+export function deleteLeague(db, lid) {
+	db.prepare("DELETE FROM leagues WHERE lid = ?").run(lid);
+}
+
+export function clearLeagues(db) {
+	db.prepare("DELETE FROM leagues").run();
+}
+
+export function getMaxLeagueLid(db) {
+	return db.prepare("SELECT MAX(lid) AS m FROM leagues").get()?.m ?? null;
+}
+
+export function getAttribute(db, key) {
+	const row = db.prepare("SELECT value FROM attributes WHERE key = ?").get(key);
+	return row ? JSON.parse(row.value) : undefined;
+}
+
+export function putAttribute(db, key, value) {
+	db.prepare(
+		"INSERT OR REPLACE INTO attributes (key, value) VALUES (?, ?)",
+	).run(key, JSON.stringify(value));
+}
+
+export function deleteAttribute(db, key) {
+	db.prepare("DELETE FROM attributes WHERE key = ?").run(key);
+}
+
+export function getAllAchievements(db) {
+	return db
+		.prepare("SELECT id, slug, difficulty FROM achievements ORDER BY id ASC")
+		.all();
+}
+
+export function addAchievements(db, achievements) {
+	const insert = db.prepare(
+		"INSERT INTO achievements (slug, difficulty) VALUES (@slug, @difficulty)",
+	);
+	db.transaction(() => {
+		for (const a of achievements) insert.run(a);
+	})();
+}
+
+export function clearAchievements(db) {
+	db.prepare("DELETE FROM achievements").run();
+}

@@ -55,9 +55,8 @@ const newPhasePreseason = async (
 	const teams = await idb.cache.teams.getAll();
 	const teamsByTid = groupByUnique(teams, "tid");
 
-	const realTeamInfo = (await idb.meta.get("attributes", "realTeamInfo")) as
-		| RealTeamInfo
-		| undefined;
+	// realTeamInfo not used in this fork
+	const realTeamInfo = undefined as RealTeamInfo | undefined;
 
 	const popInfo: Record<
 		string,

@@ -1,5 +1,6 @@
 import { DEFAULT_CONFS } from "../../common/constants.ts";
 import type { UpdateEvents } from "../../common/types.ts";
+import { metaGetAttribute } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import goatFormula from "../util/goatFormula.ts";
 import { getDefaultSettings } from "./newLeague.ts";
@@ -7,10 +8,10 @@ import type { Settings } from "./settings.ts";
 
 const updateOptions = async (inputs: unknown, updateEvents: UpdateEvents) => {
 	if (updateEvents.includes("firstRun")) {
-		const overrides = (await idb.meta.get(
-			"attributes",
-			"defaultSettingsOverrides",
-		)) as Partial<Settings> | undefined;
+		const overrides = ((await metaGetAttribute("defaultSettingsOverrides")) ??
+			(await idb.meta.get("attributes", "defaultSettingsOverrides"))) as
+			| Partial<Settings>
+			| undefined;
 
 		const defaultSettings = {
 			...getDefaultSettings(),

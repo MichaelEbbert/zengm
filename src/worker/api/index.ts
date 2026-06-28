@@ -34,6 +34,12 @@ import {
 	freeAgents,
 	season,
 } from "../core/index.ts";
+import {
+	metaGetAllLeagues,
+	metaGetAttribute,
+	metaPutAttribute,
+	metaDeleteAttribute,
+} from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import {
 	achievement,
@@ -86,8 +92,6 @@ import {
 	type League,
 	type View,
 	type NonEmptyArray,
-	RealPlayerPhotosSchema,
-	RealTeamInfoSchema,
 } from "../../common/types.ts";
 import {
 	addSimpleAndTeamAwardsToAwardsByPlayer,
@@ -164,7 +168,6 @@ import { gameAttributesArrayToObject } from "../../common/gameAttributesArrayToO
 import { bySport, isSport } from "../../common/sportFunctions.ts";
 import { generateContractOptions } from "../core/contractNegotiation/generateContractOptions.ts";
 import getRealTeamPlayerData from "../core/league/create/getRealTeamPlayerData.ts";
-import * as z from "zod";
 
 const acceptContractNegotiation = async ({
 	pid,
@@ -1708,10 +1711,10 @@ const getDefaultInjuries = () => {
 };
 
 const getDefaultNewLeagueSettings = async () => {
-	const overrides = (await idb.meta.get(
-		"attributes",
-		"defaultSettingsOverrides",
-	)) as Partial<Settings> | undefined;
+	const overrides = ((await metaGetAttribute("defaultSettingsOverrides")) ??
+		(await idb.meta.get("attributes", "defaultSettingsOverrides"))) as
+		| Partial<Settings>
+		| undefined;
 
 	return overrides ?? {};
 };
@@ -1798,7 +1801,7 @@ const getLeagueName = () => {
 };
 
 const getLeagues = async () => {
-	return idb.meta.getAll("leagues");
+	return (await metaGetAllLeagues()) ?? idb.meta.getAll("leagues");
 };
 
 const getNegotiationProps = async (pid: number) => {
@@ -2841,11 +2844,13 @@ const init = async (inputEnv: Env, conditions: Conditions) => {
 	}
 
 	// Send options to all new tabs
-	const attributesStore = (await idb.meta.transaction("attributes")).store;
-	const options = ((await attributesStore.get("options")) ?? {}) as Options;
-	const keyboardShortcuts = (await attributesStore.get(
-		"keyboardShortcuts",
-	)) as KeyboardShortcutsLocal;
+	const options = ((await metaGetAttribute("options")) ??
+		(await (await idb.meta.transaction("attributes")).store.get("options")) ??
+		{}) as Options;
+	const keyboardShortcuts = ((await metaGetAttribute("keyboardShortcuts")) ??
+		(await (
+			await idb.meta.transaction("attributes")
+		).store.get("keyboardShortcuts"))) as KeyboardShortcutsLocal;
 	await toUI(
 		"updateLocal",
 		[{ fullNames: options.fullNames, keyboardShortcuts, units: options.units }],
@@ -3902,8 +3907,13 @@ const updateDefaultSettingsOverrides = async (
 	defaultSettingsOverrides: Partial<Settings>,
 ) => {
 	if (Object.keys(defaultSettingsOverrides).length === 0) {
+		await metaDeleteAttribute("defaultSettingsOverrides");
 		await idb.meta.delete("attributes", "defaultSettingsOverrides");
 	} else {
+		await metaPutAttribute(
+			"defaultSettingsOverrides",
+			defaultSettingsOverrides,
+		);
 		await idb.meta.put(
 			"attributes",
 			defaultSettingsOverrides,
@@ -4021,6 +4031,7 @@ const updateKeepRosterSorted = async ({
 const updateKeyboardShortcuts = async (
 	keyboardShortcuts: NonNullable<KeyboardShortcutsLocal>,
 ) => {
+	await metaPutAttribute("keyboardShortcuts", keyboardShortcuts);
 	const attributesStore = (
 		await idb.meta.transaction("attributes", "readwrite")
 	).store;
@@ -4056,58 +4067,19 @@ const updateOptions = async (
 		realTeamInfo: string;
 	},
 ) => {
-	let realPlayerPhotos;
-	let realTeamInfo;
-	if (options.realPlayerPhotos !== "") {
-		let parsedJson;
-		try {
-			parsedJson = JSON.parse(options.realPlayerPhotos);
-		} catch (error) {
-			console.log(error);
-			throw new Error("Invalid JSON in real player photos");
-		}
+	// realPlayerPhotos and realTeamInfo not used in this fork
 
-		const result = RealPlayerPhotosSchema.safeParse(parsedJson);
-		if (result.success) {
-			realPlayerPhotos = result.data;
-		} else {
-			throw new Error(
-				`In real player photos:<br><span style="white-space: pre-wrap">${z.prettifyError(result.error)}</span>`,
-			);
-		}
-	}
-	if (options.realTeamInfo !== "") {
-		let parsedJson;
-		try {
-			parsedJson = JSON.parse(options.realTeamInfo);
-		} catch (error) {
-			console.log(error);
-			throw new Error("Invalid JSON in real team info");
-		}
-
-		const result = RealTeamInfoSchema.safeParse(parsedJson);
-		if (result.success) {
-			realTeamInfo = result.data;
-		} else {
-			throw new Error(
-				`In real team info:<br><span style="white-space: pre-wrap">${z.prettifyError(result.error)}</span>`,
-			);
-		}
-	}
-
+	const optionsValue = {
+		units: options.units,
+		fullNames: options.fullNames,
+		phaseChangeRedirects: options.phaseChangeRedirects,
+	};
+	await metaPutAttribute("options", optionsValue);
 	const attributesStore = (
 		await idb.meta.transaction("attributes", "readwrite")
 	).store;
-	await attributesStore.put(
-		{
-			units: options.units,
-			fullNames: options.fullNames,
-			phaseChangeRedirects: options.phaseChangeRedirects,
-		},
-		"options",
-	);
-	await attributesStore.put(realPlayerPhotos, "realPlayerPhotos");
-	await attributesStore.put(realTeamInfo, "realTeamInfo");
+	await attributesStore.put(optionsValue, "options");
+	// realPlayerPhotos and realTeamInfo not used in this fork
 	await toUI("updateLocal", [
 		{ units: options.units, fullNames: options.fullNames },
 	]);

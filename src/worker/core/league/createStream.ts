@@ -36,6 +36,7 @@ import type {
 } from "../../../common/types.ts";
 import type { NewLeagueTeam } from "../../../ui/views/NewLeague/types.ts";
 import { CUMULATIVE_OBJECTS } from "../../api/leagueFileUpload.ts";
+import { metaGetLeague, metaPutLeague } from "../../db/electronApi.ts";
 import { Cache, connectLeague, idb } from "../../db/index.ts";
 import {
 	helpers,
@@ -111,14 +112,15 @@ const addLeagueMeta = async ({
 	};
 
 	// In case we are importing over an old league
-	const oldLeague = await idb.meta.get("leagues", lid);
+	const oldLeague =
+		(await metaGetLeague(lid)) ?? (await idb.meta.get("leagues", lid));
 	await remove(lid);
 	if (oldLeague) {
 		l.created = oldLeague.created;
 		l.starred = oldLeague.starred;
 	}
 
-	await idb.meta.add("leagues", l);
+	await metaPutLeague(l);
 
 	idb.league = await connectLeague(lid);
 };

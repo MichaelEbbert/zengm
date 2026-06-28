@@ -1,5 +1,6 @@
 import { deleteDB } from "@dumbmatter/idb";
 import close from "./close.ts";
+import { metaDeleteLeague } from "../../db/electronApi.ts";
 import { idb } from "../../db/index.ts";
 import { g, logEvent } from "../../util/index.ts";
 
@@ -10,6 +11,7 @@ const remove = async (lid: number) => {
 		close(true);
 	}
 
+	await metaDeleteLeague(lid);
 	await idb.meta.delete("leagues", lid);
 	await deleteDB(`league${lid}`, {
 		blocked() {

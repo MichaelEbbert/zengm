@@ -25,6 +25,7 @@ Read-only data that was fetched but not modified may be kept in browser session 
 - [x] Phase 4 — COMPLETE (teams/teamSeasons/teamStats fully normalized to SQLite)
 - [x] Phase 5A — COMPLETE (gameAttributes, schedule, draftPicks, negotiations, releasedPlayers, trade, savedTrades, savedTradingBlock, messages)
 - [x] Phase 5B — COMPLETE (events, playerFeats, headToHeads, playoffSeries, allStars, awards, draftLotteryResults, seasonLeaders, scheduledEvents)
+- [ ] Phase 6 — IN PROGRESS (meta DB: leagues, attributes, achievements — code complete, smoke tests in verification)
 
 ## Research Tasks
 
@@ -925,14 +926,37 @@ Side effect: emptying STORES resolved 3 pre-existing smoke test failures.
 
 ### Phase 6 — Meta DB to SQLite (`leagues`, `attributes`, `achievements`)
 
-- [ ] 6.1 Design `leagues`, `attributes`, and `achievements` tables
-- [ ] 6.2 Write migration in sqlite.js (meta DB)
-- [ ] 6.3 Replace all `idb.meta` write sites (leagues, attributes, achievements)
-  - Note: `checkAccount.ts` has a path that reads IDB achievements and syncs them to the remote server on login — disable/comment this out rather than rewriting it (the SQLite achievements are local-only; remote sync is a future concern)
-  - Note: `realTeamInfo` and `realPlayerPhotos` are large user-pasted JSON blobs (Global Settings feature). Not used in this fork — their read/write sites can be no-ops.
-- [ ] 6.4 Replace `idb.meta` read sites
-- [ ] 6.5 Verify league creation, deletion, dashboard display, achievements display
-- [ ] 6.6 Commit and push
+- [x] 6.1 Design `leagues`, `attributes`, and `achievements` tables — separate `meta.db` singleton file; schema in `electron/sqlite.js`
+- [x] 6.2 Write migration in sqlite.js (meta DB) — `runMetaMigrations()`, `openMetaDb()`, full CRUD for all 3 tables
+- [x] 6.3 Replace all `idb.meta` write sites — SQLite-first + IDB dual-write pattern; `checkAccount.ts` achievement sync removed; `realTeamInfo`/`realPlayerPhotos` made no-ops throughout
+- [x] 6.4 Replace `idb.meta` read sites — all 25 sites updated; SQLite ?? IDB fallback pattern in every reader
+- [ ] 6.5 Verify league creation, deletion, dashboard display, achievements display — **PENDING** (needs Electron running for manual test)
+- [ ] 6.6 Commit and push — **PENDING** (waiting on smoke tests)
+
+**Current state (end of session):**
+
+Code is complete. 31 files changed. TypeScript clean (only pre-existing upstream errors). Non-browser unit tests (363/366 basketball+football+baseball) pass.
+
+Browser smoke tests were failing due to two pre-existing bugs now fixed:
+
+1. `electronApi.ts` `isAvailable()` — no fetch timeout → added 500ms AbortController + caches `false` permanently (avoids per-call retries in non-Electron)
+2. `src/common/fetchWrapper.ts` — no timeout on external API calls → added 8-second AbortController; prevents `achievement.add()` from hanging when `account.zengm.com` is unreachable (blocks playoff phase transitions)
+
+These fixes were applied this session but NOT yet committed. The smoke test with both fixes running was killed mid-run. **Resume by running `npx vitest --run --project browser` and checking it passes, then `SPORT=football node --run test` for full suite, then commit.**
+
+**Key files changed in Phase 6:**
+
+- `electron/sqlite.js` — meta DB schema, migrations, CRUD functions
+- `electron/main.js` — 12 new HTTP routes for meta operations
+- `src/worker/db/electronApi.ts` — 12 meta client functions + isAvailable() fix
+- `src/worker/api/index.ts` — meta ops, removed realPlayerPhotos/realTeamInfo validation
+- `src/worker/core/league/{createStream,remove,clone,getName,updateMeta}.ts`
+- `src/worker/core/phase/{newPhasePreseason,newPhaseRegularSeason}.ts`
+- `src/worker/db/{connectLeague,reset}.ts`
+- `src/worker/util/{achievement,beforeView,checkAccount,checkChanges,getGlobalSettings,getNewLeagueLid,processScheduledEvents}.ts`
+- `src/worker/views/{dashboard,defaultNewLeagueSettings,globalSettings,keyboardShortcuts,newLeague}.ts`
+- `src/worker/core/league/create/getRealTeamPlayerData.ts` — complete no-op rewrite
+- `src/common/fetchWrapper.ts` — 8-second timeout fix
 
 ---
 

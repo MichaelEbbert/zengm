@@ -1,3 +1,4 @@
+import { metaGetLeague, metaPutLeague } from "../db/electronApi.ts";
 import { Cache, connectLeague, idb } from "../db/index.ts";
 import { league } from "../core/index.ts";
 import {
@@ -20,9 +21,9 @@ let heartbeatIntervalID: number;
 
 const getLeague = async (lid: number) => {
 	// Make sure this league exists before proceeding
-	const l = await idb.meta.get("leagues", lid);
+	const l = (await metaGetLeague(lid)) ?? (await idb.meta.get("leagues", lid));
 
-	if (l === undefined) {
+	if (l === undefined || l === null) {
 		throw new Error("League not found.");
 	}
 
@@ -32,6 +33,7 @@ const getLeague = async (lid: number) => {
 const runHeartbeat = async (l: League) => {
 	l.heartbeatID = env.heartbeatID;
 	l.heartbeatTimestamp = Date.now();
+	await metaPutLeague(l);
 	await idb.meta.put("leagues", l);
 };
 

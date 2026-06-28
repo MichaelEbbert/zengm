@@ -1,3 +1,4 @@
+import { metaGetAttribute, metaPutAttribute } from "../../db/electronApi.ts";
 import { season } from "../index.ts";
 import { idb } from "../../db/index.ts";
 import { g, helpers, local, logEvent, toUI } from "../../util/index.ts";
@@ -37,10 +38,11 @@ const newPhaseRegularSeason = async (
 		if (g.get("season") > g.get("startingSeason") && Math.random() < 0.1) {
 			await toUI("requestPersistentStorage", [], conditions);
 		} else {
-			let naggedMailingList = await idb.meta.get(
-				"attributes",
-				"naggedMailingList",
-			);
+			let naggedMailingList =
+				(await metaGetAttribute("naggedMailingList")) ??
+				((await idb.meta.get("attributes", "naggedMailingList")) as
+					| number
+					| undefined);
 			if (typeof naggedMailingList !== "number") {
 				naggedMailingList = 0;
 			}
@@ -51,6 +53,7 @@ const newPhaseRegularSeason = async (
 				(naggedMailingList === 0 ||
 					(naggedMailingList === 1 && Math.random() < 0.01))
 			) {
+				await metaPutAttribute("naggedMailingList", naggedMailingList + 1);
 				await idb.meta.put(
 					"attributes",
 					naggedMailingList + 1,
@@ -64,13 +67,15 @@ const newPhaseRegularSeason = async (
 					type: "info",
 				});
 			} else {
-				const nagged = (await idb.meta.get("attributes", "nagged")) as number;
+				const nagged = ((await metaGetAttribute("nagged")) ??
+					(await idb.meta.get("attributes", "nagged"))) as number;
 
 				if (
 					g.get("season") === g.get("startingSeason") + 3 &&
 					g.get("lid") > 3 &&
 					(nagged === 0 || nagged === undefined)
 				) {
+					await metaPutAttribute("nagged", 1);
 					await idb.meta.put("attributes", 1, "nagged");
 					await idb.cache.messages.add({
 						read: false,
@@ -83,6 +88,7 @@ const newPhaseRegularSeason = async (
 						(nagged === 1 && Math.random() < 0.125) ||
 						(nagged >= 2 && Math.random() < 0.0125)
 					) {
+						await metaPutAttribute("nagged", 2);
 						await idb.meta.put("attributes", 2, "nagged");
 						await idb.cache.messages.add({
 							read: false,
@@ -97,6 +103,7 @@ const newPhaseRegularSeason = async (
 						Math.random() < 0.5
 					) {
 						// Skipping 3, obsolete
+						await metaPutAttribute("nagged", 4);
 						await idb.meta.put("attributes", 4, "nagged");
 						await idb.cache.messages.add({
 							read: false,

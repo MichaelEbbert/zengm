@@ -1,4 +1,9 @@
 import type { IDBPDatabase } from "@dumbmatter/idb";
+import {
+	metaGetAllLeagues,
+	metaGetLeague,
+	metaPutLeague,
+} from "../../db/electronApi.ts";
 import { connectLeague, idb } from "../../db/index.ts";
 import { getNewLeagueLid } from "../../util/index.ts";
 import remove from "./remove.ts";
@@ -80,14 +85,15 @@ const clone = async (lidOld: number) => {
 
 	try {
 		dbOld = await connectLeague(lidOld);
-		const leagueOld = await idb.meta.get("leagues", lidOld);
+		const leagueOld =
+			(await metaGetLeague(lidOld)) ?? (await idb.meta.get("leagues", lidOld));
 		if (!leagueOld) {
 			throw new Error("League not found");
 		}
 
-		const namesOld = (await idb.meta.getAll("leagues")).map(
-			(league) => league.name,
-		);
+		const sqliteLeagues = await metaGetAllLeagues();
+		const allLeagues = sqliteLeagues ?? (await idb.meta.getAll("leagues"));
+		const namesOld = allLeagues.map((league) => league.name);
 		name = getCloneName(leagueOld.name, namesOld);
 
 		const lid = await getNewLeagueLid();
@@ -107,7 +113,8 @@ const clone = async (lidOld: number) => {
 			created: new Date(),
 			lastPlayed: new Date(),
 		};
-		const lidNew = await idb.meta.add("leagues", leagueNew);
+		await metaPutLeague(leagueNew);
+		const lidNew = leagueNew.lid;
 		dbNew = await connectLeague(lidNew);
 
 		for (const store of dbOld.objectStoreNames) {

@@ -8,14 +8,22 @@ const API = "http://127.0.0.1:3001";
 let _available: boolean | undefined;
 
 async function isAvailable(): Promise<boolean> {
-	if (_available === true) return true; // only cache success
+	if (_available !== undefined) return _available;
 	try {
-		const r = await fetch(`${API}/config`);
-		if (r.ok) {
-			_available = true;
-			return true;
+		const ac = new AbortController();
+		const timer = setTimeout(() => ac.abort(), 500);
+		try {
+			const r = await fetch(`${API}/config`, { signal: ac.signal });
+			clearTimeout(timer);
+			if (r.ok) {
+				_available = true;
+				return true;
+			}
+		} finally {
+			clearTimeout(timer);
 		}
 	} catch {}
+	_available = false;
 	return false;
 }
 
@@ -1089,4 +1097,131 @@ export async function countSqliteSeasonLeaders(lid: number): Promise<number> {
 	} catch {
 		return 0;
 	}
+}
+
+// ---- Meta DB client functions -----------------------------------------------
+
+export async function metaGetAllLeagues(): Promise<any[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/meta/leagues`);
+		if (!r.ok) return null;
+		return (await r.json()).leagues;
+	} catch {
+		return null;
+	}
+}
+
+export async function metaGetLeague(lid: number): Promise<any | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/meta/league?lid=${lid}`);
+		if (!r.ok) return null;
+		return (await r.json()).league;
+	} catch {
+		return null;
+	}
+}
+
+export async function metaGetMaxLeagueLid(): Promise<number | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/meta/league/maxlid`);
+		if (!r.ok) return null;
+		return (await r.json()).maxLid;
+	} catch {
+		return null;
+	}
+}
+
+export async function metaPutLeague(league: any): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/meta/league`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ league }),
+		});
+	} catch {}
+}
+
+export async function metaDeleteLeague(lid: number): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/meta/league?lid=${lid}`, { method: "DELETE" });
+	} catch {}
+}
+
+export async function metaClearLeagues(): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/meta/leagues`, { method: "DELETE" });
+	} catch {}
+}
+
+export async function metaGetAttribute(key: string): Promise<any> {
+	if (!(await isAvailable())) return undefined;
+	try {
+		const r = await fetch(
+			`${API}/meta/attribute?key=${encodeURIComponent(key)}`,
+		);
+		if (!r.ok) return undefined;
+		const data = await r.json();
+		return data.found ? data.value : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+export async function metaPutAttribute(key: string, value: any): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/meta/attribute`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ key, value }),
+		});
+	} catch {}
+}
+
+export async function metaDeleteAttribute(key: string): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/meta/attribute?key=${encodeURIComponent(key)}`, {
+			method: "DELETE",
+		});
+	} catch {}
+}
+
+export async function metaGetAllAchievements(): Promise<
+	{ id: number; slug: string; difficulty: string }[] | null
+> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/meta/achievements`);
+		if (!r.ok) return null;
+		return (await r.json()).achievements;
+	} catch {
+		return null;
+	}
+}
+
+export async function metaAddAchievements(
+	achievements: { slug: string; difficulty: string }[],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/meta/achievements`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ achievements }),
+		});
+	} catch {}
+}
+
+export async function metaClearAchievements(): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/meta/achievements`, { method: "DELETE" });
+	} catch {}
 }

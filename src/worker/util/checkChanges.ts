@@ -1,3 +1,4 @@
+import { metaGetAttribute, metaPutAttribute } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import logEvent from "./logEvent.ts";
 import type { Conditions } from "../../common/types.ts";
@@ -13,11 +14,9 @@ const FETCH_LIMIT = 10;
 
 const checkChanges = async (conditions: Conditions) => {
 	// Fall back to LAST_VERSION_BEFORE_THIS_EXISTED if data doesn't exist - must be a user from before then
-	const lastChangesVersion =
-		((await idb.meta.get(
-			"attributes",
-			"lastChangesVersion",
-		)) as unknown as string) ?? LAST_VERSION_BEFORE_THIS_EXISTED;
+	const lastChangesVersion = ((await metaGetAttribute("lastChangesVersion")) ??
+		(await idb.meta.get("attributes", "lastChangesVersion")) ??
+		LAST_VERSION_BEFORE_THIS_EXISTED) as string;
 
 	if (env.bbgmVersion > lastChangesVersion) {
 		const changes = (await fetchWrapper({
@@ -96,6 +95,7 @@ const checkChanges = async (conditions: Conditions) => {
 			);
 		}
 
+		await metaPutAttribute("lastChangesVersion", env.bbgmVersion);
 		await idb.meta.put("attributes", env.bbgmVersion, "lastChangesVersion");
 	}
 };
