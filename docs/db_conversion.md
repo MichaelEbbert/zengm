@@ -1040,7 +1040,7 @@ Prerequisites: Sub-tasks 8.1–8.11 have no prerequisites (can be done before ph
 
 ---
 
-### Phase 9 — Upstream Sync Process
+### Phase 9 — Upstream Sync Process _(optional)_
 
 Goal: Establish a repeatable, low-friction process for reviewing `zengm-games/zengm` upstream changes and selectively applying them — preserving our structural divergence (SQLite conversion, sidecar consolidation) while keeping useful upstream improvements.
 
@@ -1094,5 +1094,52 @@ Prerequisites: None for setup. Translating DB migrations (9.7) requires Phase 2 
 - [ ] 9.9 Update sync baseline
   - Record the new `<last-synced-sha>` in `docs/upstream_sync_log.md`
   - Commit `docs/upstream_sync_log.md` with all status updates
+
+### Phase 10 — Coach Decision Logging _(optional)_
+
+Goal: Record every play call and game result to SQLite for post-game analysis, replacing the data that the Python sidecar wrote to `stats.db`.
+
+- [ ] 10.1 Add `coach_play_log` table to the league DB schema in `electron/sqlite.js`
+  - Columns: `id`, `gid`, `season`, `quarter`, `down`, `to_go`, `scrimmage`, `clock_minutes`, `offense_tid`, `defense_tid`, `score_diff`, `mode`, `run_prob`, `decision`
+- [ ] 10.2 Insert a row from `coachPlayCall()` in `coachDecision.ts` after each decision
+  - Pass the DB handle (or lid) as a parameter; keep `coachDecision.ts` free of module-level state
+- [ ] 10.3 Add a `GET /coach/play-log` endpoint in `electron/main.js` to expose the data
+- [ ] 10.4 Verify rows appear after simming a game
+
+---
+
+### Phase 11 — SQLite Migration Framework _(optional)_
+
+Goal: Replace IDB's `upgrade<N>()` step mechanism with a forward-migration system for the league SQLite schema, so future schema changes don't require discarding existing leagues.
+
+- [ ] 11.1 Add a `schema_version` table to each league DB (single row, integer version)
+- [ ] 11.2 Write a `migrateLeagueDb(db)` function in `electron/sqlite.js` that runs pending migrations in order on `openDb()`
+- [ ] 11.3 Document the migration authoring process in `docs/db_conversion.md`
+- [ ] 11.4 Apply retroactively to `meta.db` as well
+
+---
+
+### Phase 12 — Smarter Coach Logic _(optional)_
+
+Goal: Improve `coachDecision.ts` beyond the deterministic if/else port from the Python sidecar.
+
+Options (pick one or combine):
+
+- [ ] 12.A Tune the constants (`RUN_CONVERSION_4YD`, `FG_THRESHOLD`, etc.) using logged play data from Phase 10
+- [ ] 12.B Replace the 1st-down adaptive YPC/YPA ratio with a more sophisticated model (down-and-distance lookup table, situational tendencies)
+- [ ] 12.C Add personnel grouping awareness — heavy sets run more, spread sets pass more
+- [ ] 12.D LLM-backed coach: call a local or remote model for select high-stakes decisions (4th down, 2-minute drill), fall back to deterministic logic on timeout
+
+---
+
+### Phase 13 — SQL Query Endpoint _(optional)_
+
+Goal: Enable the `GET /query` HTTP API endpoint (currently a 501 stub) so external tools can run arbitrary read-only SQL against the league DB.
+
+- [ ] 13.1 Implement `GET /query?lid=<lid>&sql=<sql>` in `electron/main.js` using `db.prepare(sql).all()`
+- [ ] 13.2 Restrict to SELECT only (reject anything that doesn't start with `SELECT`)
+- [ ] 13.3 Update `CLAUDE.md` API table
+
+---
 
 ## Notes
