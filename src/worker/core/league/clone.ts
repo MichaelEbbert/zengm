@@ -1,57 +1,11 @@
-import type { IDBPDatabase } from "@dumbmatter/idb";
 import {
 	metaGetAllLeagues,
 	metaGetLeague,
 	metaPutLeague,
+	cloneLeague as electronCloneLeague,
 } from "../../db/electronApi.ts";
-import { connectLeague, idb } from "../../db/index.ts";
 import { getNewLeagueLid } from "../../util/index.ts";
 import remove from "./remove.ts";
-
-const BATCH_SIZE = 1000;
-
-// IDB doesn't play nice with streams, so not worth it to use real streams
-const makeDBStream = (db: IDBPDatabase<any>, store: string) => {
-	let prevKey: IDBValidKey | undefined;
-
-	return {
-		async pull() {
-			const range =
-				prevKey !== undefined
-					? IDBKeyRange.lowerBound(prevKey, true)
-					: undefined;
-
-			let batchCount = 0;
-
-			const records = [];
-			let done = false;
-
-			let cursor = await db.transaction(store).store.openCursor(range);
-			while (cursor) {
-				records.push(cursor.value);
-				prevKey = cursor.key;
-				batchCount += 1;
-
-				if (records.length < BATCH_SIZE) {
-					cursor = await cursor.continue();
-				} else {
-					break;
-				}
-			}
-
-			console.log(`Done batch of ${batchCount} object`);
-
-			if (!cursor) {
-				done = true;
-			}
-
-			return {
-				done,
-				records,
-			};
-		},
-	};
-};
 
 export const getCloneName = (nameOld: string, namesOld: string[]) => {
 	const matches = nameOld.match(
@@ -79,73 +33,35 @@ export const getCloneName = (nameOld: string, namesOld: string[]) => {
 };
 
 const clone = async (lidOld: number) => {
-	let dbOld;
-	let dbNew;
-	let name = "";
-
-	try {
-		dbOld = await connectLeague(lidOld);
-		const leagueOld =
-			(await metaGetLeague(lidOld)) ?? (await idb.meta.get("leagues", lidOld));
-		if (!leagueOld) {
-			throw new Error("League not found");
-		}
-
-		const sqliteLeagues = await metaGetAllLeagues();
-		const allLeagues = sqliteLeagues ?? (await idb.meta.getAll("leagues"));
-		const namesOld = allLeagues.map((league) => league.name);
-		name = getCloneName(leagueOld.name, namesOld);
-
-		const lid = await getNewLeagueLid();
-		await remove(lid);
-
-		const leagueNew = {
-			lid,
-			name,
-			tid: leagueOld.tid,
-			phaseText: leagueOld.phaseText,
-			teamName: leagueOld.teamName,
-			teamRegion: leagueOld.teamRegion,
-			difficulty: leagueOld.difficulty,
-			startingSeason: leagueOld.startingSeason,
-			season: leagueOld.season,
-			imgURL: leagueOld.imgURL,
-			created: new Date(),
-			lastPlayed: new Date(),
-		};
-		await metaPutLeague(leagueNew);
-		const lidNew = leagueNew.lid;
-		dbNew = await connectLeague(lidNew);
-
-		for (const store of dbOld.objectStoreNames) {
-			console.log("Start", store);
-			const dbStream = makeDBStream(dbOld, store);
-
-			while (true) {
-				const { done, records } = await dbStream.pull();
-
-				const tx = await dbNew.transaction(store, "readwrite");
-				for (const record of records) {
-					tx.store.put(record);
-				}
-
-				await tx.done;
-
-				if (done) {
-					break;
-				}
-			}
-
-			console.log("Done", store);
-		}
-	} finally {
-		if (dbOld) {
-			await dbOld.close();
-		}
-		if (dbNew) {
-			await dbNew.close();
-		}
+	const leagueOld = await metaGetLeague(lidOld);
+	if (!leagueOld) {
+		throw new Error("League not found");
 	}
+
+	const allLeagues = (await metaGetAllLeagues()) ?? [];
+	const namesOld = allLeagues.map((league) => league.name);
+	const name = getCloneName(leagueOld.name, namesOld);
+
+	const lid = await getNewLeagueLid();
+	await remove(lid);
+
+	const leagueNew = {
+		lid,
+		name,
+		tid: leagueOld.tid,
+		phaseText: leagueOld.phaseText,
+		teamName: leagueOld.teamName,
+		teamRegion: leagueOld.teamRegion,
+		difficulty: leagueOld.difficulty,
+		startingSeason: leagueOld.startingSeason,
+		season: leagueOld.season,
+		imgURL: leagueOld.imgURL,
+		created: new Date(),
+		lastPlayed: new Date(),
+	};
+	await metaPutLeague(leagueNew);
+
+	await electronCloneLeague(lidOld, lid);
 
 	return name;
 };

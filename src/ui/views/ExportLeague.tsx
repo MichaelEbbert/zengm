@@ -7,7 +7,29 @@ import {
 } from "../../common/defaultGameAttributes.ts";
 import { types } from "../../common/transactionInfo.ts";
 import type { View } from "../../common/types.ts";
-import type { LeagueDBStoreNames } from "../../worker/db/connectLeague.ts";
+type LeagueDBStoreNames =
+	| "allStars"
+	| "awards"
+	| "draftLotteryResults"
+	| "draftPicks"
+	| "events"
+	| "games"
+	| "headToHeads"
+	| "messages"
+	| "negotiations"
+	| "playerFeats"
+	| "players"
+	| "playoffSeries"
+	| "releasedPlayers"
+	| "savedTrades"
+	| "savedTradingBlock"
+	| "schedule"
+	| "scheduledEvents"
+	| "seasonLeaders"
+	| "teamSeasons"
+	| "teamStats"
+	| "teams"
+	| "trade";
 import { MoreLinks } from "../components/MoreLinks.tsx";
 import useTitleBar from "../hooks/useTitleBar.tsx";
 import { helpers } from "../util/helpers.ts";

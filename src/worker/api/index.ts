@@ -35,10 +35,33 @@ import {
 	season,
 } from "../core/index.ts";
 import {
+	deleteOldData as electronDeleteOldData,
 	metaGetAllLeagues,
 	metaGetAttribute,
 	metaPutAttribute,
 	metaDeleteAttribute,
+	readAllDraftPicks,
+	readAllGameAttributes,
+	readAllNegotiations,
+	readAllPlayerFeats,
+	readAllPlayoffSeries,
+	readAllReleasedPlayers,
+	readAllSavedTrades,
+	readAllSavedTradingBlock,
+	readAllSchedule,
+	readAllStars,
+	readAllTeams,
+	readAllTrade,
+	readAwards,
+	readDraftLotteryResults,
+	readEvents,
+	readHeadToHeads,
+	readMessages,
+	readPlayersFilter,
+	readScheduledEvents,
+	readSeasonLeaders,
+	readTeamSeasons,
+	readTeamStats,
 } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import {
@@ -114,8 +137,6 @@ import { withState } from "../core/player/name.ts";
 import { initDefaults } from "../util/loadNames.ts";
 import type { PlayerRatings } from "../../common/types.basketball.ts";
 import createStreamFromLeagueObject from "../core/league/create/createStreamFromLeagueObject.ts";
-import type { IDBPIndex, IDBPObjectStore } from "@dumbmatter/idb";
-import { upgradeGamesVersion65, type LeagueDB } from "../db/connectLeague.ts";
 import playMenu from "./playMenu.ts";
 import toolsMenu from "./toolsMenu.ts";
 import addFirstNameShort from "../util/addFirstNameShort.ts";
@@ -412,11 +433,7 @@ const beforeView = async (
 	conditions: Conditions,
 ) => {
 	if (inLeague) {
-		// idb.league check is for Safari weirdness - seems we need to reinitialize state sometimes because it is lost? idk
-		if (
-			lidUrl !== undefined &&
-			(lidUrl !== lidCurrent || idb.league === undefined)
-		) {
+		if (lidUrl !== undefined && lidUrl !== lidCurrent) {
 			await beforeLeague(lidUrl, conditions);
 		}
 	} else {
@@ -728,75 +745,29 @@ const deleteOldData = async (options: {
 	playerStatsUnnotable: boolean;
 	playerStats: boolean;
 }) => {
-	const transaction = idb.league.transaction(
-		[
-			"allStars",
-			"draftLotteryResults",
-			"events",
-			"games",
-			"headToHeads",
-			"teams",
-			"teamSeasons",
-			"teamStats",
-			"players",
-		],
-		"readwrite",
-	);
-
-	if (options.boxScores) {
-		transaction.objectStore("games").clear();
-	}
-
+	// teams.retiredJerseyNumbers is in the JSON blob — update via cache
 	if (options.teamHistory) {
-		for await (const cursor of transaction.objectStore("teamSeasons")) {
-			if (cursor.value.season < g.get("season")) {
-				await cursor.delete();
-			}
-		}
-
-		transaction.objectStore("draftLotteryResults").clear();
-
-		transaction.objectStore("headToHeads").clear();
-
-		for await (const cursor of transaction.objectStore("allStars")) {
-			if (cursor.value.season < g.get("season")) {
-				await cursor.delete();
-			}
-		}
-
-		for await (const cursor of transaction.objectStore("teams")) {
-			const t = cursor.value;
+		const teams = await idb.cache.teams.getAll();
+		for (const t of teams) {
 			t.retiredJerseyNumbers = [];
-			await cursor.update(t);
+			await idb.cache.teams.put(t);
 		}
 	}
 
-	if (options.teamStats) {
-		for await (const cursor of transaction.objectStore("teamStats")) {
-			if (cursor.value.season < g.get("season")) {
-				await cursor.delete();
-			}
-		}
-	}
-
-	if (options.retiredPlayers) {
-		for await (const cursor of transaction
-			.objectStore("players")
-			.index("tid")
-			.iterate(PLAYER.RETIRED)) {
-			await cursor.delete();
-		}
-	} else if (options.retiredPlayersUnnotable) {
-		for await (const cursor of transaction
-			.objectStore("players")
-			.index("tid")
-			.iterate(PLAYER.RETIRED)) {
-			const p = cursor.value;
-			if (p.awards.length === 0 && !p.statsTids.includes(g.get("userTid"))) {
-				await cursor.delete();
-			}
-		}
-	}
+	// Server handles store-level deletions
+	await electronDeleteOldData(
+		g.get("lid"),
+		{
+			boxScores: options.boxScores,
+			teamHistory: options.teamHistory,
+			teamStats: options.teamStats,
+			retiredPlayers: options.retiredPlayers,
+			retiredPlayersUnnotable: options.retiredPlayersUnnotable,
+			events: options.events,
+		} as any,
+		g.get("season"),
+		g.get("userTid"),
+	);
 
 	const deletePlayerStats = (p: Player) => {
 		let updated = false;
@@ -855,31 +826,26 @@ const deleteOldData = async (options: {
 		}
 	};
 
+	// Handle player stats for active players via cache (retired players handled server-side for retiredPlayers/retiredPlayersUnnotable)
 	if (options.playerStats) {
-		for await (const cursor of transaction.objectStore("players")) {
-			const p = cursor.value;
+		const allPlayers = await idb.cache.players.getAll();
+		for (const p of allPlayers) {
 			const p2 = deletePlayerStats(p);
 			if (p2) {
-				await cursor.update(p2);
+				await idb.cache.players.put(p2);
 			}
 		}
 	} else if (options.playerStatsUnnotable) {
-		for await (const cursor of transaction.objectStore("players")) {
-			const p = cursor.value;
+		const allPlayers = await idb.cache.players.getAll();
+		for (const p of allPlayers) {
 			if (p.awards.length === 0 && !p.statsTids.includes(g.get("userTid"))) {
 				const p2 = deletePlayerStats(p);
 				if (p2) {
-					await cursor.update(p2);
+					await idb.cache.players.put(p2);
 				}
 			}
 		}
 	}
-
-	if (options.events) {
-		transaction.objectStore("events").clear();
-	}
-
-	await transaction.done;
 
 	// Without this, cached values will still exist
 	await idb.cache.fill();
@@ -1468,24 +1434,11 @@ const exportPlayerGamesCsv = async (season: number | "all") => {
 
 	await idb.cache.flush();
 
-	let storeOrIndex:
-		| IDBPObjectStore<LeagueDB, ["games"], "games", "readonly">
-		| IDBPIndex<LeagueDB, ["games"], "games", "season", "readonly"> =
-		idb.league.transaction("games").store;
-	let keyRange = undefined;
-
-	if (season !== "all") {
-		storeOrIndex = storeOrIndex.index("season");
-		keyRange = IDBKeyRange.only(season);
-	}
-
-	let cursor = await storeOrIndex.openCursor(keyRange);
+	const games = await idb.getCopies.games(season !== "all" ? { season } : {});
 
 	const rows: any[] = [];
 
-	while (cursor) {
-		const { gid, playoffs, season, teams } = cursor.value;
-
+	for (const { gid, playoffs, season, teams } of games) {
 		for (const i of [0, 1] as const) {
 			const j = i === 0 ? 1 : 0;
 			const t = teams[i];
@@ -1530,7 +1483,6 @@ const exportPlayerGamesCsv = async (season: number | "all") => {
 				]);
 			}
 		}
-		cursor = await cursor.continue();
 	}
 
 	return csvFormatRows([columns, ...rows]);
@@ -1628,7 +1580,7 @@ const exportDraftClass = async ({
 	}
 
 	const data: any = {
-		version: idb.league.version,
+		version: LEAGUE_DATABASE_VERSION,
 		startingSeason: season,
 		players: players.map((p) => ({
 			born: p.born,
@@ -1711,8 +1663,7 @@ const getDefaultInjuries = () => {
 };
 
 const getDefaultNewLeagueSettings = async () => {
-	const overrides = ((await metaGetAttribute("defaultSettingsOverrides")) ??
-		(await idb.meta.get("attributes", "defaultSettingsOverrides"))) as
+	const overrides = (await metaGetAttribute("defaultSettingsOverrides")) as
 		| Partial<Settings>
 		| undefined;
 
@@ -1801,7 +1752,125 @@ const getLeagueName = () => {
 };
 
 const getLeagues = async () => {
-	return (await metaGetAllLeagues()) ?? idb.meta.getAll("leagues");
+	const leagues = (await metaGetAllLeagues()) ?? [];
+	return leagues.map((l: any) => ({
+		...l,
+		created: l.created ? new Date(l.created) : undefined,
+		lastPlayed: l.lastPlayed ? new Date(l.lastPlayed) : undefined,
+	}));
+};
+
+const getLeagueExportData = async (
+	storesInput: string[],
+): Promise<{
+	filteredStores: string[];
+	stores: Record<string, any[]>;
+}> => {
+	await idb.cache.flush();
+	const lid = g.get("lid");
+
+	const includeTeamSeasonsAndStats =
+		storesInput.includes("teamSeasons") || storesInput.includes("teamStats");
+	const filteredStores = storesInput.filter(
+		(s) => s !== "teamSeasons" && s !== "teamStats",
+	);
+
+	const stores: Record<string, any[]> = {};
+
+	for (const store of filteredStores) {
+		switch (store) {
+			case "allStars":
+				stores[store] = (await readAllStars(lid)) ?? [];
+				break;
+			case "awards":
+				stores[store] = (await readAwards(lid)) ?? [];
+				break;
+			case "draftLotteryResults":
+				stores[store] = (await readDraftLotteryResults(lid)) ?? [];
+				break;
+			case "draftPicks":
+				stores[store] = (await readAllDraftPicks(lid)) ?? [];
+				break;
+			case "events":
+				stores[store] = (await readEvents(lid, {})) ?? [];
+				break;
+			case "gameAttributes":
+				stores[store] = (await readAllGameAttributes(lid)) ?? [];
+				break;
+			case "games":
+				stores[store] = await idb.getCopies.games({});
+				break;
+			case "headToHeads":
+				stores[store] = (await readHeadToHeads(lid)) ?? [];
+				break;
+			case "messages":
+				stores[store] = (await readMessages(lid, {})) ?? [];
+				break;
+			case "negotiations":
+				stores[store] = (await readAllNegotiations(lid)) ?? [];
+				break;
+			case "playerFeats":
+				stores[store] = (await readAllPlayerFeats(lid)) ?? [];
+				break;
+			case "players":
+				stores[store] =
+					(await readPlayersFilter(lid, { activeAndRetired: true })) ?? [];
+				break;
+			case "playoffSeries":
+				stores[store] = (await readAllPlayoffSeries(lid)) ?? [];
+				break;
+			case "releasedPlayers":
+				stores[store] = (await readAllReleasedPlayers(lid)) ?? [];
+				break;
+			case "savedTrades":
+				stores[store] = (await readAllSavedTrades(lid)) ?? [];
+				break;
+			case "savedTradingBlock":
+				stores[store] = (await readAllSavedTradingBlock(lid)) ?? [];
+				break;
+			case "schedule":
+				stores[store] = (await readAllSchedule(lid)) ?? [];
+				break;
+			case "scheduledEvents":
+				stores[store] = (await readScheduledEvents(lid)) ?? [];
+				break;
+			case "seasonLeaders":
+				stores[store] = (await readSeasonLeaders(lid, {})) ?? [];
+				break;
+			case "teams": {
+				const teams = (await readAllTeams(lid)) ?? [];
+				if (includeTeamSeasonsAndStats) {
+					const allTeamSeasons = (await readTeamSeasons(lid, {})) ?? [];
+					const allTeamStats = (await readTeamStats(lid, {})) ?? [];
+					const seasonsByTid = new Map<number, any[]>();
+					const statsByTid = new Map<number, any[]>();
+					for (const ts of allTeamSeasons) {
+						const arr = seasonsByTid.get(ts.tid) ?? [];
+						arr.push(ts);
+						seasonsByTid.set(ts.tid, arr);
+					}
+					for (const ts of allTeamStats) {
+						const arr = statsByTid.get(ts.tid) ?? [];
+						arr.push(ts);
+						statsByTid.set(ts.tid, arr);
+					}
+					for (const t of teams) {
+						(t as any).seasons = seasonsByTid.get(t.tid) ?? [];
+						(t as any).stats = statsByTid.get(t.tid) ?? [];
+					}
+				}
+				stores[store] = teams;
+				break;
+			}
+			case "trade":
+				stores[store] = (await readAllTrade(lid)) ?? [];
+				break;
+			default:
+				stores[store] = [];
+		}
+	}
+
+	return { filteredStores, stores };
 };
 
 const getNegotiationProps = async (pid: number) => {
@@ -2844,13 +2913,10 @@ const init = async (inputEnv: Env, conditions: Conditions) => {
 	}
 
 	// Send options to all new tabs
-	const options = ((await metaGetAttribute("options")) ??
-		(await (await idb.meta.transaction("attributes")).store.get("options")) ??
-		{}) as Options;
-	const keyboardShortcuts = ((await metaGetAttribute("keyboardShortcuts")) ??
-		(await (
-			await idb.meta.transaction("attributes")
-		).store.get("keyboardShortcuts"))) as KeyboardShortcutsLocal;
+	const options = ((await metaGetAttribute("options")) ?? {}) as Options;
+	const keyboardShortcuts = (await metaGetAttribute(
+		"keyboardShortcuts",
+	)) as KeyboardShortcutsLocal;
 	await toUI(
 		"updateLocal",
 		[{ fullNames: options.fullNames, keyboardShortcuts, units: options.units }],
@@ -2863,8 +2929,12 @@ const initGold = async () => {
 };
 
 const loadRetiredPlayers = async () => {
-	const players = await idb.cache.players.getAll();
-	const playersByPid = groupByUnique(players, "pid");
+	const cachedPlayers = await idb.cache.players.getAll();
+	const playersByPid = groupByUnique(cachedPlayers, "pid");
+
+	const lid = g.get("lid");
+	const allPlayers =
+		(await readPlayersFilter(lid, { activeAndRetired: true })) ?? cachedPlayers;
 
 	const playerNames: {
 		pid: number;
@@ -2874,11 +2944,9 @@ const loadRetiredPlayers = async () => {
 		lastSeason: number;
 	}[] = [];
 
-	for await (const { value: pTemp } of idb.league.transaction("players")
-		.store) {
-		// Make sure we have latest version of this player
+	for (const pTemp of allPlayers) {
+		// Make sure we have latest version of this player (cache may be newer)
 		const p = playersByPid[pTemp.pid] ?? pTemp;
-
 		playerNames.push(formatPlayerRelativesList(p));
 	}
 
@@ -3908,16 +3976,10 @@ const updateDefaultSettingsOverrides = async (
 ) => {
 	if (Object.keys(defaultSettingsOverrides).length === 0) {
 		await metaDeleteAttribute("defaultSettingsOverrides");
-		await idb.meta.delete("attributes", "defaultSettingsOverrides");
 	} else {
 		await metaPutAttribute(
 			"defaultSettingsOverrides",
 			defaultSettingsOverrides,
-		);
-		await idb.meta.put(
-			"attributes",
-			defaultSettingsOverrides,
-			"defaultSettingsOverrides",
 		);
 	}
 };
@@ -4032,10 +4094,6 @@ const updateKeyboardShortcuts = async (
 	keyboardShortcuts: NonNullable<KeyboardShortcutsLocal>,
 ) => {
 	await metaPutAttribute("keyboardShortcuts", keyboardShortcuts);
-	const attributesStore = (
-		await idb.meta.transaction("attributes", "readwrite")
-	).store;
-	await attributesStore.put(keyboardShortcuts, "keyboardShortcuts");
 	await toUI("updateLocal", [{ keyboardShortcuts }]);
 };
 
@@ -4075,10 +4133,6 @@ const updateOptions = async (
 		phaseChangeRedirects: options.phaseChangeRedirects,
 	};
 	await metaPutAttribute("options", optionsValue);
-	const attributesStore = (
-		await idb.meta.transaction("attributes", "readwrite")
-	).store;
-	await attributesStore.put(optionsValue, "options");
 	// realPlayerPhotos and realTeamInfo not used in this fork
 	await toUI("updateLocal", [
 		{ units: options.units, fullNames: options.fullNames },
@@ -4532,38 +4586,14 @@ const updateAwards = async (
 };
 
 const upgrade65Estimate = async () => {
-	// cursor is null if there are no saved box scores. Using IDBObjectStore.count() is slower if there are a lot of games
-	const cursor = await idb.league.transaction("games").store.openKeyCursor();
-	if (!cursor) {
-		return {
-			numFeats: 0,
-			numPlayoffSeries: 0,
-		};
-	}
-
-	const [numFeats, numPlayoffSeries] = await Promise.all([
-		idb.league.count("playerFeats"),
-		idb.league.count("playoffSeries"),
-	]);
-
 	return {
-		numFeats,
-		numPlayoffSeries,
+		numFeats: 0,
+		numPlayoffSeries: 0,
 	};
 };
 
 const upgrade65 = async () => {
-	console.time("upgrade65");
-	const transaction = idb.league.transaction(
-		["games", "playerFeats", "playoffSeries"],
-		"readwrite",
-	);
-	await upgradeGamesVersion65({
-		transaction,
-		stopIfTooMany: false,
-		lid: g.get("lid"),
-	});
-	console.timeEnd("upgrade65");
+	// No-op: games are stored in SQLite normalized schema, no IDB upgrade needed
 };
 
 const upsertCustomizedPlayer = async (
@@ -5156,6 +5186,7 @@ export default {
 		getDefaultTragicDeaths,
 		getDiamondInfo,
 		getJerseyNumberConflict,
+		getLeagueExportData,
 		getLeagueInfo,
 		getLeagueStatus,
 		getLeagueName,

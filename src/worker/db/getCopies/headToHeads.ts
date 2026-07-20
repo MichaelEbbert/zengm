@@ -23,7 +23,7 @@ const getCopies = async (
 				? (((await electronReadHeadToHeads(lid, {
 						season,
 					})) as HeadToHead[]) ?? [])
-				: await idb.league.getAll("headToHeads", season),
+				: [],
 			(await idb.cache.headToHeads.getAll()).filter((r) => r.season === season),
 			"headToHeads",
 			type,
@@ -33,7 +33,7 @@ const getCopies = async (
 	return mergeByPk(
 		typeof lid === "number"
 			? (((await electronReadHeadToHeads(lid)) as HeadToHead[]) ?? [])
-			: await idb.league.getAll("headToHeads"),
+			: [],
 		await idb.cache.headToHeads.getAll(),
 		"headToHeads",
 		type,

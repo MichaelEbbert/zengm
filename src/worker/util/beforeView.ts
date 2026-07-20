@@ -1,5 +1,5 @@
 import { metaGetLeague, metaPutLeague } from "../db/electronApi.ts";
-import { Cache, connectLeague, idb } from "../db/index.ts";
+import { Cache, idb } from "../db/index.ts";
 import { league } from "../core/index.ts";
 import {
 	env,
@@ -21,7 +21,7 @@ let heartbeatIntervalID: number;
 
 const getLeague = async (lid: number) => {
 	// Make sure this league exists before proceeding
-	const l = (await metaGetLeague(lid)) ?? (await idb.meta.get("leagues", lid));
+	const l = await metaGetLeague(lid);
 
 	if (l === undefined || l === null) {
 		throw new Error("League not found.");
@@ -34,7 +34,6 @@ const runHeartbeat = async (l: League) => {
 	l.heartbeatID = env.heartbeatID;
 	l.heartbeatTimestamp = Date.now();
 	await metaPutLeague(l);
-	await idb.meta.put("leagues", l);
 };
 
 const startHeartbeat = async (l: Awaited<ReturnType<typeof getLeague>>) => {
@@ -119,9 +118,8 @@ export const beforeLeague = async (newLid: number, conditions?: Conditions) => {
 
 		// Confirm league exists before proceeding
 		await getLeague(newLid);
-		idb.league = await connectLeague(newLid);
 
-		// Do this after connecting to league, in case there is an error during connection, the lid will stil be in sync between worker and ui
+		// Do this after confirming the league exists, so the lid stays in sync between worker and ui
 		g.setWithoutSavingToDB("lid", newLid);
 
 		if (loadingNewLid !== newLid) {

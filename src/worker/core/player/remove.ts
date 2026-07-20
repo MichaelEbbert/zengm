@@ -1,4 +1,6 @@
+import { flushPlayers, readPlayersFilter } from "../../db/electronApi.ts";
 import { idb } from "../../db/index.ts";
+import { g } from "../../util/index.ts";
 import { PLAYER } from "../../../common/constants.ts";
 import type { Player } from "../../../common/types.ts";
 
@@ -25,7 +27,7 @@ const remove = async (pids: number[]) => {
 		await idb.cache.players.delete(pid);
 	}
 
-	// Also remove any relatives
+	// Also remove any relatives from cache (active players)
 	const players = await idb.cache.players.getAll();
 	for (const p of players) {
 		if (pids.includes(p.pid)) {
@@ -36,18 +38,27 @@ const remove = async (pids: number[]) => {
 			await idb.cache.players.put(p);
 		}
 	}
-	for await (const cursor of idb.league
-		.transaction("players", "readwrite")
-		.store.index("tid")
-		.iterate(PLAYER.RETIRED)) {
-		const p = cursor.value;
+
+	// Also remove any relatives from retired players in SQLite
+	const lid = g.get("lid");
+	const retiredPlayers =
+		(await readPlayersFilter(lid, { activeAndRetired: true }))?.filter(
+			(p: any) => p.tid === PLAYER.RETIRED,
+		) ?? [];
+
+	const toFlush: any[] = [];
+	for (const p of retiredPlayers) {
 		if (pids.includes(p.pid)) {
 			continue;
 		}
 
 		if (hasRelativeAndMutate(p, pids)) {
-			await cursor.update(p);
+			toFlush.push(p);
 		}
+	}
+
+	if (toFlush.length > 0) {
+		await flushPlayers(lid, toFlush);
 	}
 };
 

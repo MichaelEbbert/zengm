@@ -18,14 +18,14 @@ import { GameSim, player, realRosters, team } from "../core/index.ts";
 import { processTeam } from "../core/game/loadTeams.ts";
 import { gameSimToBoxScore } from "../core/game/writeGameStats.ts";
 import { getRosterOrderByPid } from "../core/team/rosterAutoSort.basketball.ts";
-import { connectLeague, idb } from "../db/index.ts";
 import {
 	readAllTeams as electronReadAllTeams,
 	readTeamSeasons as electronReadTeamSeasons,
 	readAllGameAttributes as electronReadAllGameAttributes,
+	readPlayersFilter,
+	readAllPlayoffSeries,
 	metaGetAllLeagues,
 } from "../db/electronApi.ts";
-import { getPlayersActiveSeason } from "../db/getCopies/players.ts";
 import {
 	defaultGameAttributes,
 	g,
@@ -40,8 +40,7 @@ import { unwrapGameAttribute } from "../../common/unwrapGameAttribute.ts";
 import { isSport } from "../../common/sportFunctions.ts";
 
 export const getLeagues = async () => {
-	const leagues =
-		(await metaGetAllLeagues()) ?? (await idb.meta.getAll("leagues"));
+	const leagues = (await metaGetAllLeagues()) ?? [];
 	return leagues
 		.map((league) => ({
 			lid: league.lid,
@@ -63,20 +62,7 @@ export const getSeasons = async (lid: number) => {
 	}
 
 	if (seasonValue === undefined || startingSeasonValue === undefined) {
-		const league = await connectLeague(lid);
-		const store = league.transaction("gameAttributes").store;
-		const season = await store.get("season");
-		const startingSeason = await store.get("startingSeason");
-		league.close();
-
-		if (!season || typeof season.value !== "number") {
-			throw new Error("Invalid season");
-		}
-		if (!startingSeason || typeof startingSeason.value !== "number") {
-			throw new Error("Invalid startingSeason");
-		}
-		seasonValue = season.value;
-		startingSeasonValue = startingSeason.value;
+		throw new Error("Invalid season or startingSeason in league database");
 	}
 
 	if (typeof seasonValue !== "number") throw new Error("Invalid season");
@@ -102,9 +88,6 @@ const getSeasonInfoLeague = async ({
 	season: number;
 	pidOffset: number;
 }) => {
-	const league = await connectLeague(lid);
-
-	// Load gameAttributes: try SQLite first, fall back to IDB
 	const sqliteGaList = await electronReadAllGameAttributes(lid);
 	const sqliteGaMap: Record<string, any> = {};
 	if (sqliteGaList) {
@@ -113,58 +96,37 @@ const getSeasonInfoLeague = async ({
 		}
 	}
 
-	const gameAttributesStore = league.transaction("gameAttributes").store;
-
-	const getGameAttribute = async <T extends keyof GameAttributesLeague>(
+	const getGameAttribute = <T extends keyof GameAttributesLeague>(
 		key: T,
-	): Promise<GameAttributesLeague[T]> => {
-		let value: any;
-		if (Object.hasOwn(sqliteGaMap, key)) {
-			value = sqliteGaMap[key];
-		} else {
-			value =
-				(await gameAttributesStore.get(key))?.value ??
-				defaultGameAttributes[key];
-		}
-		return unwrapGameAttribute(
-			{
-				[key]: value,
-			},
-			key,
-		) as any;
+	): GameAttributesLeague[T] => {
+		const value = Object.hasOwn(sqliteGaMap, key)
+			? sqliteGaMap[key]
+			: defaultGameAttributes[key];
+		return unwrapGameAttribute({ [key]: value }, key) as any;
 	};
 
 	const gameAttributes: Partial<GameAttributesLeague> = {};
 	for (const key of EXHIBITION_GAME_SETTINGS) {
-		const value = await getGameAttribute(key);
-		gameAttributes[key] = value as any;
+		gameAttributes[key] = getGameAttribute(key) as any;
 	}
 
-	const numGamesPlayoffSeries = await getGameAttribute("numGamesPlayoffSeries");
-	const currentSeason = await getGameAttribute("season");
-	const currentPhase = await getGameAttribute("phase");
-	const confs = await getGameAttribute("confs");
-	const playoffsByConf = await getGameAttribute("playoffsByConf");
+	const numGamesPlayoffSeries = getGameAttribute("numGamesPlayoffSeries");
+	const currentSeason = getGameAttribute("season");
+	const currentPhase = getGameAttribute("phase");
+	const confs = getGameAttribute("confs");
+	const playoffsByConf = getGameAttribute("playoffsByConf");
 
 	const isCurrentOngoingSeason =
 		season === currentSeason && currentPhase < PHASE.DRAFT;
 
-	const teamsFromElectron = await electronReadAllTeams(lid);
-	const teams =
-		teamsFromElectron ?? (await league.transaction("teams").store.getAll());
-	const teamSeasonsFromElectron = await electronReadTeamSeasons(lid, {
-		season,
-	});
-	const teamSeasons =
-		teamSeasonsFromElectron ??
-		(await league
-			.transaction("teamSeasons")
-			.store.index("season, tid")
-			.getAll(IDBKeyRange.bound([season], [season, ""])));
+	const teams = (await electronReadAllTeams(lid)) ?? [];
+	const teamSeasons = (await electronReadTeamSeasons(lid, { season })) ?? [];
 
 	let pid = pidOffset;
 
-	const players = (await getPlayersActiveSeason(league, season)).filter((p) => {
+	const players = (
+		(await readPlayersFilter(lid, { activeSeason: season })) ?? []
+	).filter((p: any) => {
 		// Keep players who ended the season on this team. Not perfect, will miss released players. Second check is for players added to the team in God Mode during the playoffs.
 		let seasonStats =
 			p.stats.findLast((row) => row.season === season && !row.playoffs) ??
@@ -190,9 +152,10 @@ const getSeasonInfoLeague = async ({
 	});
 	const playersByTid = Map.groupBy(players, (p) => p.stats[0].tid);
 
-	const playoffSeries = await league
-		.transaction("playoffSeries")
-		.store.get(season);
+	const allPlayoffSeries = (await readAllPlayoffSeries(lid)) ?? [];
+	const playoffSeries = allPlayoffSeries.find(
+		(ps: any) => ps.season === season,
+	);
 
 	const exhibitionTeams: ExhibitionTeamWithPop[] = await Promise.all(
 		teamSeasons.map(async (teamSeason) => {
@@ -327,8 +290,6 @@ const getSeasonInfoLeague = async ({
 			};
 		}),
 	);
-
-	league.close();
 
 	return {
 		gameAttributes,

@@ -3,7 +3,6 @@ import {
 	metaAddAchievements,
 	metaGetAllAchievements,
 } from "../db/electronApi.ts";
-import { idb } from "../db/index.ts";
 import achievements from "./achievements.ts";
 import g from "./g.ts";
 import logEvent from "./logEvent.ts";
@@ -79,14 +78,6 @@ async function add(
 
 	const addToIndexedDB = async (slugs2: string[]) => {
 		await metaAddAchievements(slugs2.map((slug) => ({ slug, difficulty })));
-		const tx = await idb.meta.transaction("achievements", "readwrite");
-		for (const slug of slugs2) {
-			tx.store.add({
-				slug,
-				difficulty,
-			});
-		}
-		await tx.done;
 	};
 
 	if (!silent) {
@@ -139,8 +130,7 @@ async function getAll(): Promise<
 	});
 
 	// Handle any achievements stored locally
-	const achievementsLocal =
-		(await metaGetAllAchievements()) ?? (await idb.meta.getAll("achievements"));
+	const achievementsLocal = (await metaGetAllAchievements()) ?? [];
 
 	for (const achievementLocal of achievementsLocal) {
 		const difficulty = (achievementLocal.difficulty ?? "normal") as

@@ -16,7 +16,7 @@ const getCopies = async (
 	return mergeByPk(
 		typeof lid === "number"
 			? (((await electronReadAllPlayoffSeries(lid)) as PlayoffSeries[]) ?? [])
-			: await idb.league.getAll("playoffSeries"),
+			: [],
 		await idb.cache.playoffSeries.getAll(),
 		"playoffSeries",
 		type,

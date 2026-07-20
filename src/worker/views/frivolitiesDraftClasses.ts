@@ -1,3 +1,4 @@
+import { readPlayersFilter } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import { g, processPlayersHallOfFame } from "../util/index.ts";
 import type { UpdateEvents, Player } from "../../common/types.ts";
@@ -46,16 +47,16 @@ const updateFrivolitiesDraftClasses = async (
 
 		const mostRecentDraftYear =
 			g.get("phase") >= PHASE.DRAFT ? g.get("season") : g.get("season") - 1;
+		const minDraftYear = Math.min(mostRecentDraftYear, g.get("startingSeason"));
 
-		for await (const { value: p } of idb.league
-			.transaction("players")
-			.store.index("draft.year, retiredYear")
-			.iterate(
-				IDBKeyRange.bound(
-					[Math.min(mostRecentDraftYear, g.get("startingSeason"))],
-					[mostRecentDraftYear, Infinity],
-				),
-			)) {
+		const allPlayersRaw =
+			(await readPlayersFilter(g.get("lid"), { activeAndRetired: true })) ??
+			(await idb.cache.players.getAll());
+		const filteredPlayers = allPlayersRaw.filter(
+			(p: Player) =>
+				p.draft.year >= minDraftYear && p.draft.year <= mostRecentDraftYear,
+		);
+		for (const p of filteredPlayers) {
 			const value = playerValue(p);
 
 			if (draftClass === undefined || p.draft.year !== draftClass.season) {

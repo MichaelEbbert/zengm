@@ -1,6 +1,5 @@
 import type { League } from "../../../common/types.ts";
 import { metaGetLeague, metaPutLeague } from "../../db/electronApi.ts";
-import { idb } from "../../db/index.ts";
 import { g, local } from "../../util/index.ts";
 
 const updateMeta = async (
@@ -15,15 +14,7 @@ const updateMeta = async (
 	if (local.autoSave) {
 		const lid = lidInput ?? g.get("lid");
 
-		let l = await metaGetLeague(lid);
-		if (l === null) {
-			// Fallback to IDB when not in Electron
-			const transaction = await idb.meta.transaction("leagues", "readwrite");
-			l = await transaction.store.get(lid);
-			if (!l) {
-				throw new Error(`No league with lid ${lid} found`);
-			}
-		}
+		const l = await metaGetLeague(lid);
 		if (!l) {
 			throw new Error(`No league with lid ${lid} found`);
 		}

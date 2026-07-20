@@ -2572,6 +2572,111 @@ export function openDb(dbDir, lid) {
 	return db;
 }
 
+export function getMaxPlayerPid(db) {
+	return db.prepare("SELECT MAX(pid) AS m FROM players").get()?.m ?? -1;
+}
+
+export function cloneLeague(dbDir, lidOld, lidNew) {
+	// Close the old DB connection if open (WAL checkpoint before copy)
+	const keyOld = String(lidOld);
+	const dbOld = _dbs.get(keyOld);
+	if (dbOld) {
+		dbOld.pragma("wal_checkpoint(TRUNCATE)");
+	}
+	// Close new DB if somehow already open
+	const keyNew = String(lidNew);
+	if (_dbs.has(keyNew)) {
+		_dbs.get(keyNew).close();
+		_dbs.delete(keyNew);
+	}
+	const srcPath = path.join(dbDir, `league-${lidOld}.db`);
+	const dstPath = path.join(dbDir, `league-${lidNew}.db`);
+	fs.copyFileSync(srcPath, dstPath);
+	// Also copy WAL and SHM if they exist
+	for (const ext of ["-wal", "-shm"]) {
+		const srcExt = srcPath + ext;
+		if (fs.existsSync(srcExt)) {
+			fs.copyFileSync(srcExt, dstPath + ext);
+		}
+	}
+}
+
+export function deleteOldData(db, options, currentSeason, userTid) {
+	db.transaction(() => {
+		if (options.boxScores) {
+			db.prepare("DELETE FROM game_scoring_plays").run();
+			db.prepare("DELETE FROM game_players").run();
+			db.prepare("DELETE FROM game_teams").run();
+			db.prepare("DELETE FROM games").run();
+		}
+		if (options.teamHistory) {
+			db.prepare("DELETE FROM team_seasons WHERE season < ?").run(
+				currentSeason,
+			);
+			db.prepare("DELETE FROM draft_lottery_results").run();
+			db.prepare("DELETE FROM head_to_heads").run();
+			db.prepare("DELETE FROM all_stars WHERE season < ?").run(currentSeason);
+			// teams.retiredJerseyNumbers is in the JSON blob — handled by worker
+		}
+		if (options.teamStats) {
+			db.prepare("DELETE FROM team_stats WHERE season < ?").run(currentSeason);
+		}
+		if (options.retiredPlayers) {
+			const retiredTid = -3;
+			const pids = db
+				.prepare("SELECT pid FROM players WHERE tid = ?")
+				.all(retiredTid)
+				.map((r) => r.pid);
+			if (pids.length > 0) {
+				const ph = pids.map(() => "?").join(",");
+				for (const tbl of [
+					"player_stats",
+					"player_ratings",
+					"player_injuries",
+					"player_salaries",
+					"player_awards",
+					"player_relatives",
+					"player_mood_traits",
+					"player_transactions",
+				]) {
+					db.prepare(`DELETE FROM ${tbl} WHERE pid IN (${ph})`).run(...pids);
+				}
+				db.prepare(`DELETE FROM players WHERE pid IN (${ph})`).run(...pids);
+			}
+		} else if (options.retiredPlayersUnnotable) {
+			const retiredTid = -3;
+			const pids = db
+				.prepare(
+					`SELECT p.pid FROM players p
+					 WHERE p.tid = ?
+					 AND p.pid NOT IN (SELECT pid FROM player_awards)
+					 AND p.pid NOT IN (SELECT DISTINCT pid FROM player_stats WHERE tid = ?)`,
+				)
+				.all(retiredTid, userTid)
+				.map((r) => r.pid);
+			if (pids.length > 0) {
+				const ph = pids.map(() => "?").join(",");
+				for (const tbl of [
+					"player_stats",
+					"player_ratings",
+					"player_injuries",
+					"player_salaries",
+					"player_awards",
+					"player_relatives",
+					"player_mood_traits",
+					"player_transactions",
+				]) {
+					db.prepare(`DELETE FROM ${tbl} WHERE pid IN (${ph})`).run(...pids);
+				}
+				db.prepare(`DELETE FROM players WHERE pid IN (${ph})`).run(...pids);
+			}
+		}
+		if (options.events) {
+			db.prepare("DELETE FROM events").run();
+		}
+	})();
+}
+
 // Cached prepared statements per DB
 const _stmts = new Map();
 
@@ -3248,6 +3353,22 @@ export function putLeague(db, l) {
 
 export function deleteLeague(db, lid) {
 	db.prepare("DELETE FROM leagues WHERE lid = ?").run(lid);
+}
+
+export function deleteLeagueDb(dbDir, lid) {
+	// Close the open db handle if it exists so the file can be deleted
+	const key = String(lid);
+	if (_dbs.has(key)) {
+		_dbs.get(key).close();
+		_dbs.delete(key);
+	}
+	const dbPath = path.join(dbDir, `league-${lid}.db`);
+	for (const ext of ["", "-wal", "-shm"]) {
+		const p = dbPath + ext;
+		if (fs.existsSync(p)) {
+			fs.rmSync(p);
+		}
+	}
 }
 
 export function clearLeagues(db) {

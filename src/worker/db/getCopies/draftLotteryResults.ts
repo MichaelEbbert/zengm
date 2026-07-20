@@ -23,7 +23,7 @@ const getCopies = async (
 				? (((await electronReadDraftLotteryResults(lid, {
 						season,
 					})) as DraftLotteryResult[]) ?? [])
-				: await idb.league.getAll("draftLotteryResults", season),
+				: [],
 			(await idb.cache.draftLotteryResults.getAll()).filter(
 				(r) => r.season === season,
 			),
@@ -37,7 +37,7 @@ const getCopies = async (
 			? (((await electronReadDraftLotteryResults(
 					lid,
 				)) as DraftLotteryResult[]) ?? [])
-			: await idb.league.getAll("draftLotteryResults"),
+			: [],
 		await idb.cache.draftLotteryResults.getAll(),
 		"draftLotteryResults",
 		type,

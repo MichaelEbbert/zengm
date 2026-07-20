@@ -1,6 +1,6 @@
-import { afterAll, assert, beforeAll, describe, test } from "vitest";
+import { assert, beforeAll, describe, test } from "vitest";
 import { PLAYER } from "../../../common/constants.ts";
-import { mockIDBLeague, resetCache, resetG } from "../../../test/helpers.ts";
+import { resetCache, resetG } from "../../../test/helpers.ts";
 import { player } from "../index.ts";
 import { makeBrother, makeSon } from "./addRelatives.ts";
 import { idb } from "../../db/index.ts";
@@ -32,11 +32,6 @@ const getPlayer = async (pid: number) => {
 
 beforeAll(() => {
 	resetG();
-	idb.league = mockIDBLeague();
-});
-afterAll(() => {
-	// @ts-expect-error
-	idb.league = undefined;
 });
 describe("makeBrother", () => {
 	test("make player the brother of another player", async () => {

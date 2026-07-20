@@ -1,17 +1,10 @@
-import { afterAll, assert, beforeAll, test } from "vitest";
+import { assert, beforeAll, test } from "vitest";
 import { getDraftTids, loadTeamSeasons } from "./testHelpers.ts";
-import { mockIDBLeague, resetG } from "../../../test/helpers.ts";
-import { idb } from "../../db/index.ts";
+import { resetG } from "../../../test/helpers.ts";
 
 beforeAll(async () => {
 	resetG();
-	idb.league = mockIDBLeague();
-
 	await loadTeamSeasons();
-});
-afterAll(() => {
-	// @ts-expect-error
-	idb.league = undefined;
 });
 
 test("schedule 60 draft picks", async () => {

@@ -4,6 +4,7 @@ import type {
 	PlayerStatType,
 	Phase,
 } from "../../../common/types.ts";
+import { flushSeasonLeaders, readSeasonLeaders } from "../../db/electronApi.ts";
 import { idb } from "../../db/index.ts";
 import { g, local } from "../../util/index.ts";
 import {
@@ -201,7 +202,7 @@ const calculateSeasonLeaders = async (
 			// Add to cache when appropriate
 			await idb.cache.seasonLeaders.put(leadersCache);
 		} else {
-			await idb.league.put("seasonLeaders", leadersCache);
+			await flushSeasonLeaders(g.get("lid"), [leadersCache]);
 		}
 	}
 
@@ -224,9 +225,11 @@ const getSeasonLeaders = async (season: number) => {
 			return local.seasonLeaders;
 		}
 	} else {
+		const fromDb =
+			(await readSeasonLeaders(g.get("lid"), { fromSeason: season })) ?? [];
 		const leadersCache =
 			(await idb.cache.seasonLeaders.get(season)) ??
-			(await idb.league.get("seasonLeaders", season));
+			fromDb.find((sl: any) => sl.season === season);
 		if (leadersCache) {
 			return leadersCache;
 		}

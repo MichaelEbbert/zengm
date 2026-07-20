@@ -1,6 +1,6 @@
 import { assert, beforeAll, describe, test } from "vitest";
 import { assert as typeAssert, type IsExact } from "conditional-type-checks";
-import { mockIDBLeague, resetCache, resetG } from "../../../test/helpers.ts";
+import { resetCache, resetG } from "../../../test/helpers.ts";
 import { player, team } from "../../core/index.ts";
 import { idb } from "../index.ts";
 import { g, helpers } from "../../util/index.ts";
@@ -188,15 +188,12 @@ test("return playoff stats if playoffs is true", async () => {
 });
 
 test("return stats in an array if no season is specified", async () => {
-	idb.league = mockIDBLeague();
 	const t = await idb.getCopy.teamsPlus({
 		stats: ["gp", "fg", "fga", "fgp"],
 		tid: 4,
 		playoffs: true,
 		regularSeason: false,
 	});
-	// @ts-expect-error
-	idb.league = undefined;
 	assert.deepStrictEqual(t, {
 		stats: [
 			{
@@ -211,14 +208,11 @@ test("return stats in an array if no season is specified", async () => {
 });
 
 test("return stats in an array if regular season and playoffs are specified", async () => {
-	idb.league = mockIDBLeague();
 	const t = await idb.getCopy.teamsPlus({
 		stats: ["gp", "fg", "fga", "fgp"],
 		tid: 4,
 		playoffs: true,
 	});
-	// @ts-expect-error
-	idb.league = undefined;
 	assert.deepStrictEqual(t, {
 		stats: [
 			{
@@ -417,8 +411,6 @@ describe("TypeScript", () => {
 	});
 
 	test("Returns array for seasonAttrs and stats when no season is supplied", async () => {
-		idb.league = mockIDBLeague();
-
 		const teams = await idb.getCopies.teamsPlus({
 			attrs: ["tid", "abbrev"],
 			seasonAttrs: ["season", "won", "payroll"],
@@ -456,8 +448,5 @@ describe("TypeScript", () => {
 				}
 			>
 		>(true);
-
-		// @ts-expect-error
-		idb.league = undefined;
 	});
 });

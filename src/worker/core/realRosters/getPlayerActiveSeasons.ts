@@ -1,5 +1,7 @@
 import { PHASE } from "../../../common/constants.ts";
+import { readScheduledEvents } from "../../db/electronApi.ts";
 import { idb } from "../../db/index.ts";
+import g from "../../util/g.ts";
 import local from "../../util/local.ts";
 import loadDataBasketball from "./loadData.basketball.ts";
 import oldAbbrevTo2020BBGMAbbrev from "./oldAbbrevTo2020BBGMAbbrev.ts";
@@ -14,9 +16,10 @@ export const getPlayerActiveSeasons = async () => {
 
 		// Check all current and future teams for tids
 		const teams = await idb.cache.teams.getAll();
-		const scheduledEvents = await idb.league
-			.transaction("scheduledEvents")
-			.store.getAll();
+		const lid = g.get("lid");
+		const scheduledEvents =
+			(await readScheduledEvents(lid)) ??
+			(await idb.getCopies.scheduledEvents({}));
 		const allTeams = [
 			...teams,
 			...scheduledEvents

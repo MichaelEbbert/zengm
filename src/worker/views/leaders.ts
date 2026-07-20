@@ -1,4 +1,5 @@
 import { PHASE } from "../../common/constants.ts";
+import { readPlayersFilter } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import {
 	defaultGameAttributes,
@@ -573,29 +574,16 @@ export const iterateAllPlayers = async (
 	}
 
 	// This is similar to activeSeason from getCopies.players
-	const transaction = idb.league.transaction("players");
+	const lid = g.get("lid");
+	const playersRaw =
+		typeof season === "number"
+			? ((await readPlayersFilter(lid, { activeSeason: season })) ?? [])
+			: ((await readPlayersFilter(lid, { activeAndRetired: true })) ??
+				(await idb.cache.players.getAll()));
 
-	let range;
-	const useRange = typeof season === "number";
-	if (useRange) {
-		// + 1 in upper range is because you don't accumulate stats until the year after the draft
-		range = IDBKeyRange.bound([-Infinity, season], [season + 1, Infinity]);
-	}
-
-	let cursor = await transaction.store
-		.index("draft.year, retiredYear")
-		.openCursor(range);
-
-	while (cursor) {
-		// https://gist.github.com/inexorabletash/704e9688f99ac12dd336
-		const [draftYear, retiredYear] = cursor.key;
-		if (useRange && retiredYear < season) {
-			cursor = await cursor.continue([draftYear, season]);
-		} else {
-			const p = cachePlayersByPid[cursor.value.pid] ?? cursor.value;
-			await applyCB(p);
-			cursor = await cursor.continue();
-		}
+	for (const pRaw of playersRaw) {
+		const p = cachePlayersByPid[pRaw.pid] ?? pRaw;
+		await applyCB(p);
 	}
 };
 

@@ -110,6 +110,12 @@ export const rolldownConfig = (
 		onLog(level, log, defaultHandler) {
 			// Turn warnings into errors https://rolldown.rs/reference/Interface.RolldownOptions#log
 			if (level === "warn") {
+				// workerLog.ts is statically imported by electronApi.ts/writeGameStats.ts/writeGameToSqlite.ts
+				// and dynamically imported elsewhere (upstream). The dynamic imports are ineffective
+				// (won't create a separate chunk) but this is harmless — suppress the warning.
+				if (log.code === "INEFFECTIVE_DYNAMIC_IMPORT") {
+					return;
+				}
 				defaultHandler("error", log);
 			} else {
 				defaultHandler(level, log);

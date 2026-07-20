@@ -82,13 +82,11 @@ const getMostXRows = async ({
 	const events: TradeEvent[] = [];
 
 	// Would be nice to not read these all into memory, but then would have to pass around the transaction to genTeam and others
-	let cursor = await idb.league.transaction("events").store.openCursor();
-	while (cursor) {
-		const event = cursor.value;
+	const allEvents = await idb.getCopies.events({});
+	for (const event of allEvents) {
 		if (isTradeEvent(event)) {
 			events.push(event);
 		}
-		cursor = await cursor.continue();
 	}
 
 	for (const event of events) {

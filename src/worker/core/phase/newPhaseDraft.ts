@@ -1,5 +1,6 @@
 import { PLAYER } from "../../../common/constants.ts";
 import { draft, league } from "../index.ts";
+import { readPlayersFilter } from "../../db/electronApi.ts";
 import { idb } from "../../db/index.ts";
 import { g, helpers } from "../../util/index.ts";
 import type { Conditions, PhaseReturn } from "../../../common/types.ts";
@@ -16,15 +17,13 @@ const newPhaseDraft = async (conditions: Conditions): Promise<PhaseReturn> => {
 	const promises: Promise<unknown>[] = [];
 
 	const currentSeason = g.get("season");
-	for await (const { value: p } of idb.league
-		.transaction("players")
-		.store.index("draft.year, retiredYear")
-		.iterate(IDBKeyRange.bound([currentSeason - 110], [""]))) {
-		// Skip non-retired players and dead players
-		if (p.tid !== PLAYER.RETIRED || typeof p.diedYear === "number") {
-			continue;
-		}
+	const lid = g.get("lid");
+	const retiredPlayers =
+		(await readPlayersFilter(lid, { activeAndRetired: true }))?.filter(
+			(p: any) => p.tid === PLAYER.RETIRED && typeof p.diedYear !== "number",
+		) ?? [];
 
+	for (const p of retiredPlayers) {
 		// Skip real players dying young
 		if (p.real && currentSeason - p.born.year < 70) {
 			continue;

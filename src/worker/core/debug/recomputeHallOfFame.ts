@@ -1,16 +1,20 @@
-import { idb } from "../../db/index.ts";
-import { toUI } from "../../util/index.ts";
-import { player } from "../index.ts";
 import { PLAYER } from "../../../common/constants.ts";
+import { flushPlayers, readPlayersFilter } from "../../db/electronApi.ts";
+import { idb } from "../../db/index.ts";
+import { g, toUI } from "../../util/index.ts";
+import { player } from "../index.ts";
 
 const recomputeHallOfFame = async () => {
-	const tx = idb.league.transaction("players", "readwrite");
+	const lid = g.get("lid");
+	const cachePlayers = await idb.cache.players.getAll();
+	const cacheByPid = new Map(cachePlayers.map((p) => [p.pid, p]));
+	const allPlayers =
+		(await readPlayersFilter(lid, { activeAndRetired: true })) ?? cachePlayers;
 
-	for await (const cursor of tx.store) {
-		const p = cursor.value;
-
+	const toFlush: any[] = [];
+	for (const pRaw of allPlayers) {
+		const p = cacheByPid.get(pRaw.pid) ?? pRaw;
 		const made = p.tid === PLAYER.RETIRED && player.madeHof(p);
-
 		const prev = p.hof;
 		if (made) {
 			p.hof = 1;
@@ -19,11 +23,17 @@ const recomputeHallOfFame = async () => {
 		}
 
 		if (p.hof !== prev) {
-			await cursor.update(p);
+			if (cacheByPid.has(p.pid)) {
+				await idb.cache.players.put(p);
+			} else {
+				toFlush.push(p);
+			}
 		}
 	}
 
-	await tx.done;
+	if (toFlush.length > 0) {
+		await flushPlayers(lid, toFlush);
+	}
 
 	await idb.cache.fill();
 	await toUI("realtimeUpdate", [["firstRun"]]);

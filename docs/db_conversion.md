@@ -930,7 +930,7 @@ Side effect: emptying STORES resolved 3 pre-existing smoke test failures.
 - [x] 6.2 Write migration in sqlite.js (meta DB) — `runMetaMigrations()`, `openMetaDb()`, full CRUD for all 3 tables
 - [x] 6.3 Replace all `idb.meta` write sites — SQLite-first + IDB dual-write pattern; `checkAccount.ts` achievement sync removed; `realTeamInfo`/`realPlayerPhotos` made no-ops throughout
 - [x] 6.4 Replace `idb.meta` read sites — all 25 sites updated; SQLite ?? IDB fallback pattern in every reader
-- [ ] 6.5 Verify league creation, deletion, dashboard display, achievements display — **PENDING** (needs Electron running for manual test)
+- [x] 6.5 Verify league creation, deletion, dashboard display, achievements display — smoke test passed 2026-07-20
 - [ ] 6.6 Commit and push — **PENDING** (waiting on smoke tests)
 
 **Current state (end of session):**

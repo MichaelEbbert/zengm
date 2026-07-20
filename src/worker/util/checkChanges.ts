@@ -1,5 +1,4 @@
 import { metaGetAttribute, metaPutAttribute } from "../db/electronApi.ts";
-import { idb } from "../db/index.ts";
 import logEvent from "./logEvent.ts";
 import type { Conditions } from "../../common/types.ts";
 import { SUBREDDIT_NAME } from "../../common/constants.ts";
@@ -12,10 +11,12 @@ const MAX_NUM_TO_SHOW = 3;
 // Keep in sync with changelog.php
 const FETCH_LIMIT = 10;
 
-const checkChanges = async (conditions: Conditions) => {
+const checkChanges = async (_conditions: Conditions) => {
+	// Disabled in fork — upstream sync is manual, not version-driven.
+	return;
+
 	// Fall back to LAST_VERSION_BEFORE_THIS_EXISTED if data doesn't exist - must be a user from before then
 	const lastChangesVersion = ((await metaGetAttribute("lastChangesVersion")) ??
-		(await idb.meta.get("attributes", "lastChangesVersion")) ??
 		LAST_VERSION_BEFORE_THIS_EXISTED) as string;
 
 	if (env.bbgmVersion > lastChangesVersion) {
@@ -96,7 +97,6 @@ const checkChanges = async (conditions: Conditions) => {
 		}
 
 		await metaPutAttribute("lastChangesVersion", env.bbgmVersion);
-		await idb.meta.put("attributes", env.bbgmVersion, "lastChangesVersion");
 	}
 };
 

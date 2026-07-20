@@ -1,5 +1,5 @@
 import { assert, beforeEach, test } from "vitest";
-import { mockIDBLeague, resetCache, resetG } from "../../test/helpers.ts";
+import { resetCache, resetG } from "../../test/helpers.ts";
 import { team } from "../core/index.ts";
 import { idb } from "../db/index.ts";
 import g from "./g.ts";
@@ -14,8 +14,6 @@ beforeEach(async () => {
 	await resetCache({
 		teamSeasons: [team.genSeasonRow(teamsDefault[g.get("userTid")]!)],
 	});
-
-	idb.league = mockIDBLeague();
 });
 
 test("even when already at the max, recognizes excellent performance", async () => {

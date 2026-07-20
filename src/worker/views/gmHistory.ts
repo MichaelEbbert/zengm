@@ -1,6 +1,9 @@
 import { idb } from "../db/index.ts";
 import { g } from "../util/index.ts";
-import { readTeamSeasons as electronReadTeamSeasons } from "../db/electronApi.ts";
+import {
+	readPlayersFilter,
+	readTeamSeasons as electronReadTeamSeasons,
+} from "../db/electronApi.ts";
 import type { UpdateEvents, TeamSeason, Player } from "../../common/types.ts";
 import { getHistory, getHistoryTeam } from "./teamHistory.ts";
 import { getPlayoffsByConfBySeason } from "./frivolitiesTeamSeasons.ts";
@@ -74,35 +77,23 @@ const updateGmHistory = async (inputs: unknown, updateEvents: UpdateEvents) => {
 			players.push(p);
 		};
 
-		// Use statsTids to search for players, unless there are so many teams that it's maybe not worth it
-		if (tids.size <= g.get("numTeams") / 2) {
-			const pids = new Set<number>();
-			for (const tid of tids) {
-				for await (const { value: p } of idb.league
-					.transaction("players")
-					.store.index("statsTids")
-					.iterate(tid)) {
-					if (pids.has(p.pid)) {
-						continue;
-					}
-
-					addPlayer(p);
-					pids.add(p.pid);
+		const allPlayersRaw =
+			(typeof lid === "number"
+				? await readPlayersFilter(lid, { activeAndRetired: true })
+				: null) ?? (await idb.cache.players.getAll());
+		const pids = new Set<number>();
+		for (const p of allPlayersRaw) {
+			if (pids.has(p.pid)) continue;
+			let hasTid = false;
+			for (const tid of p.statsTids) {
+				if (tids.has(tid)) {
+					hasTid = true;
+					break;
 				}
 			}
-		} else {
-			for await (const { value: p } of idb.league.transaction("players")
-				.store) {
-				let hasTid = false;
-				for (const tid of p.statsTids) {
-					if (tids.has(tid)) {
-						hasTid = true;
-						break;
-					}
-				}
-				if (hasTid) {
-					addPlayer(p);
-				}
+			if (hasTid) {
+				addPlayer(p);
+				pids.add(p.pid);
 			}
 		}
 

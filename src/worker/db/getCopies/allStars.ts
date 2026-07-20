@@ -21,7 +21,7 @@ const getCopies = async (
 		return mergeByPk(
 			typeof lid === "number"
 				? (((await electronReadAllStars(lid, { season })) as AllStars[]) ?? [])
-				: await idb.league.getAll("allStars", season),
+				: [],
 			(await idb.cache.allStars.getAll()).filter((r) => r.season === season),
 			"allStars",
 			type,
@@ -31,7 +31,7 @@ const getCopies = async (
 	return mergeByPk(
 		typeof lid === "number"
 			? (((await electronReadAllStars(lid)) as AllStars[]) ?? [])
-			: await idb.league.getAll("allStars"),
+			: [],
 		await idb.cache.allStars.getAll(),
 		"allStars",
 		type,

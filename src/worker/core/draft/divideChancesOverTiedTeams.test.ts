@@ -1,20 +1,14 @@
-import { afterAll, assert, beforeAll, test } from "vitest";
+import { assert, beforeAll, test } from "vitest";
 import { loadTeamSeasons } from "./testHelpers.ts";
 import lotterySort from "./lotterySort.ts";
 import divideChancesOverTiedTeams from "./divideChancesOverTiedTeams.ts";
 import { idb } from "../../db/index.ts";
 import { g } from "../../util/index.ts";
-import { mockIDBLeague, resetG } from "../../../test/helpers.ts";
+import { resetG } from "../../../test/helpers.ts";
 
 beforeAll(async () => {
 	resetG();
-	idb.league = mockIDBLeague();
-
 	await loadTeamSeasons();
-});
-afterAll(() => {
-	// @ts-expect-error
-	idb.league = undefined;
 });
 
 test("distribute combinations to teams with the same record", async () => {

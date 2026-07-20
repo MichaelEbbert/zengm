@@ -6,6 +6,7 @@ import {
 	DEFAULT_JERSEY,
 } from "../../common/constants.ts";
 import { player } from "../core/index.ts";
+import { readPlayersFilter } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import {
 	face,
@@ -474,13 +475,13 @@ export const getCommon = async (
 
 	let randomDebutsForeverPids;
 	if (g.get("randomDebutsForever") !== undefined && p.srID !== undefined) {
-		randomDebutsForeverPids = [];
-		for await (const { value: p2 } of idb.league
-			.transaction("players")
-			.store.index("srID")
-			.iterate(p.srID)) {
-			randomDebutsForeverPids.push(p2.pid);
-		}
+		const lid = g.get("lid");
+		const allPlayers =
+			(await readPlayersFilter(lid, { activeAndRetired: true })) ??
+			(await idb.cache.players.getAll());
+		randomDebutsForeverPids = allPlayers
+			.filter((p2: any) => p2.srID === p.srID)
+			.map((p2: any) => p2.pid);
 
 		// No point showing if there are no other versions
 		if (randomDebutsForeverPids.length === 1) {

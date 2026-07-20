@@ -1,5 +1,5 @@
 import { afterAll, assert, beforeAll, describe, test } from "vitest";
-import { mockIDBLeague, resetCache, resetG } from "../../test/helpers.ts";
+import { resetCache, resetG } from "../../test/helpers.ts";
 import { player, team } from "../core/index.ts";
 import { idb } from "../db/index.ts";
 import g from "./g.ts";
@@ -32,13 +32,8 @@ beforeAll(async () => {
 		teams: teamsDefault.map(team.generate),
 		teamSeasons: teamsDefault.map((t) => team.genSeasonRow(t)),
 	});
-
-	idb.league = mockIDBLeague();
 });
-afterAll(() => {
-	// @ts-expect-error
-	idb.league = undefined;
-});
+afterAll(() => {});
 
 describe("fo_fo_fo", () => {
 	test("award achievement for 16-0 playoff record for user's team", async () => {

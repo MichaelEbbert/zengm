@@ -1,6 +1,9 @@
 import { idb } from "../db/index.ts";
 import { g, helpers, processPlayersHallOfFame } from "../util/index.ts";
-import { readTeamSeasons as electronReadTeamSeasons } from "../db/electronApi.ts";
+import {
+	readPlayersFilter,
+	readTeamSeasons as electronReadTeamSeasons,
+} from "../db/electronApi.ts";
 import type { UpdateEvents, Player, ViewInput } from "../../common/types.ts";
 import { orderBy, type OrderBySortParams } from "../../common/utils.ts";
 import { player } from "../core/index.ts";
@@ -34,10 +37,10 @@ const getMostXPlayers = async ({
 	const LIMIT = 100;
 	let playersAll: PlayersAll = [];
 
-	for await (const { value: p } of idb.league
-		.transaction("players")
-		.store.index("draft.year, retiredYear")
-		.iterate(IDBKeyRange.bound([-Infinity], [g.get("season") - 1, Infinity]))) {
+	const allPlayersRaw =
+		(await readPlayersFilter(g.get("lid"), { activeAndRetired: true })) ??
+		(await idb.cache.players.getAll());
+	for (const p of allPlayersRaw) {
 		if (filter !== undefined && !filter(p)) {
 			continue;
 		}

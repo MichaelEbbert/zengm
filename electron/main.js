@@ -85,6 +85,7 @@ import {
 	getLeague,
 	putLeague,
 	deleteLeague,
+	deleteLeagueDb,
 	clearLeagues,
 	getMaxLeagueLid,
 	getAttribute,
@@ -93,6 +94,9 @@ import {
 	getAllAchievements,
 	addAchievements,
 	clearAchievements,
+	getMaxPlayerPid,
+	cloneLeague,
+	deleteOldData,
 } from "./sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -146,7 +150,7 @@ function startApiServer(win) {
 		if (req.method === "OPTIONS") {
 			res.writeHead(204, {
 				"Access-Control-Allow-Origin": "*",
-				"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+				"Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
 				"Access-Control-Allow-Headers": "Content-Type",
 			});
 			res.end();
@@ -264,6 +268,10 @@ function startApiServer(win) {
 				}
 				if (mode === "count") {
 					send(200, { count: countPlayers(db) });
+					return;
+				}
+				if (mode === "maxpid") {
+					send(200, { maxPid: getMaxPlayerPid(db) });
 					return;
 				}
 				const filter = {};
@@ -975,6 +983,11 @@ function startApiServer(win) {
 				const lid = Number(url2.searchParams.get("lid"));
 				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
 				deleteLeague(mdb, lid);
+				try {
+					deleteLeagueDb(process.env.ZENGM_DB_DIR, lid);
+				} catch (e) {
+					console.warn(`deleteLeagueDb lid=${lid} failed:`, e.message);
+				}
 				send(200, { ok: true });
 				return;
 			}
@@ -1035,6 +1048,35 @@ function startApiServer(win) {
 			if (key === "DELETE /meta/achievements") {
 				const mdb = openMetaDb(process.env.ZENGM_DB_DIR);
 				clearAchievements(mdb);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "POST /league/clone") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lidOld, lidNew } = JSON.parse(body);
+				if (typeof lidOld !== "number" || typeof lidNew !== "number") {
+					send(400, { error: "lidOld and lidNew (numbers) required" });
+					return;
+				}
+				cloneLeague(process.env.ZENGM_DB_DIR, lidOld, lidNew);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "POST /delete-old-data") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, options, currentSeason, userTid } = JSON.parse(body);
+				if (!lid || !options || currentSeason === undefined) {
+					send(400, { error: "lid, options, currentSeason required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				deleteOldData(db, options, currentSeason, userTid);
 				send(200, { ok: true });
 				return;
 			}

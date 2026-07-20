@@ -1,3 +1,4 @@
+import { readPlayersFilter } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import { g, helpers, processPlayersHallOfFame } from "../util/index.ts";
 import type { UpdateEvents, Player } from "../../common/types.ts";
@@ -128,8 +129,10 @@ export const genView = (
 			});
 
 			const infosTemp: { [key: string]: InfoTemp } = {};
-			for await (const { value: p } of idb.league.transaction("players")
-				.store) {
+			const allPlayers =
+				(await readPlayersFilter(g.get("lid"), { activeAndRetired: true })) ??
+				(await idb.cache.players.getAll());
+			for (const p of allPlayers) {
 				reducer(type, infosTemp, p);
 			}
 

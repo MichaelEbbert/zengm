@@ -1,4 +1,3 @@
-import { getAll, idb } from "../index.ts";
 import type { Game, GetCopyType } from "../../../common/types.ts";
 import { readGames as electronReadGames } from "../electronApi.ts";
 import { g } from "../../util/index.ts";
@@ -214,30 +213,7 @@ const getCopies = async (
 		}
 	}
 
-	// IDB fallback (browser / test / note queries) — no cache merge, games no longer in cache
-	if (season !== undefined) {
-		return getAll(
-			idb.league.transaction("games").store.index("season"),
-			season,
-		);
-	}
-
-	if (gid !== undefined) {
-		const game2 = await idb.league.get("games", gid);
-		if (game2) {
-			return [game2];
-		}
-
-		return [];
-	}
-
-	if (note) {
-		return (
-			await idb.league.transaction("games").store.index("noteBool").getAll()
-		).filter((row) => row.noteBool === 1);
-	}
-
-	return getAll(idb.league.transaction("games").store);
+	return [];
 };
 
 export default getCopies;

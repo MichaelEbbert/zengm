@@ -1,22 +1,15 @@
-import { openDB } from "@dumbmatter/idb";
-import type { IDBPCursorWithValue } from "@dumbmatter/idb";
 import { LEAGUE_DATABASE_VERSION } from "../../common/constants.ts";
 import {
 	gameAttributesCache,
 	gameAttributesKeysOtherSports,
 } from "../../common/defaultGameAttributes.ts";
+import { gameAttributesArrayToObject } from "../../common/gameAttributesArrayToObject.ts";
 import { local } from "./local.ts";
 import { toWorker } from "./toWorker.ts";
-import type {
-	LeagueDB,
-	LeagueDBStoreNames,
-} from "../../worker/db/connectLeague.ts";
-import { gameAttributesArrayToObject } from "../../common/gameAttributesArrayToObject.ts";
 
 // Otherwise it often pulls just one record per transaction, as it's hitting up against the high water mark
 const TWENTY_MEGABYTES_IN_BYTES = 20 * 1024 * 1024;
 
-// If we just let the normal highWaterMark mechanism work, it might pull only one record at a time, which is not ideal given the cost of starting a transaction. Make it too high, and the progress bar becomes unrealistic (especially when uploading to Dropbox which is slower than writing to disk) because it is measured from reading the database, not the end of the stream.
 const highWaterMark = TWENTY_MEGABYTES_IN_BYTES;
 const minSizePerPull = TWENTY_MEGABYTES_IN_BYTES;
 
@@ -43,12 +36,12 @@ const stringSizeInBytes = (str: string | undefined) => {
 
 const NUM_SPACES_IN_TAB = 2;
 
-type ProcessStores<ReturnType> = Partial<{
-	[K in LeagueDBStoreNames]?: (a: LeagueDB[K]["value"]) => ReturnType;
-}>;
+type ProcessStores<ReturnType> = Partial<
+	Record<string, (a: any) => ReturnType>
+>;
 
 const makeExportStream = async (
-	storesInput: LeagueDBStoreNames[],
+	storesInput: string[],
 	{
 		abortSignal,
 		compressed = false,
@@ -76,19 +69,12 @@ const makeExportStream = async (
 		throw new Error("Missing lid");
 	}
 
-	// Don't worry about upgrades or anything, because this function will only be called if the league database already exists
-	const leagueDB = await openDB<LeagueDB>(
-		`league${lid}`,
-		LEAGUE_DATABASE_VERSION,
-		{
-			blocking() {
-				leagueDB.close();
-			},
-		},
-	);
-
-	// Always flush before export, so export is current!
-	await toWorker("main", "idbCacheFlush", undefined);
+	// Get all data from the worker (cache is flushed first inside the worker)
+	const exportData = await toWorker("main", "getLeagueExportData", storesInput);
+	const { filteredStores, stores: storeData } = exportData as {
+		filteredStores: string[];
+		stores: Record<string, any[]>;
+	};
 
 	const space = compressed ? "" : " ";
 	const tab = compressed ? "" : " ".repeat(NUM_SPACES_IN_TAB);
@@ -104,30 +90,21 @@ const makeExportStream = async (
 		return json.replaceAll("\n", `\n${tab.repeat(indentationLevels)}`);
 	};
 
-	const stores = storesInput.filter(
-		(store) => store !== "teamSeasons" && store !== "teamStats",
-	);
-	const includeTeamSeasonsAndStats = stores.length !== storesInput.length;
-
-	const writeRootObject = (
-		controller: ReadableStreamController<string>,
-		name: string,
-		object: any,
-	) =>
-		controller.enqueue(
-			// @ts-expect-error Typescript 4.9 bug I think
-			`,${newline}${tab}"${name}":${space}${jsonStringify(object, 1)}`,
-		);
+	// Count total records for progress
+	let numRecordsTotal = 0;
+	for (const store of filteredStores) {
+		numRecordsTotal += storeData[store]?.length ?? 0;
+	}
 
 	let storeIndex = 0;
-	let prevKey: string | number | undefined;
-	let prevStore: string | undefined;
-	let cancelCallback: (() => void) | undefined;
-	const enqueuedFirstRecord = new Set();
-
-	let numRecordsSeen = 0;
-	let numRecordsTotal = 0;
+	let recordIndex = 0;
 	let prevPercentDone = 0;
+	let numRecordsSeen = 0;
+	let cancelled = false;
+	let cancelCallback: (() => void) | undefined;
+	const enqueuedFirstRecord = new Set<string>();
+	let prevStore: string | undefined;
+
 	const incrementNumRecordsSeen = (count: number = 1) => {
 		numRecordsSeen += count;
 		if (onPercentDone) {
@@ -146,112 +123,86 @@ const makeExportStream = async (
 					controller.error(new DOMException("Aborted", "AbortError"));
 				});
 
-				const tx = leagueDB.transaction(storesInput as any);
-				for (const store of storesInput) {
-					if (store === "gameAttributes") {
-						numRecordsTotal += 1;
-					} else {
-						numRecordsTotal += await tx.objectStore(store).count();
-					}
-				}
-
 				await controller.enqueue(
 					`{${newline}${tab}"version":${space}${LEAGUE_DATABASE_VERSION}`,
 				);
 
-				// If name is specified, include it in meta object. Currently this is only used when importing leagues, to set the name
 				if (name) {
-					await writeRootObject(controller, "meta", { name });
+					controller.enqueue(
+						`,${newline}${tab}"meta":${space}${jsonStringify({ name }, 1)}`,
+					);
 				}
 			},
 
 			async pull(controller) {
-				// console.log("PULL", controller.desiredSize / 1024 / 1024);
-				const done = () => {
-					if (cancelCallback) {
-						cancelCallback();
-					}
-
+				if (cancelled || abortSignal?.aborted) {
+					if (cancelCallback) cancelCallback();
 					controller.close();
-
-					leagueDB.close();
-				};
-
-				if (cancelCallback || abortSignal?.aborted) {
-					done();
 					return;
 				}
 
-				// let count = 0;
 				let size = 0;
-
 				const enqueue = (string: string) => {
 					size += stringSizeInBytes(string);
 					controller.enqueue(string);
 				};
 
-				const store = stores[storeIndex]!;
-				if (onProcessingStore && store !== prevStore) {
-					onProcessingStore(store);
-				}
+				while (storeIndex < filteredStores.length) {
+					const store = filteredStores[storeIndex]!;
 
-				// Define this up here so it is undefined for gameAttributes, triggering the "go to next store" logic at the bottom
-				let cursor:
-					| IDBPCursorWithValue<LeagueDB, any, any, unknown, "readonly">
-					| null
-					| undefined;
-
-				if (store === "gameAttributes") {
-					// gameAttributes is special because we need to convert it into an object
-					let rows = (await leagueDB.getAll(store)).filter(
-						(row) => !gameAttributesCache.includes(row.key),
-					);
-
-					if (filter[store]) {
-						rows = rows.filter(filter[store]);
+					if (onProcessingStore && store !== prevStore) {
+						onProcessingStore(store);
+						prevStore = store;
 					}
 
-					// No need to include settings that don't apply to this sport
+					const records = storeData[store] ?? [];
 
-					rows = rows.filter(
-						(row) => !gameAttributesKeysOtherSports.has(row.key),
-					);
-
-					if (forEach[store]) {
-						for (const row of rows) {
-							forEach[store](row);
+					if (store === "gameAttributes") {
+						let rows = records.filter(
+							(row: any) => !gameAttributesCache.includes(row.key),
+						);
+						rows = rows.filter(
+							(row: any) => !gameAttributesKeysOtherSports.has(row.key),
+						);
+						if (filter[store]) {
+							rows = rows.filter(filter[store]);
 						}
-					}
+						if (forEach[store]) {
+							for (const row of rows) {
+								forEach[store]!(row);
+							}
+						}
+						if (map[store]) {
+							rows = rows.map(map[store]);
+						}
+						const gameAttributesObject = gameAttributesArrayToObject(rows);
+						enqueue(
+							`,${newline}${tab}"gameAttributes":${space}${jsonStringify(gameAttributesObject, 1)}`,
+						);
+						incrementNumRecordsSeen();
+						storeIndex++;
+						recordIndex = 0;
+					} else {
+						while (recordIndex < records.length) {
+							let value = records[recordIndex]!;
+							recordIndex++;
 
-					if (map[store]) {
-						rows = rows.map(map[store]);
-					}
+							if (filter[store] && !filter[store]!(value)) {
+								incrementNumRecordsSeen();
+								continue;
+							}
 
-					const gameAttributesObject = gameAttributesArrayToObject(rows);
+							if (forEach[store]) {
+								forEach[store]!(value);
+							}
 
-					await writeRootObject(
-						controller,
-						"gameAttributes",
-						gameAttributesObject,
-					);
+							if (store === "players" && value.imgURL) {
+								delete value.face;
+							}
 
-					incrementNumRecordsSeen();
-				} else {
-					const txStores =
-						store === "teams" ? ["teams", "teamSeasons", "teamStats"] : [store];
-
-					const transaction = leagueDB.transaction(txStores as any);
-
-					const range =
-						prevKey !== undefined
-							? IDBKeyRange.lowerBound(prevKey, true)
-							: undefined;
-					cursor = await transaction.objectStore(store).openCursor(range);
-					while (cursor) {
-						let value = cursor.value;
-
-						if (!filter[store] || filter[store](value)) {
-							// count += 1;
+							if (map[store]) {
+								value = map[store]!(value);
+							}
 
 							const enqueuedFirst = enqueuedFirstRecord.has(store);
 							const comma = enqueuedFirst ? "," : "";
@@ -261,114 +212,55 @@ const makeExportStream = async (
 								enqueuedFirstRecord.add(store);
 							}
 
-							if (forEach[store]) {
-								forEach[store](value);
-							}
-							if (store === "players") {
-								if (value.imgURL) {
-									delete value.face;
-								}
-							}
-
-							if (map[store]) {
-								value = map[store](value);
-							}
-
-							if (store === "teams" && includeTeamSeasonsAndStats) {
-								// This is a bit dangerous, since it will possibly read all teamStats/teamSeasons rows into memory, but that will very rarely exceed MIN_RECORDS_PER_PULL and we will just do one team per transaction, to be safe.
-
-								const tid = value.tid;
-
-								const infos: (
-									| {
-											key: string;
-											store: "teamSeasons";
-											index: "tid, season";
-											keyRange: IDBKeyRange;
-									  }
-									| {
-											key: string;
-											store: "teamStats";
-											index: "tid";
-											keyRange: IDBKeyRange;
-									  }
-								)[] = [
-									{
-										key: "seasons",
-										store: "teamSeasons",
-										index: "tid, season",
-										keyRange: IDBKeyRange.bound([tid], [tid, ""]),
-									},
-									{
-										key: "stats",
-										store: "teamStats",
-										index: "tid",
-										keyRange: IDBKeyRange.only(tid),
-									},
-								];
-
-								const t: any = value;
-
-								for (const info of infos) {
-									t[info.key] = [];
-									let cursor2 = await transaction
-										.objectStore(info.store)
-										.index(info.index as any)
-										.openCursor(info.keyRange);
-									while (cursor2) {
-										t[info.key].push(cursor2.value);
-										cursor2 = await cursor2.continue();
-									}
-									incrementNumRecordsSeen(t[info.key].length);
-								}
-							}
-
 							enqueue(
 								`${comma}${newline}${tab.repeat(2)}${jsonStringify(value, 2)}`,
 							);
+
+							incrementNumRecordsSeen();
+
+							// Respect backpressure
+							const desiredSize = controller.desiredSize;
+							if (
+								desiredSize !== null &&
+								(desiredSize > 0 || size < minSizePerPull) &&
+								!cancelCallback &&
+								!abortSignal?.aborted
+							) {
+								// Keep going
+							} else {
+								return;
+							}
 						}
 
-						incrementNumRecordsSeen();
-
-						prevKey = cursor.key as any;
-
-						const desiredSize = controller.desiredSize;
-						if (
-							desiredSize !== null &&
-							(desiredSize > 0 || size < minSizePerPull) &&
-							!cancelCallback &&
-							!abortSignal?.aborted
-						) {
-							// Keep going if desiredSize or minSizePerPull want us to
-							cursor = await cursor.continue();
+						// Done with this store
+						if (enqueuedFirstRecord.has(store)) {
+							enqueue(`${newline}${tab}]`);
 						} else {
-							break;
+							enqueue("");
 						}
+						storeIndex++;
+						recordIndex = 0;
+					}
+
+					if (storeIndex >= filteredStores.length) {
+						await controller.enqueue(`${newline}}${newline}`);
+						if (cancelCallback) cancelCallback();
+						controller.close();
+						return;
 					}
 				}
 
-				// console.log("PULLED", count, size / 1024 / 1024);
-				if (!cursor) {
-					// Actually done with this store - we didn't just stop due to desiredSize
-					storeIndex += 1;
-					prevKey = undefined;
-					if (enqueuedFirstRecord.has(store)) {
-						enqueue(`${newline}${tab}]`);
-					} else {
-						// Ensure we don't ever enqueue nothing, in which case the stream can get stuck
-						enqueue("");
-					}
-
-					if (storeIndex >= stores.length) {
-						// Done whole export!
-						await controller.enqueue(`${newline}}${newline}`);
-
-						done();
-					}
+				// All stores done but close wasn't triggered yet
+				if (storeIndex >= filteredStores.length) {
+					await controller.enqueue(`${newline}}${newline}`);
+					if (cancelCallback) cancelCallback();
+					controller.close();
 				}
 			},
+
 			cancel() {
 				return new Promise((resolve) => {
+					cancelled = true;
 					cancelCallback = resolve;
 				});
 			},

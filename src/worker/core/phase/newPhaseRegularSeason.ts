@@ -38,11 +38,9 @@ const newPhaseRegularSeason = async (
 		if (g.get("season") > g.get("startingSeason") && Math.random() < 0.1) {
 			await toUI("requestPersistentStorage", [], conditions);
 		} else {
-			let naggedMailingList =
-				(await metaGetAttribute("naggedMailingList")) ??
-				((await idb.meta.get("attributes", "naggedMailingList")) as
-					| number
-					| undefined);
+			let naggedMailingList = (await metaGetAttribute("naggedMailingList")) as
+				| number
+				| undefined;
 			if (typeof naggedMailingList !== "number") {
 				naggedMailingList = 0;
 			}
@@ -54,11 +52,6 @@ const newPhaseRegularSeason = async (
 					(naggedMailingList === 1 && Math.random() < 0.01))
 			) {
 				await metaPutAttribute("naggedMailingList", naggedMailingList + 1);
-				await idb.meta.put(
-					"attributes",
-					naggedMailingList + 1,
-					"naggedMailingList",
-				);
 				logEvent({
 					extraClass: "",
 					persistent: true,
@@ -67,8 +60,7 @@ const newPhaseRegularSeason = async (
 					type: "info",
 				});
 			} else {
-				const nagged = ((await metaGetAttribute("nagged")) ??
-					(await idb.meta.get("attributes", "nagged"))) as number;
+				const nagged = (await metaGetAttribute("nagged")) as number;
 
 				if (
 					g.get("season") === g.get("startingSeason") + 3 &&
@@ -76,7 +68,6 @@ const newPhaseRegularSeason = async (
 					(nagged === 0 || nagged === undefined)
 				) {
 					await metaPutAttribute("nagged", 1);
-					await idb.meta.put("attributes", 1, "nagged");
 					await idb.cache.messages.add({
 						read: false,
 						from: "The Commissioner",
@@ -89,7 +80,6 @@ const newPhaseRegularSeason = async (
 						(nagged >= 2 && Math.random() < 0.0125)
 					) {
 						await metaPutAttribute("nagged", 2);
-						await idb.meta.put("attributes", 2, "nagged");
 						await idb.cache.messages.add({
 							read: false,
 							from: "The Commissioner",
@@ -104,7 +94,6 @@ const newPhaseRegularSeason = async (
 					) {
 						// Skipping 3, obsolete
 						await metaPutAttribute("nagged", 4);
-						await idb.meta.put("attributes", 4, "nagged");
 						await idb.cache.messages.add({
 							read: false,
 							from: "The Commissioner",

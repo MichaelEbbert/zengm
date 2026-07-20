@@ -1,4 +1,3 @@
-import type { IDBPTransaction } from "@dumbmatter/idb";
 import {
 	draft,
 	finances,
@@ -36,8 +35,36 @@ import type {
 } from "../../../common/types.ts";
 import type { NewLeagueTeam } from "../../../ui/views/NewLeague/types.ts";
 import { CUMULATIVE_OBJECTS } from "../../api/leagueFileUpload.ts";
-import { metaGetLeague, metaPutLeague } from "../../db/electronApi.ts";
-import { Cache, connectLeague, idb } from "../../db/index.ts";
+import {
+	flushAllStars,
+	flushAwards,
+	flushDraftLotteryResults,
+	flushDraftPicks,
+	flushEvents,
+	flushHeadToHeads,
+	flushMessages,
+	flushNegotiations,
+	flushPlayerFeats,
+	flushPlayers,
+	flushPlayoffSeries,
+	flushReleasedPlayers,
+	flushSavedTrades,
+	flushSavedTradingBlock,
+	flushSchedule,
+	flushScheduledEvents,
+	flushSeasonLeaders,
+	flushTeamSeasons,
+	flushTeamStats,
+	flushTeams,
+	flushTrade,
+	metaGetLeague,
+	metaPutLeague,
+	readAllSchedule,
+	readAllTrade,
+	readGames,
+	writeGame,
+} from "../../db/electronApi.ts";
+import { Cache, idb } from "../../db/index.ts";
 import {
 	helpers,
 	local,
@@ -64,7 +91,6 @@ import processPlayerNewLeague from "./processPlayerNewLeague.ts";
 import remove from "./remove.ts";
 import { TOO_MANY_TEAMS_TOO_SLOW } from "../season/getInitialNumGamesConfDivSettings.ts";
 import { DEFAULT_LEVEL, amountToLevel } from "../../../common/budgetLevels.ts";
-import { upgradeGamesVersion65 } from "../../db/connectLeague.ts";
 import type { NewLeagueSettings } from "../../views/newLeague.ts";
 import { getNumPlayersTradedAwayNormalized } from "../player/getNumPlayersTradedAwayNormalized.ts";
 import { applyRealTeamInfo } from "../../../common/applyRealTeamInfo.ts";
@@ -112,8 +138,7 @@ const addLeagueMeta = async ({
 	};
 
 	// In case we are importing over an old league
-	const oldLeague =
-		(await metaGetLeague(lid)) ?? (await idb.meta.get("leagues", lid));
+	const oldLeague = await metaGetLeague(lid);
 	await remove(lid);
 	if (oldLeague) {
 		l.created = oldLeague.created;
@@ -121,21 +146,19 @@ const addLeagueMeta = async ({
 	}
 
 	await metaPutLeague(l);
-
-	idb.league = await connectLeague(lid);
 };
 
 class Buffer {
 	MAX_BUFFER_SIZE: number;
 	keptKeys: Set<string>;
+	lid: number;
 	keys: Set<string>;
 	rows: [string, any][];
-	previousTransaction: IDBPTransaction<any, any, any> | undefined;
 
-	constructor(keptKeys: Set<string>) {
+	constructor(lid: number, keptKeys: Set<string>) {
 		this.MAX_BUFFER_SIZE = 10000;
 		this.keptKeys = keptKeys;
-
+		this.lid = lid;
 		this.keys = new Set();
 		this.rows = [];
 	}
@@ -160,35 +183,99 @@ class Buffer {
 		return this.rows.length >= this.MAX_BUFFER_SIZE;
 	}
 
-	// This is so flush does not have to wait for the writes to complete before we start filling the buffer again
-	async waitForPreviousTransaction() {
-		if (this.previousTransaction) {
-			await this.previousTransaction.done;
-		}
-	}
-
 	async flush() {
-		await this.waitForPreviousTransaction();
+		if (this.rows.length === 0) return;
 
-		if (this.keys.size > 0) {
-			const transaction = idb.league.transaction(
-				Array.from(this.keys) as any,
-				"readwrite",
-			);
-
-			for (const row of this.rows) {
-				transaction.objectStore(row[0]).put(row[1]);
+		const byStore = new Map<string, any[]>();
+		for (const [storeName, row] of this.rows) {
+			let storeRows = byStore.get(storeName);
+			if (!storeRows) {
+				storeRows = [];
+				byStore.set(storeName, storeRows);
 			}
-
-			this.previousTransaction = transaction;
-
-			this.clear();
+			storeRows.push(row);
 		}
+
+		const { lid } = this;
+		const flushPromises: Promise<void>[] = [];
+
+		for (const [storeName, rows] of byStore) {
+			switch (storeName) {
+				case "allStars":
+					flushPromises.push(flushAllStars(lid, rows));
+					break;
+				case "awards":
+					flushPromises.push(flushAwards(lid, rows));
+					break;
+				case "draftLotteryResults":
+					flushPromises.push(flushDraftLotteryResults(lid, rows));
+					break;
+				case "draftPicks":
+					flushPromises.push(flushDraftPicks(lid, rows));
+					break;
+				case "events":
+					flushPromises.push(flushEvents(lid, rows));
+					break;
+				case "games":
+					for (const row of rows) flushPromises.push(writeGame(lid, row));
+					break;
+				case "headToHeads":
+					flushPromises.push(flushHeadToHeads(lid, rows));
+					break;
+				case "messages":
+					flushPromises.push(flushMessages(lid, rows));
+					break;
+				case "negotiations":
+					flushPromises.push(flushNegotiations(lid, rows));
+					break;
+				case "playerFeats":
+					flushPromises.push(flushPlayerFeats(lid, rows));
+					break;
+				case "players":
+					flushPromises.push(flushPlayers(lid, rows));
+					break;
+				case "playoffSeries":
+					flushPromises.push(flushPlayoffSeries(lid, rows));
+					break;
+				case "releasedPlayers":
+					flushPromises.push(flushReleasedPlayers(lid, rows));
+					break;
+				case "savedTrades":
+					flushPromises.push(flushSavedTrades(lid, rows));
+					break;
+				case "savedTradingBlock":
+					flushPromises.push(flushSavedTradingBlock(lid, rows));
+					break;
+				case "schedule":
+					flushPromises.push(flushSchedule(lid, rows));
+					break;
+				case "scheduledEvents":
+					flushPromises.push(flushScheduledEvents(lid, rows));
+					break;
+				case "seasonLeaders":
+					flushPromises.push(flushSeasonLeaders(lid, rows));
+					break;
+				case "teamSeasons":
+					flushPromises.push(flushTeamSeasons(lid, rows));
+					break;
+				case "teamStats":
+					flushPromises.push(flushTeamStats(lid, rows));
+					break;
+				case "teams":
+					flushPromises.push(flushTeams(lid, rows));
+					break;
+				case "trade":
+					flushPromises.push(flushTrade(lid, rows));
+					break;
+			}
+		}
+
+		await Promise.all(flushPromises);
+		this.clear();
 	}
 
 	async finalize() {
 		await this.flush();
-		await this.waitForPreviousTransaction();
 	}
 }
 
@@ -320,16 +407,18 @@ type ExtraFromStream = {
 
 const getSaveToDB = async ({
 	keptKeys,
+	lid,
 	maxGid,
 	preProcessParams,
 	setLeagueCreationStatus,
 }: {
 	keptKeys: Set<string>;
+	lid: number;
 	maxGid: number | undefined;
 	preProcessParams: PreProcessParams;
 	setLeagueCreationStatus: CreateStreamProps["setLeagueCreationStatus"];
 }) => {
-	const buffer = new Buffer(keptKeys);
+	const buffer = new Buffer(lid, keptKeys);
 
 	const extraFromStream: ExtraFromStream = {
 		activePlayers: [],
@@ -566,84 +655,66 @@ const finalizeGameAttributes = async ({
 };
 
 const finalizeDBExceptPlayers = async ({
+	lid,
 	teamSeasons,
 	teamStats,
 	teams,
 }: {
+	lid: number;
 	teamSeasons: TeamSeasonWithoutKey[];
 	teamStats: TeamStatsWithoutKey[];
 	teams: Team[];
 }) => {
-	const tx = idb.league.transaction(
-		["games", "schedule", "teamSeasons", "teamStats", "teams", "trade"],
-		"readwrite",
-	);
-
-	const tradeStore = tx.objectStore("trade");
-	const trade = await tradeStore.get(0);
-	if (!trade) {
+	const existingTrade = await readAllTrade(lid);
+	if (!existingTrade?.[0]) {
 		const tid = g.get("userTid");
-		await tradeStore.add({
-			rid: 0,
-			teams: [
-				{
-					tid,
-					pids: [],
-					pidsExcluded: [],
-					dpids: [],
-					dpidsExcluded: [],
-				},
-				{
-					// Load initial trade view with the lowest-numbered non-user team (so, either 0 or 1).
-					tid: tid === 0 ? 1 : 0,
-					pids: [],
-					pidsExcluded: [],
-					dpids: [],
-					dpidsExcluded: [],
-				},
-			],
-		});
+		await flushTrade(lid, [
+			{
+				rid: 0,
+				teams: [
+					{
+						tid,
+						pids: [],
+						pidsExcluded: [],
+						dpids: [],
+						dpidsExcluded: [],
+					},
+					{
+						// Load initial trade view with the lowest-numbered non-user team (so, either 0 or 1).
+						tid: tid === 0 ? 1 : 0,
+						pids: [],
+						pidsExcluded: [],
+						dpids: [],
+						dpidsExcluded: [],
+					},
+				],
+			},
+		]);
 	}
 
 	// Handle schedule with no "day" property
-	const scheduleStore = tx.objectStore("schedule");
-	const schedule = await scheduleStore.getAll();
+	const schedule = (await readAllSchedule(lid)) ?? [];
 	if (schedule.length > 0) {
 		const missingDay = schedule.some(
-			(matchup) => typeof matchup.day !== "number",
+			(matchup: any) => typeof matchup.day !== "number",
 		);
 
 		if (missingDay) {
-			const gamesThisSeason = await tx
-				.objectStore("games")
-				.index("season")
-				.getAll(g.get("season"));
-
+			const gamesResult = await readGames(lid, { season: g.get("season") });
+			const gamesThisSeason = gamesResult?.gameRows ?? [];
 			const updatedSchedule = season.addDaysToSchedule(
 				schedule,
 				gamesThisSeason,
 			);
-
-			for (const game of updatedSchedule) {
-				await scheduleStore.put(game as any);
-			}
+			await flushSchedule(lid, updatedSchedule);
 		}
 	}
 
-	const teamsStore = tx.objectStore("teams");
-	for (const t of teams) {
-		await teamsStore.put(t);
-	}
-
-	const teamSeasonsStore = tx.objectStore("teamSeasons");
-	for (const ts of teamSeasons) {
-		await teamSeasonsStore.put(ts as any);
-	}
-
-	const teamStatsStore = tx.objectStore("teamStats");
-	for (const ts of teamStats) {
-		await teamStatsStore.put(ts);
-	}
+	await Promise.all([
+		flushTeams(lid, teams),
+		flushTeamSeasons(lid, teamSeasons as any[]),
+		flushTeamStats(lid, teamStats),
+	]);
 };
 
 const confirmSequential = (objs: any, key: string, objectName: string) => {
@@ -1620,6 +1691,7 @@ const afterDBStream = async ({
 
 	// Write final versions of everything to the DB, except active players because some post-processing uses functions that read from the cache
 	await finalizeDBExceptPlayers({
+		lid,
 		teamSeasons,
 		teamStats,
 		teams,
@@ -1776,19 +1848,6 @@ const afterDBStream = async ({
 	await idb.cache.flush();
 	idb.cache.startAutoFlush();
 	local.leagueLoaded = true;
-
-	// Version 65 upgrade
-	if (fromFile.version !== undefined && fromFile.version < 65) {
-		const transaction = idb.league.transaction(
-			["games", "playerFeats", "playoffSeries"],
-			"readwrite",
-		);
-		await upgradeGamesVersion65({
-			transaction,
-			stopIfTooMany: true,
-			lid,
-		});
-	}
 };
 
 const createStream = async (
@@ -1847,6 +1906,7 @@ const createStream = async (
 
 	const { extraFromStream, saveToDB } = await getSaveToDB({
 		keptKeys,
+		lid,
 		maxGid: fromFile.maxGid,
 		preProcessParams: {
 			activeTids,

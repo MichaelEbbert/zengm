@@ -5,6 +5,7 @@ import type {
 	Player,
 	TradeEventTeams,
 } from "../../common/types.ts";
+import { readPlayersFilter } from "../db/electronApi.ts";
 import { idb } from "../db/index.ts";
 import g from "./g.ts";
 import getTeamInfoBySeason from "./getTeamInfoBySeason.ts";
@@ -36,15 +37,18 @@ export const getPlayerFromPick = async (dp: PickAsset) => {
 		(dp.season < g.get("season") ||
 			(dp.season === g.get("season") && g.get("phase") >= PHASE.DRAFT))
 	) {
-		for await (const { value: p2 } of idb.league
-			.transaction("players")
-			.store.index("draft.year, retiredYear")
-			.iterate(IDBKeyRange.bound([dp.season], [dp.season, Infinity]), "prev")) {
-			if (p2.draft.dpid === dp.dpid) {
-				p = p2;
-				break;
-			}
-		}
+		let lid: number | undefined;
+		try {
+			lid = g.get("lid");
+		} catch {}
+		const allPlayers =
+			typeof lid === "number"
+				? ((await readPlayersFilter(lid, { activeAndRetired: true })) ??
+					(await idb.cache.players.getAll()))
+				: await idb.cache.players.getAll();
+		p = allPlayers.find(
+			(p2: any) => p2.draft.year === dp.season && p2.draft.dpid === dp.dpid,
+		);
 	}
 
 	return p;

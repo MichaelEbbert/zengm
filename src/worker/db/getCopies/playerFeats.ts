@@ -1,4 +1,4 @@
-import { getAll, idb } from "../index.ts";
+import { idb } from "../index.ts";
 import { mergeByPk } from "./helpers.ts";
 import type { GetCopyType, PlayerFeat } from "../../../common/types.ts";
 import { readAllPlayerFeats as electronReadAllPlayerFeats } from "../electronApi.ts";
@@ -16,7 +16,7 @@ const getCopies = async (
 	return mergeByPk(
 		typeof lid === "number"
 			? (((await electronReadAllPlayerFeats(lid)) as PlayerFeat[]) ?? [])
-			: await getAll(idb.league.transaction("playerFeats").store),
+			: [],
 		await idb.cache.playerFeats.getAll(),
 		"playerFeats",
 		type,

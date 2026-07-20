@@ -371,8 +371,8 @@ const checkMvp = async (limit: number, overallLimit: number) => {
 	if (currentAwards.mvp?.tid === userTid) {
 		checkMvpCache.count += 1;
 	}
-	for await (const { value: awards } of idb.league.transaction("awards")
-		.store) {
+	const allAwards = await idb.getCopies.awards({});
+	for (const awards of allAwards) {
 		// Already checked current season in currentAwards
 		if (awards.season >= season) {
 			continue;

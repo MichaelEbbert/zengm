@@ -9,7 +9,6 @@ import loadData from "../realRosters/loadData.basketball.ts";
 
 const recomputeRealSeasonLeaders = async () => {
 	// Clear any existing seasonLeaders, so it gets recomputed
-	await idb.league.clear("seasonLeaders");
 	local.seasonLeaders = undefined;
 	await idb.cache.seasonLeaders.clear();
 

@@ -17,7 +17,7 @@ const close = async (disconnect?: boolean) => {
 		});
 	}
 
-	if (g.get("lid") !== undefined && idb.league !== undefined) {
+	if (g.get("lid") !== undefined) {
 		// _dirty check is to prevent UI flicker if there is nothing to flush
 		if (local.leagueLoaded && idb.cache._dirty) {
 			await updateStatus("Saving...");
@@ -27,9 +27,6 @@ const close = async (disconnect?: boolean) => {
 
 		if (disconnect) {
 			idb.cache.stopAutoFlush();
-
-			// Should probably "close" cache here too, but no way to do that now
-			idb.league.close();
 		}
 	}
 

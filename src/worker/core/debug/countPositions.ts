@@ -1,4 +1,4 @@
-import { PLAYER, POSITION_COUNTS } from "../../../common/constants.ts";
+import { POSITION_COUNTS } from "../../../common/constants.ts";
 import { idb } from "../../db/index.ts";
 import { player } from "../index.ts";
 import { isSport } from "../../../common/sportFunctions.ts";
@@ -6,10 +6,7 @@ import { last } from "../../../common/utils.ts";
 
 const countPositions = async () => {
 	// All non-retired players
-	const players = await idb.league
-		.transaction("players")
-		.store.index("tid")
-		.getAll(IDBKeyRange.lowerBound(PLAYER.FREE_AGENT));
+	const players = await idb.cache.players.getAll();
 	const posCounts: {
 		[key: string]: number;
 	} = {};
@@ -24,7 +21,6 @@ const countPositions = async () => {
 		const position = player.pos(r);
 
 		const ovr = player.ovr(r, position);
-		// const ovr = g.get("season") - p.born.year;
 
 		if (posCounts[position] === undefined) {
 			posCounts[position] = 0;

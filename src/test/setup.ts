@@ -1,10 +1,6 @@
-import { IDBKeyRange } from "fake-indexeddb";
 // @ts-expect-error
 import fs from "node:fs/promises";
 import { overridePostMessage } from "./overridePostMessage.ts";
-
-// When mockIDBLeague is used, sometimes IDBKeyRange still gets called even though there is no actual database
-globalThis.IDBKeyRange = IDBKeyRange;
 
 overridePostMessage();
 

@@ -8,7 +8,29 @@ import {
 	DEFAULT_TEAM_COLORS,
 	LEAGUE_DATABASE_VERSION,
 } from "../../common/constants.ts";
-import type { LeagueDBStoreNames } from "../db/connectLeague.ts";
+type LeagueDBStoreNames =
+	| "allStars"
+	| "awards"
+	| "draftLotteryResults"
+	| "draftPicks"
+	| "events"
+	| "games"
+	| "headToHeads"
+	| "messages"
+	| "negotiations"
+	| "playerFeats"
+	| "players"
+	| "playoffSeries"
+	| "releasedPlayers"
+	| "savedTrades"
+	| "savedTradingBlock"
+	| "schedule"
+	| "scheduledEvents"
+	| "seasonLeaders"
+	| "teamSeasons"
+	| "teamStats"
+	| "teams"
+	| "trade";
 
 // These objects (at the root of a league file) should be emitted as a complete object, rather than individual rows from an array
 const cumulativeObjects = [

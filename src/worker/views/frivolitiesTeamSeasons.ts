@@ -1,6 +1,7 @@
 import { idb } from "../db/index.ts";
 import { g, helpers } from "../util/index.ts";
 import {
+	readAllPlayoffSeries,
 	readTeamSeasons as electronReadTeamSeasons,
 	readTeamStats as electronReadTeamStats,
 } from "../db/electronApi.ts";
@@ -147,8 +148,16 @@ const getMostXTeamSeasons = async ({
 		}),
 	);
 
+	// Pre-fetch all playoff series for seed lookup
+	const allPlayoffSeriesRows =
+		typeof lid === "number"
+			? ((await readAllPlayoffSeries(lid)) ?? [])
+			: await idb.cache.playoffSeries.getAll();
+	const playoffSeriesBySeason = new Map(
+		allPlayoffSeriesRows.map((ps: any) => [ps.season, ps]),
+	);
+
 	// Add margin of victory, playoff seed
-	const playoffSeriesTx = idb.league.transaction(["playoffSeries"]);
 	for (const ts of teamSeasons) {
 		const teamStatsRows =
 			typeof lid === "number"
@@ -175,9 +184,7 @@ const getMostXTeamSeasons = async ({
 		}
 
 		if (ts.playoffRoundsWon >= 0) {
-			const playoffSeries = await playoffSeriesTx
-				.objectStore("playoffSeries")
-				.get(ts.season);
+			const playoffSeries = playoffSeriesBySeason.get(ts.season);
 			if (playoffSeries?.series[0]) {
 				const matchups = playoffSeries.series[0];
 				for (const matchup of matchups) {

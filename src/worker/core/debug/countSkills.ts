@@ -1,14 +1,10 @@
-import { PLAYER } from "../../../common/constants.ts";
 import { player } from "../index.ts";
 import { idb } from "../../db/index.ts";
 import { last } from "../../../common/utils.ts";
 
 const countSkills = async () => {
 	// All non-retired players
-	const players = await idb.league
-		.transaction("players")
-		.store.index("tid")
-		.getAll(IDBKeyRange.lowerBound(PLAYER.FREE_AGENT));
+	const players = await idb.cache.players.getAll();
 	const counts: Record<string, number> = {};
 
 	for (const p of players) {

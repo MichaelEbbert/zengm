@@ -16,7 +16,7 @@ const getCopies = async (
 	return mergeByPk(
 		typeof lid === "number"
 			? (((await electronReadScheduledEvents(lid)) as ScheduledEvent[]) ?? [])
-			: await idb.league.getAll("scheduledEvents"),
+			: [],
 		await idb.cache.scheduledEvents.getAll(),
 		"scheduledEvents",
 		type,

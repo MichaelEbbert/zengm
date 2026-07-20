@@ -1,6 +1,5 @@
 import { afterAll, assert, beforeAll, test } from "vitest";
 import { PLAYER } from "../../../common/constants.ts";
-import { mockIDBLeague } from "../../../test/helpers.ts";
 import { draft } from "../index.ts";
 import { idb } from "../../db/index.ts";
 import { g } from "../../util/index.ts";
@@ -51,16 +50,12 @@ const testDraftUser = async (round: number) => {
 
 beforeAll(async () => {
 	await loadTeamSeasons();
-	idb.league = mockIDBLeague();
 	await draft.genPlayers(g.get("season"), DEFAULT_LEVEL);
 	const draftTids = await getDraftTids();
 	userPick1 = draftTids.indexOf(g.get("userTid")) + 1;
 	userPick2 = draftTids.lastIndexOf(g.get("userTid")) + 1;
 });
-afterAll(() => {
-	// @ts-expect-error
-	idb.league = undefined;
-});
+afterAll(() => {});
 
 test("draft players before the user's team first round pick", () => {
 	return testRunPicks(userPick1 - 1, userPick1 - 1);

@@ -1,4 +1,4 @@
-import { getAll, idb } from "../index.ts";
+import { idb } from "../index.ts";
 import { readMessages as electronReadMessages } from "../electronApi.ts";
 import { maybeDeepCopy, mergeByPk } from "./helpers.ts";
 import type { GetCopyType, Message } from "../../../common/types.ts";
@@ -34,11 +34,6 @@ const getCopies = async (
 			if (sqliteMsgs && sqliteMsgs.length > 0) return sqliteMsgs as Message[];
 		}
 
-		const message2 = await idb.league.get("messages", mid);
-		if (message2) {
-			return [message2];
-		}
-
 		return [];
 	}
 
@@ -49,14 +44,6 @@ const getCopies = async (
 				((await electronReadMessages(lid, { limit })) as Message[]) ?? [];
 		} else {
 			fromDb = [];
-			for await (const { value: message } of idb.league
-				.transaction("messages")
-				.store.iterate(undefined, "prev")) {
-				fromDb.unshift(message);
-				if (fromDb.length >= limit) {
-					break;
-				}
-			}
 		}
 
 		const fromCache = await idb.cache.messages.getAll();
@@ -75,7 +62,7 @@ const getCopies = async (
 	if (typeof lid === "number") {
 		fromDb = ((await electronReadMessages(lid)) as Message[]) ?? [];
 	} else {
-		fromDb = await getAll(idb.league.transaction("messages").store);
+		fromDb = [];
 	}
 
 	return mergeByPk(fromDb, await idb.cache.messages.getAll(), "messages", type);

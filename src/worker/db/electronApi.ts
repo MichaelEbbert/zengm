@@ -1146,10 +1146,19 @@ export async function metaPutLeague(league: any): Promise<void> {
 }
 
 export async function metaDeleteLeague(lid: number): Promise<void> {
-	if (!(await isAvailable())) return;
+	await wlog(`metaDeleteLeague lid=${lid}`);
+	if (!(await isAvailable())) {
+		await wlog(`metaDeleteLeague lid=${lid}: API not available`);
+		return;
+	}
 	try {
-		await fetch(`${API}/meta/league?lid=${lid}`, { method: "DELETE" });
-	} catch {}
+		const r = await fetch(`${API}/meta/league?lid=${lid}`, {
+			method: "DELETE",
+		});
+		await wlog(`metaDeleteLeague lid=${lid}: status=${r.status}`);
+	} catch (e: any) {
+		await wlog(`metaDeleteLeague lid=${lid}: FAILED ${e?.message}`);
+	}
 }
 
 export async function metaClearLeagues(): Promise<void> {
@@ -1223,5 +1232,52 @@ export async function metaClearAchievements(): Promise<void> {
 	if (!(await isAvailable())) return;
 	try {
 		await fetch(`${API}/meta/achievements`, { method: "DELETE" });
+	} catch {}
+}
+
+export async function readMaxPlayerPid(lid: number): Promise<number> {
+	if (!(await isAvailable())) return -1;
+	try {
+		const r = await fetch(`${API}/players?lid=${lid}&mode=maxpid`);
+		if (!r.ok) return -1;
+		return (await r.json()).maxPid ?? -1;
+	} catch {
+		return -1;
+	}
+}
+
+export async function cloneLeague(
+	lidOld: number,
+	lidNew: number,
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/league/clone`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lidOld, lidNew }),
+		});
+	} catch {}
+}
+
+export async function deleteOldData(
+	lid: number,
+	options: {
+		boxScores?: boolean;
+		teamHistory?: boolean;
+		teamStats?: boolean;
+		retiredPlayers?: boolean;
+		events?: boolean;
+	},
+	currentSeason: number,
+	userTid: number,
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/delete-old-data`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, options, currentSeason, userTid }),
+		});
 	} catch {}
 }

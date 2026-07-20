@@ -74,6 +74,7 @@ import {
 	flushSeasonLeaders,
 	readSeasonLeaders as electronReadSeasonLeaders,
 	countSqliteSeasonLeaders,
+	readMaxPlayerPid,
 } from "./electronApi.ts";
 import type {
 	AllStars,
@@ -109,8 +110,6 @@ import type {
 	SavedTradingBlock,
 	NonEmptyArray,
 } from "../../common/types.ts";
-import type { IDBPTransaction } from "@dumbmatter/idb";
-import type { LeagueDB } from "./connectLeague.ts";
 import { league } from "../core/index.ts";
 
 export const NUM_SEASON_LEADERS_CACHE = 50;
@@ -278,19 +277,12 @@ class Cache {
 			pk: string;
 			pkType: "number" | "string";
 			autoIncrement: boolean;
-			getData?: (
-				tx: IDBPTransaction<LeagueDB>,
-				season: number,
-			) => Promise<any[]> | any[];
 			indexes?: {
 				name: Index;
 				filter?: (a: any) => boolean;
 				key: NonEmptyArray<string>;
 				unique?: boolean;
 			}[];
-
-			// Should be true if we want to fetch data from getData on a new season, even with autoSave disabled. This happens if you use season in getData such that there are objects for future seasons left out of the cache.
-			getDataWithAutoSaveDisabled?: boolean;
 		}
 	>;
 
@@ -362,7 +354,6 @@ class Cache {
 				pkType: "number",
 				autoIncrement: false,
 				// Current season
-				getData: (tx, season) => tx.objectStore("allStars").getAll(season),
 			},
 			awards: {
 				pk: "season",
@@ -378,7 +369,6 @@ class Cache {
 				pk: "dpid",
 				pkType: "number",
 				autoIncrement: true,
-				getData: (tx) => tx.objectStore("draftPicks").getAll(),
 				indexes: [
 					{
 						name: "draftPicksBySeason",
@@ -399,14 +389,12 @@ class Cache {
 				pk: "key",
 				pkType: "string",
 				autoIncrement: false,
-				getData: (tx) => tx.objectStore("gameAttributes").getAll(),
 			},
 			headToHeads: {
 				pk: "season",
 				pkType: "number",
 				autoIncrement: false,
 				// Current season
-				getData: (tx, season) => tx.objectStore("headToHeads").getAll(season),
 			},
 			messages: {
 				pk: "mid",
@@ -417,7 +405,6 @@ class Cache {
 				pk: "pid",
 				pkType: "number",
 				autoIncrement: false,
-				getData: (tx) => tx.objectStore("negotiations").getAll(),
 			},
 			playerFeats: {
 				pk: "fid",
@@ -428,18 +415,6 @@ class Cache {
 				pk: "pid",
 				pkType: "number",
 				autoIncrement: true,
-				getData: async (tx) => {
-					// Non-retired players
-					const players1 = await tx
-						.objectStore("players")
-						.index("tid")
-						.getAll(IDBKeyRange.lowerBound(PLAYER.UNDRAFTED));
-					const players2 = await tx
-						.objectStore("players")
-						.index("tid")
-						.getAll(PLAYER.UNDRAFTED_FANTASY_TEMP);
-					return players1.concat(players2);
-				},
 				indexes: [
 					{
 						name: "playersByTid",
@@ -456,13 +431,11 @@ class Cache {
 				pkType: "number",
 				autoIncrement: false,
 				// Current season
-				getData: (tx, season) => tx.objectStore("playoffSeries").getAll(season),
 			},
 			releasedPlayers: {
 				pk: "rid",
 				pkType: "number",
 				autoIncrement: true,
-				getData: (tx) => tx.objectStore("releasedPlayers").getAll(),
 				indexes: [
 					{
 						name: "releasedPlayersByTid",
@@ -474,61 +447,31 @@ class Cache {
 				pk: "hash",
 				pkType: "string",
 				autoIncrement: false,
-				getData: (tx) => tx.objectStore("savedTrades").getAll(),
 			},
 			savedTradingBlock: {
 				pk: "rid",
 				pkType: "number",
 				autoIncrement: false,
-				getData: (tx) => tx.objectStore("savedTradingBlock").getAll(),
 			},
 			schedule: {
 				pk: "gid",
 				pkType: "number",
 				autoIncrement: true,
-				getData: (tx) => tx.objectStore("schedule").getAll(),
 			},
 			scheduledEvents: {
 				pk: "id",
 				pkType: "number",
 				autoIncrement: true,
-				getData: (tx, season) => {
-					return tx
-						.objectStore("scheduledEvents")
-						.index("season")
-						.getAll(season);
-				},
-				getDataWithAutoSaveDisabled: true,
 			},
 			seasonLeaders: {
 				pk: "season",
 				pkType: "number",
 				autoIncrement: false,
-				// Get enough for any non-retired player
-				getData: (tx, season) => {
-					return tx
-						.objectStore("seasonLeaders")
-						.getAll(
-							IDBKeyRange.bound(season - NUM_SEASON_LEADERS_CACHE, Infinity),
-						);
-				},
 			},
 			teamSeasons: {
 				pk: "rid",
 				pkType: "number",
 				autoIncrement: true,
-				// Past 3 seasons
-				getData: (tx, season) => {
-					return tx
-						.objectStore("teamSeasons")
-						.index("season, tid")
-						.getAll(
-							IDBKeyRange.bound(
-								[season - NUM_PRIOR_SEASONS_TEAM_SEASONS],
-								[season, ""],
-							),
-						);
-				},
 				indexes: [
 					{
 						name: "teamSeasonsBySeasonTid",
@@ -546,13 +489,6 @@ class Cache {
 				pk: "rid",
 				pkType: "number",
 				autoIncrement: true,
-				// Current season
-				getData: (tx, season) => {
-					return tx
-						.objectStore("teamStats")
-						.index("season, tid")
-						.getAll(IDBKeyRange.bound([season], [season, ""]));
-				},
 				indexes: [
 					{
 						name: "teamStatsByPlayoffsTid",
@@ -565,15 +501,11 @@ class Cache {
 				pk: "tid",
 				pkType: "number",
 				autoIncrement: false,
-				getData: (tx: IDBPTransaction<LeagueDB>) =>
-					tx.objectStore("teams").getAll(),
 			},
 			trade: {
 				pk: "rid",
 				pkType: "number",
 				autoIncrement: false,
-				getData: (tx: IDBPTransaction<LeagueDB>) =>
-					tx.objectStore("trade").getAll(),
 			},
 		};
 
@@ -719,50 +651,6 @@ class Cache {
 		}
 	}
 
-	// append is for autoSave false in rare situations
-	async _loadStore(
-		store: Store,
-		transaction: IDBPTransaction<LeagueDB>,
-		season: number,
-		append: boolean,
-	) {
-		const storeInfo = this.storeInfos[store];
-		if (!append) {
-			this._deletes[store] = new Set();
-			this._dirtyRecords[store] = new Set();
-		}
-
-		{
-			// No getData implies no need to store any records in cache except new ones
-			const data = storeInfo.getData
-				? await storeInfo.getData(transaction, season)
-				: [];
-			if (!append) {
-				this._data[store] = {};
-			}
-
-			for (const row of data) {
-				const key = row[storeInfo.pk];
-				this._data[store][key] = row;
-			}
-
-			this._refreshIndexes(store);
-		}
-
-		{
-			if (storeInfo.autoIncrement) {
-				this._maxIds[store] = -1;
-
-				const cursor = await transaction
-					.objectStore(store)
-					.openCursor(undefined, "prev");
-				if (cursor) {
-					this._maxIds[store] = cursor.value[storeInfo.pk];
-				}
-			}
-		}
-	}
-
 	// Load database from disk and save in cache, wiping out any prior values in cache
 	async fill(season?: number) {
 		this._validateStatus("empty", "full");
@@ -787,43 +675,35 @@ class Cache {
 		}
 
 		if (season2 === undefined) {
-			const seasonAttr = await idb.league.get("gameAttributes", "season");
-			await wlog2(`fill() idb.league.get season -> ${seasonAttr?.value}`);
-
-			if (seasonAttr) {
-				season2 = seasonAttr.value;
-			} else {
-				// IDB gameAttributes may be empty when migrated to SQLite.
-				// Bypass isAvailable() here — this is a bootstrap call where the API
-				// server may not have been confirmed available yet.
-				if (typeof lid2 === "number") {
-					try {
-						const r = await fetch(
-							`http://127.0.0.1:3001/game-attributes?lid=${lid2}`,
+			// Bypass isAvailable() here — this is a bootstrap call where the API
+			// server may not have been confirmed available yet.
+			if (typeof lid2 === "number") {
+				try {
+					const r = await fetch(
+						`http://127.0.0.1:3001/game-attributes?lid=${lid2}`,
+					);
+					if (r.ok) {
+						const data = await r.json();
+						const seasonRow = (data.gameAttributes as any[])?.find(
+							(ga) => ga.key === "season",
 						);
-						if (r.ok) {
-							const data = await r.json();
-							const seasonRow = (data.gameAttributes as any[])?.find(
-								(ga) => ga.key === "season",
-							);
-							await wlog2(
-								`fill() direct fetch lid=${lid2} seasonRow=${seasonRow?.value} count=${data.gameAttributes?.length}`,
-							);
-							if (seasonRow) {
-								season2 = seasonRow.value;
-							}
-						} else {
-							const errBody = await r.text().catch(() => "(no body)");
-							await wlog2(
-								`fill() direct fetch failed status=${r.status} body=${errBody}`,
-							);
+						await wlog2(
+							`fill() direct fetch lid=${lid2} seasonRow=${seasonRow?.value} count=${data.gameAttributes?.length}`,
+						);
+						if (seasonRow) {
+							season2 = seasonRow.value;
 						}
-					} catch (fetchErr) {
-						await wlog2(`fill() direct fetch threw: ${fetchErr}`);
+					} else {
+						const errBody = await r.text().catch(() => "(no body)");
+						await wlog2(
+							`fill() direct fetch failed status=${r.status} body=${errBody}`,
+						);
 					}
-				} else {
-					await wlog2(`fill() SQLite fallback skipped — lid not available`);
+				} catch (fetchErr) {
+					await wlog2(`fill() direct fetch threw: ${fetchErr}`);
 				}
+			} else {
+				await wlog2(`fill() SQLite fallback skipped — lid not available`);
 			}
 		}
 
@@ -860,32 +740,14 @@ class Cache {
 			}
 
 			if (sqlitePlayers !== null && sqlitePlayers.length > 0) {
-				// Primary path: load from SQLite
 				for (const player of sqlitePlayers) {
 					this._data["players"][player.pid] = player;
 				}
-			} else {
-				// Migration/fallback: load from IDB, then write to SQLite
-				await this._loadStore(
-					"players",
-					idb.league.transaction(["players"]),
-					season2,
-					false,
-				);
-				if (typeof lid === "number") {
-					const idbPlayers = Object.values(this._data["players"]);
-					if (idbPlayers.length > 0) {
-						await flushPlayers(lid, idbPlayers as any[], []);
-					}
-				}
 			}
 
-			// Seed maxId from IDB cursor (needed for new player pid assignment)
-			const cursor = await idb.league
-				.transaction(["players"])
-				.objectStore("players")
-				.openCursor(undefined, "prev");
-			this._maxIds["players"] = cursor ? cursor.value.pid : -1;
+			// Seed maxId from SQLite
+			this._maxIds["players"] =
+				typeof lid === "number" ? await readMaxPlayerPid(lid) : -1;
 
 			this._refreshIndexes("players");
 		}
@@ -909,18 +771,6 @@ class Cache {
 					for (const team of sqliteTeams) {
 						this._data["teams"][team.tid] = team;
 					}
-				}
-			} else {
-				// Migration: read all from IDB, write to SQLite
-				const allIdbTeams = await idb.league
-					.transaction(["teams"])
-					.objectStore("teams")
-					.getAll();
-				for (const team of allIdbTeams) {
-					this._data["teams"][team.tid] = team;
-				}
-				if (typeof lid === "number" && allIdbTeams.length > 0) {
-					await flushTeams(lid, allIdbTeams, []);
 				}
 			}
 			// teams.tid is not autoIncrement — no maxId needed
@@ -947,20 +797,6 @@ class Cache {
 				});
 				if (sqliteTeamSeasons) {
 					for (const ts of sqliteTeamSeasons) {
-						this._data["teamSeasons"][ts.rid] = ts;
-					}
-				}
-			} else {
-				// Migration: read ALL from IDB, write ALL to SQLite, load recent into cache
-				const allIdbTeamSeasons = await idb.league
-					.transaction(["teamSeasons"])
-					.objectStore("teamSeasons")
-					.getAll();
-				if (typeof lid === "number" && allIdbTeamSeasons.length > 0) {
-					await flushTeamSeasons(lid, allIdbTeamSeasons, []);
-				}
-				for (const ts of allIdbTeamSeasons) {
-					if (ts.season >= seasonThreshold) {
 						this._data["teamSeasons"][ts.rid] = ts;
 					}
 				}
@@ -994,20 +830,6 @@ class Cache {
 						this._data["teamStats"][ts.rid] = ts;
 					}
 				}
-			} else {
-				// Migration: read ALL from IDB, write ALL to SQLite, load current season into cache
-				const allIdbTeamStats = await idb.league
-					.transaction(["teamStats"])
-					.objectStore("teamStats")
-					.getAll();
-				if (typeof lid === "number" && allIdbTeamStats.length > 0) {
-					await flushTeamStats(lid, allIdbTeamStats, []);
-				}
-				for (const ts of allIdbTeamStats) {
-					if (ts.season === season2) {
-						this._data["teamStats"][ts.rid] = ts;
-					}
-				}
 			}
 			// Seed maxId from loaded records
 			this._maxIds["teamStats"] = Object.values(this._data["teamStats"]).reduce(
@@ -1038,17 +860,6 @@ class Cache {
 				for (const ga of sqliteGa!) {
 					this._data["gameAttributes"][ga.key] = ga;
 				}
-			} else {
-				const allIdbGa = await idb.league
-					.transaction(["gameAttributes"])
-					.objectStore("gameAttributes")
-					.getAll();
-				for (const ga of allIdbGa) {
-					this._data["gameAttributes"][ga.key] = ga;
-				}
-				if (typeof lid === "number" && allIdbGa.length > 0) {
-					await flushGameAttributes(lid, allIdbGa, []);
-				}
 			}
 			// gameAttributes has string PK, not autoIncrement — no maxId needed
 		}
@@ -1072,17 +883,6 @@ class Cache {
 					for (const sg of sqliteSched) {
 						this._data["schedule"][sg.gid] = sg;
 					}
-				}
-			} else {
-				const allIdbSched = await idb.league
-					.transaction(["schedule"])
-					.objectStore("schedule")
-					.getAll();
-				for (const sg of allIdbSched) {
-					this._data["schedule"][sg.gid] = sg;
-				}
-				if (typeof lid === "number" && allIdbSched.length > 0) {
-					await flushSchedule(lid, allIdbSched, []);
 				}
 			}
 			// Seed maxId from loaded records, then clamp to max game gid
@@ -1112,17 +912,6 @@ class Cache {
 						this._data["draftPicks"][dp.dpid] = dp;
 					}
 				}
-			} else {
-				const allIdbDp = await idb.league
-					.transaction(["draftPicks"])
-					.objectStore("draftPicks")
-					.getAll();
-				for (const dp of allIdbDp) {
-					this._data["draftPicks"][dp.dpid] = dp;
-				}
-				if (typeof lid === "number" && allIdbDp.length > 0) {
-					await flushDraftPicks(lid, allIdbDp, []);
-				}
 			}
 			this._maxIds["draftPicks"] = Object.values(
 				this._data["draftPicks"],
@@ -1150,17 +939,6 @@ class Cache {
 						this._data["negotiations"][n.pid] = n;
 					}
 				}
-			} else {
-				const allIdbNegs = await idb.league
-					.transaction(["negotiations"])
-					.objectStore("negotiations")
-					.getAll();
-				for (const n of allIdbNegs) {
-					this._data["negotiations"][n.pid] = n;
-				}
-				if (typeof lid === "number" && allIdbNegs.length > 0) {
-					await flushNegotiations(lid, allIdbNegs, []);
-				}
 			}
 			// negotiations: pid is PK, not autoIncrement — no maxId needed
 		}
@@ -1184,17 +962,6 @@ class Cache {
 					for (const rp of sqliteRps) {
 						this._data["releasedPlayers"][rp.rid] = rp;
 					}
-				}
-			} else {
-				const allIdbRps = await idb.league
-					.transaction(["releasedPlayers"])
-					.objectStore("releasedPlayers")
-					.getAll();
-				for (const rp of allIdbRps) {
-					this._data["releasedPlayers"][rp.rid] = rp;
-				}
-				if (typeof lid === "number" && allIdbRps.length > 0) {
-					await flushReleasedPlayers(lid, allIdbRps, []);
 				}
 			}
 			this._maxIds["releasedPlayers"] = Object.values(
@@ -1223,17 +990,6 @@ class Cache {
 						this._data["trade"][t.rid] = t;
 					}
 				}
-			} else {
-				const allIdbTrades = await idb.league
-					.transaction(["trade"])
-					.objectStore("trade")
-					.getAll();
-				for (const t of allIdbTrades) {
-					this._data["trade"][t.rid] = t;
-				}
-				if (typeof lid === "number" && allIdbTrades.length > 0) {
-					await flushTrade(lid, allIdbTrades, []);
-				}
 			}
 			// trade.rid is always 0, not autoIncrement — no maxId needed
 		}
@@ -1257,17 +1013,6 @@ class Cache {
 					for (const st of sqliteSts) {
 						this._data["savedTrades"][st.hash] = st;
 					}
-				}
-			} else {
-				const allIdbSts = await idb.league
-					.transaction(["savedTrades"])
-					.objectStore("savedTrades")
-					.getAll();
-				for (const st of allIdbSts) {
-					this._data["savedTrades"][st.hash] = st;
-				}
-				if (typeof lid === "number" && allIdbSts.length > 0) {
-					await flushSavedTrades(lid, allIdbSts, []);
 				}
 			}
 			// savedTrades has string PK (hash), not autoIncrement — no maxId needed
@@ -1293,17 +1038,6 @@ class Cache {
 						this._data["savedTradingBlock"][stb.rid] = stb;
 					}
 				}
-			} else {
-				const allIdbStbs = await idb.league
-					.transaction(["savedTradingBlock"])
-					.objectStore("savedTradingBlock")
-					.getAll();
-				for (const stb of allIdbStbs) {
-					this._data["savedTradingBlock"][stb.rid] = stb;
-				}
-				if (typeof lid === "number" && allIdbStbs.length > 0) {
-					await flushSavedTradingBlock(lid, allIdbStbs, []);
-				}
 			}
 			// savedTradingBlock.rid is always 0, not autoIncrement — no maxId needed
 		}
@@ -1321,15 +1055,6 @@ class Cache {
 
 			const sqliteMsgCount =
 				typeof lid === "number" ? await countSqliteMessages(lid) : 0;
-			if (sqliteMsgCount === 0 && typeof lid === "number") {
-				const allIdbMsgs = await idb.league
-					.transaction(["messages"])
-					.objectStore("messages")
-					.getAll();
-				if (allIdbMsgs.length > 0) {
-					await flushMessages(lid, allIdbMsgs, []);
-				}
-			}
 			// Seed maxId from SQLite (messages not preloaded into cache)
 			this._maxIds["messages"] =
 				typeof lid === "number" ? await getMaxMessageMid(lid) : -1;
@@ -1353,17 +1078,6 @@ class Cache {
 				if (rows) {
 					for (const r of rows) this._data["allStars"][r.season] = r;
 				}
-			} else {
-				const allIdb = await idb.league
-					.transaction(["allStars"])
-					.objectStore("allStars")
-					.getAll();
-				if (typeof lid === "number" && allIdb.length > 0) {
-					await flushAllStars(lid, allIdb, []);
-				}
-				for (const r of allIdb) {
-					if (r.season === season2) this._data["allStars"][r.season] = r;
-				}
 			}
 			// season PK, not autoIncrement — no maxId needed
 		}
@@ -1381,13 +1095,6 @@ class Cache {
 
 			const sqliteAwCount =
 				typeof lid === "number" ? await countSqliteAwards(lid) : 0;
-			if (sqliteAwCount === 0 && typeof lid === "number") {
-				const allIdb = await idb.league
-					.transaction(["awards"])
-					.objectStore("awards")
-					.getAll();
-				if (allIdb.length > 0) await flushAwards(lid, allIdb, []);
-			}
 			// awards not preloaded; season PK, no maxId needed
 		}
 
@@ -1404,13 +1111,6 @@ class Cache {
 
 			const sqliteDlrCount =
 				typeof lid === "number" ? await countSqliteDraftLotteryResults(lid) : 0;
-			if (sqliteDlrCount === 0 && typeof lid === "number") {
-				const allIdb = await idb.league
-					.transaction(["draftLotteryResults"])
-					.objectStore("draftLotteryResults")
-					.getAll();
-				if (allIdb.length > 0) await flushDraftLotteryResults(lid, allIdb, []);
-			}
 			// not preloaded; season PK, no maxId needed
 		}
 
@@ -1427,13 +1127,6 @@ class Cache {
 
 			const sqliteEvCount =
 				typeof lid === "number" ? await countSqliteEvents(lid) : 0;
-			if (sqliteEvCount === 0 && typeof lid === "number") {
-				const allIdb = await idb.league
-					.transaction(["events"])
-					.objectStore("events")
-					.getAll();
-				if (allIdb.length > 0) await flushEvents(lid, allIdb, []);
-			}
 			this._maxIds["events"] =
 				typeof lid === "number" ? await getMaxEventEid(lid) : -1;
 		}
@@ -1456,17 +1149,6 @@ class Cache {
 				if (rows) {
 					for (const r of rows) this._data["headToHeads"][r.season] = r;
 				}
-			} else {
-				const allIdb = await idb.league
-					.transaction(["headToHeads"])
-					.objectStore("headToHeads")
-					.getAll();
-				if (typeof lid === "number" && allIdb.length > 0) {
-					await flushHeadToHeads(lid, allIdb, []);
-				}
-				for (const r of allIdb) {
-					if (r.season === season2) this._data["headToHeads"][r.season] = r;
-				}
 			}
 			// season PK, not autoIncrement — no maxId needed
 		}
@@ -1484,13 +1166,6 @@ class Cache {
 
 			const sqlitePfCount =
 				typeof lid === "number" ? await countSqlitePlayerFeats(lid) : 0;
-			if (sqlitePfCount === 0 && typeof lid === "number") {
-				const allIdb = await idb.league
-					.transaction(["playerFeats"])
-					.objectStore("playerFeats")
-					.getAll();
-				if (allIdb.length > 0) await flushPlayerFeats(lid, allIdb, []);
-			}
 			this._maxIds["playerFeats"] =
 				typeof lid === "number" ? await getMaxPlayerFeatFid(lid) : -1;
 		}
@@ -1514,17 +1189,6 @@ class Cache {
 					for (const r of rows) {
 						if (r.season === season2) this._data["playoffSeries"][r.season] = r;
 					}
-				}
-			} else {
-				const allIdb = await idb.league
-					.transaction(["playoffSeries"])
-					.objectStore("playoffSeries")
-					.getAll();
-				if (typeof lid === "number" && allIdb.length > 0) {
-					await flushPlayoffSeries(lid, allIdb, []);
-				}
-				for (const r of allIdb) {
-					if (r.season === season2) this._data["playoffSeries"][r.season] = r;
 				}
 			}
 			// season PK, not autoIncrement — no maxId needed
@@ -1550,17 +1214,6 @@ class Cache {
 				if (rows) {
 					for (const r of rows) this._data["scheduledEvents"][r.id] = r;
 				}
-			} else {
-				const allIdb = await idb.league
-					.transaction(["scheduledEvents"])
-					.objectStore("scheduledEvents")
-					.getAll();
-				if (typeof lid === "number" && allIdb.length > 0) {
-					await flushScheduledEvents(lid, allIdb, []);
-				}
-				for (const r of allIdb) {
-					if (r.season === season2) this._data["scheduledEvents"][r.id] = r;
-				}
 			}
 			this._maxIds["scheduledEvents"] =
 				typeof lid === "number" ? await getMaxScheduledEventId(lid) : -1;
@@ -1585,37 +1238,8 @@ class Cache {
 				if (rows) {
 					for (const r of rows) this._data["seasonLeaders"][r.season] = r;
 				}
-			} else {
-				const allIdb = await idb.league
-					.transaction(["seasonLeaders"])
-					.objectStore("seasonLeaders")
-					.getAll();
-				if (typeof lid === "number" && allIdb.length > 0) {
-					await flushSeasonLeaders(lid, allIdb, []);
-				}
-				for (const r of allIdb) {
-					if (r.season >= fromSeason) this._data["seasonLeaders"][r.season] = r;
-				}
 			}
 			// season PK, not autoIncrement — no maxId needed
-		}
-
-		for (const store of STORES) {
-			if (local.autoSave) {
-				await this._loadStore(
-					store,
-					idb.league.transaction([store]),
-					season2,
-					false,
-				);
-			} else if (this.storeInfos[store].getDataWithAutoSaveDisabled) {
-				await this._loadStore(
-					store,
-					idb.league.transaction([store]),
-					season2,
-					true,
-				);
-			}
 		}
 
 		if (local.autoSave) {
@@ -1787,47 +1411,12 @@ class Cache {
 		await flushSqliteStore("scheduledEvents", flushScheduledEvents);
 		await flushSqliteStore("seasonLeaders", flushSeasonLeaders);
 
-		if (stores.length === 0) {
-			// Not sure if this is needed - prior to this short circuit, if this._dirty was somehow true it would have been set false at the bottom of this function. So put it here just in case.
-			this._dirty = false;
+		this._dirty = false;
 
-			// Skip making any transaction if possible
-			return;
-		}
-
-		const transaction = idb.league.transaction(stores, "readwrite");
-
-		for (const store of stores) {
-			for (const id of this._deletes[store]) {
-				// This is synchronous to prevent any race condition
-				transaction.objectStore(store).delete(id);
-			}
-
-			this._deletes[store].clear();
-
-			for (const id of this._dirtyRecords[store]) {
-				const record = this._data[store][id];
-
-				// If record was deleted after being marked as dirty, it will be undefined here
-				if (record !== undefined) {
-					// This is synchronous to prevent any race condition
-					transaction.objectStore(store).put(record);
-				}
-			}
-
-			this._dirtyRecords[store].clear();
-		}
-
-		await transaction.done;
-
-		if (this._dirty) {
-			this._dirty = false;
-
-			// Update lastPlayed
-			await league.updateMeta({
-				lastPlayed: new Date(),
-			});
-		}
+		// Update lastPlayed
+		await league.updateMeta({
+			lastPlayed: new Date(),
+		});
 	}
 
 	async _autoFlush() {

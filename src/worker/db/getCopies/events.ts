@@ -1,4 +1,4 @@
-import { getAll, idb } from "../index.ts";
+import { idb } from "../index.ts";
 import { maybeDeepCopy, mergeByPk } from "./helpers.ts";
 import type { EventBBGM, GetCopyType } from "../../../common/types.ts";
 import { readEvents as electronReadEvents } from "../electronApi.ts";
@@ -52,10 +52,7 @@ const getCopies = async (
 		return mergeByPk(
 			typeof lid === "number"
 				? (((await electronReadEvents(lid, { season })) as EventBBGM[]) ?? [])
-				: await idb.league
-						.transaction("events")
-						.store.index("season")
-						.getAll(season),
+				: [],
 			(await idb.cache.events.getAll()).filter((ev) => ev.season === season),
 			"events",
 			type,
@@ -66,7 +63,7 @@ const getCopies = async (
 		return mergeByPk(
 			typeof lid === "number"
 				? (((await electronReadEvents(lid, { pid })) as EventBBGM[]) ?? [])
-				: await idb.league.getAllFromIndex("events", "pids", pid),
+				: [],
 			(await idb.cache.events.getAll()).filter(
 				(ev) => ev.pids !== undefined && ev.pids.includes(pid),
 			),
@@ -79,7 +76,7 @@ const getCopies = async (
 		return mergeByPk(
 			typeof lid === "number"
 				? (((await electronReadEvents(lid, { dpid })) as EventBBGM[]) ?? [])
-				: await idb.league.getAllFromIndex("events", "dpids", dpid),
+				: [],
 			(await idb.cache.events.getAll()).filter(
 				(ev) => ev.dpids !== undefined && ev.dpids.includes(dpid),
 			),
@@ -97,15 +94,13 @@ const getCopies = async (
 			if (sqliteEvs && sqliteEvs.length > 0) return sqliteEvs as EventBBGM[];
 		}
 
-		const ev2 = await idb.league.get("events", eid);
-		if (ev2) return [ev2];
 		return [];
 	}
 
 	return mergeByPk(
 		typeof lid === "number"
 			? (((await electronReadEvents(lid)) as EventBBGM[]) ?? [])
-			: await getAll(idb.league.transaction("events").store, undefined, filter),
+			: [],
 		await idb.cache.events.getAll(),
 		"events",
 		type,

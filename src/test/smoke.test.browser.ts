@@ -1,6 +1,5 @@
 import { afterAll, describe, test } from "vitest";
 import { league } from "../worker/core/index.ts";
-import { idb } from "../worker/db/index.ts";
 import {
 	defaultGameAttributes,
 	g,
@@ -8,7 +7,6 @@ import {
 	local,
 } from "../worker/util/index.ts";
 import "../worker/index.ts";
-import { deleteDB } from "@dumbmatter/idb";
 import createStreamFromLeagueObject from "../worker/core/league/create/createStreamFromLeagueObject.ts";
 import { LEAGUE_DATABASE_VERSION } from "../common/constants.ts";
 import { getDefaultSettings } from "../worker/views/newLeague.ts";
@@ -73,8 +71,5 @@ describe("Smoke Tests", () => {
 		if (g.get("lid") !== undefined) {
 			throw new Error("g.lid should be undefined");
 		}
-
-		await idb.meta.close();
-		await deleteDB("meta");
 	});
 });

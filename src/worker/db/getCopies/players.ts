@@ -1,56 +1,9 @@
 import { PLAYER } from "../../../common/constants.ts";
-import { getAll, idb } from "../index.ts";
+import { idb } from "../index.ts";
 import { mergeByPk } from "./helpers.ts";
 import { g, helpers } from "../../util/index.ts";
 import type { GetCopyType, Player } from "../../../common/types.ts";
-import { type IDBPDatabase, unwrap } from "@dumbmatter/idb";
-import type { LeagueDB } from "../connectLeague.ts";
 import { readPlayersFilter } from "../electronApi.ts";
-
-export const getPlayersActiveSeason = (
-	league: IDBPDatabase<LeagueDB>,
-	season: number,
-) => {
-	return new Promise<Player[]>((resolve, reject) => {
-		const transaction = league.transaction("players");
-
-		const players: Player[] = [];
-
-		const index = unwrap(
-			transaction.objectStore("players").index("draft.year, retiredYear"),
-		);
-
-		// -1 is because players drafted last year won't play until this year
-		const range = IDBKeyRange.bound(
-			[-Infinity, season - 1],
-			[season, Infinity],
-		);
-		const request = index.openCursor(range);
-
-		request.onerror = (e: any) => {
-			reject(e.target.error);
-		};
-
-		request.onsuccess = (e: any) => {
-			const cursor = e.target.result;
-
-			if (!cursor) {
-				resolve(players);
-				return;
-			}
-
-			const [draftYear2, retiredYear] = cursor.key;
-
-			// https://gist.github.com/inexorabletash/704e9688f99ac12dd336
-			if (retiredYear < season) {
-				cursor.continue([draftYear2, season]);
-			} else {
-				players.push(cursor.value);
-				cursor.continue();
-			}
-		};
-	});
-};
 
 function getLid(): number | undefined {
 	try {
@@ -95,24 +48,17 @@ const getCopies = async (
 	}
 
 	if (pid !== undefined) {
-		// Check in-memory cache first (covers active/dirty players)
 		const p = await idb.cache.players.get(pid);
 		if (p) {
 			return [type === "noCopyCache" ? p : helpers.deepCopy(p)];
 		}
 
-		// Try SQLite (retired players not in cache)
 		const lid = getLid();
 		if (lid !== undefined) {
 			const sqlitePlayers = await readPlayersFilter(lid, { pid });
 			if (sqlitePlayers !== null && sqlitePlayers.length > 0) {
 				return sqlitePlayers;
 			}
-		}
-
-		const p2 = await idb.league.get("players", pid);
-		if (p2) {
-			return [p2];
 		}
 
 		return [];
@@ -123,12 +69,10 @@ const getCopies = async (
 			return [];
 		}
 
-		// Try SQLite first for bulk lookup
 		const lid = getLid();
 		if (lid !== undefined) {
 			const sqlitePlayers = await readPlayersFilter(lid, { pids });
 			if (sqlitePlayers !== null) {
-				// Merge with cache so dirty active players win
 				const merged = mergeByPk(
 					sqlitePlayers,
 					(await idb.cache.players.getAll()).filter((p) =>
@@ -146,61 +90,17 @@ const getCopies = async (
 			}
 		}
 
-		const sortedPids = [...pids].sort((a, b) => a - b);
-		const fromDB = await new Promise<Player[]>((resolve, reject) => {
-			const transaction = idb.league.transaction("players");
-
-			const players: Player[] = [];
-
-			// Because backboard doesn't support passing an argument to cursor.continue
-			const objectStore = unwrap(transaction.objectStore("players"));
-			const range = IDBKeyRange.bound(sortedPids[0], sortedPids.at(-1));
-			let i = 0;
-			const request = objectStore.openCursor(range);
-
-			request.onerror = (e: any) => {
-				reject(e.target.error);
-			};
-
-			request.onsuccess = (e: any) => {
-				const cursor = e.target.result;
-
-				if (!cursor) {
-					resolve(players);
-					return;
-				}
-
-				const p = cursor.value;
-
-				// https://gist.github.com/inexorabletash/704e9688f99ac12dd336
-				if (sortedPids.includes(p.pid)) {
-					players.push(p);
-				}
-
-				i += 1;
-
-				if (i > sortedPids.length) {
-					resolve(players);
-					return;
-				}
-
-				cursor.continue(sortedPids[i]);
-			};
-		});
-
 		const merged = mergeByPk(
-			fromDB,
+			[],
 			(await idb.cache.players.getAll()).filter((p) => pids.includes(p.pid)),
 			"players",
 			type,
 		);
-
 		const sorted = [];
 		for (const p of pids) {
 			const found = merged.find((p2) => p2.pid === p);
 			if (found) sorted.push(found);
 		}
-
 		return sorted;
 	}
 
@@ -213,47 +113,8 @@ const getCopies = async (
 			}
 		}
 
-		const fromDB = await new Promise<Player[]>((resolve, reject) => {
-			const players: Player[] = [];
-
-			const index = unwrap(
-				idb.league
-					.transaction("players")
-					.objectStore("players")
-					.index("draft.year, retiredYear"),
-			);
-
-			const request = index.openCursor();
-
-			request.onerror = (e: any) => {
-				reject(e.target.error);
-			};
-
-			request.onsuccess = (e: any) => {
-				const cursor = e.target.result;
-
-				if (!cursor) {
-					resolve(players);
-					return;
-				}
-
-				const [draftYear, currentRetiredYear] = cursor.key;
-
-				// https://gist.github.com/inexorabletash/704e9688f99ac12dd336
-				if (currentRetiredYear < retiredYear) {
-					cursor.continue([draftYear, retiredYear]);
-				} else if (currentRetiredYear > retiredYear) {
-					cursor.continue([draftYear + 1, retiredYear]);
-				} else {
-					players.push(cursor.value);
-					cursor.continue();
-				}
-			};
-		});
-
-		// Get all from cache, and filter later, in case cache differs from database
 		return mergeByPk(
-			fromDB,
+			[],
 			await idb.cache.players.indexGetAll("playersByTid", PLAYER.RETIRED),
 			"players",
 			type,
@@ -262,7 +123,7 @@ const getCopies = async (
 
 	if (tid !== undefined) {
 		if (Array.isArray(tid)) {
-			const [minTid, maxTid] = tid; // Avoid PLAYER.RETIRED, since those aren't in cache
+			const [minTid, maxTid] = tid;
 
 			if (
 				minTid === PLAYER.RETIRED ||
@@ -273,7 +134,6 @@ const getCopies = async (
 			}
 		}
 
-		// This works if tid is a number or [min, max]
 		const fromDB = (
 			await idb.cache.players.indexGetAll("playersByTid", tid)
 		).filter(filter);
@@ -302,22 +162,9 @@ const getCopies = async (
 			}
 		}
 
-		// IDB fallback
 		return mergeByPk(
-			[].concat(
-				// @ts-expect-error
-				await getAll(
-					idb.league.transaction("players").store.index("tid"),
-					PLAYER.RETIRED,
-					filter,
-				),
-				await idb.league
-					.transaction("players")
-					.store.index("tid")
-					.getAll(IDBKeyRange.lowerBound(PLAYER.FREE_AGENT)),
-			),
-			[].concat(
-				// @ts-expect-error
+			[],
+			([] as Player[]).concat(
 				await idb.cache.players.indexGetAll("playersByTid", PLAYER.RETIRED),
 				await idb.cache.players.indexGetAll("playersByTid", [
 					PLAYER.FREE_AGENT,
@@ -332,11 +179,9 @@ const getCopies = async (
 	if (activeSeason !== undefined) {
 		let proceed = true;
 		if (statsTid !== undefined) {
-			// If statsTid and activeSeason are both defined, use activeSeason rather than statsTid based on number of seasons/teams
 			const numTeams = g.get("numTeams");
 			const numSeasons = g.get("season") - g.get("startingSeason");
 
-			// Factor is based on testing when this actually gets faster
 			if (5 * numTeams > numSeasons) {
 				proceed = false;
 			}
@@ -372,10 +217,8 @@ const getCopies = async (
 				}
 			}
 
-			const fromDB = await getPlayersActiveSeason(idb.league, activeSeason);
-
 			return mergeByPk(
-				fromDB,
+				[],
 				([] as Player[])
 					.concat(
 						await idb.cache.players.indexGetAll("playersByTid", PLAYER.RETIRED),
@@ -411,11 +254,7 @@ const getCopies = async (
 		}
 
 		return mergeByPk(
-			await getAll(
-				idb.league.transaction("players").store.index("hof"),
-				1,
-				filter,
-			),
+			[],
 			(await idb.cache.players.getAll()).filter((p) => p.hof === 1),
 			"players",
 			type,
@@ -442,12 +281,7 @@ const getCopies = async (
 		}
 
 		return mergeByPk(
-			await idb.league
-				.transaction("players")
-				.store.index("draft.year, retiredYear")
-				.getAll(
-					IDBKeyRange.bound([draftYear, -Infinity], [draftYear, Infinity]),
-				),
+			[],
 			(
 				await idb.cache.players.indexGetAll("playersByTid", [
 					PLAYER.RETIRED,
@@ -485,10 +319,7 @@ const getCopies = async (
 		}
 
 		return mergeByPk(
-			await getAll(
-				idb.league.transaction("players").store.index("statsTids"),
-				statsTid,
-			),
+			[],
 			([] as Player[])
 				.concat(
 					await idb.cache.players.indexGetAll("playersByTid", PLAYER.RETIRED),
@@ -518,12 +349,7 @@ const getCopies = async (
 		}
 
 		return mergeByPk(
-			// undefined for key returns all of the players with noteBool, since the ones without noteBool are not included in this index
-			await getAll(
-				idb.league.transaction("players").store.index("noteBool"),
-				undefined,
-				filter,
-			),
+			[],
 			await idb.cache.players.getAll(),
 			"players",
 			type,
@@ -545,12 +371,7 @@ const getCopies = async (
 		}
 
 		return mergeByPk(
-			// undefined for key returns all of the players with values, since the ones with without watch are not included in this index
-			await getAll(
-				idb.league.transaction("players").store.index("watch"),
-				undefined,
-				filter,
-			),
+			[],
 			await idb.cache.players.getAll(),
 			"players",
 			type,
@@ -572,7 +393,7 @@ const getCopies = async (
 	}
 
 	return mergeByPk(
-		await getAll(idb.league.transaction("players").store, undefined, filter),
+		[],
 		await idb.cache.players.getAll(),
 		"players",
 		type,
