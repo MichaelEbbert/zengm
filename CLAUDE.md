@@ -17,65 +17,32 @@ Coach sidecar: `https://github.com/MichaelEbbert/zengm-coach`
 
 ---
 
-## Project State (2026-06-06)
+## Project State (2026-07-20)
 
 ### Current Architecture
 
 ```
-ZenGM (TypeScript, browser web worker)
-    +-- coachSidecarPlayCall()
-            +-- POST http://{host}:3004/play  ->  zengm-coach (Python FastAPI)
-                    +-- determine_mode()       -- desperation / protection / normal
-                    +-- play_decision()        -- run/pass logic (if/else + YPC/YPA ratio)
-                    +-- fourth_down_decision() -- fieldGoal / punt / go for it
-                    +-- logs to stats.db (SQLite)
+ZenGM (TypeScript, browser web worker, Electron runtime)
+    +-- coachPlayCall()  [src/worker/core/GameSim.football/coachDecision.ts]
+            +-- determineMode()       -- desperation / protection / normal
+            +-- playDecision()        -- run/pass logic (if/else + YPC/YPA ratio)
+            +-- fourthDownDecision()  -- fieldGoal / punt / go for it
 ```
 
-**The sidecar is 100% deterministic -- no LLM calls.** The HTTP round-trip overhead is ~3.5s/game x ~150 plays ~ 6s total vs. 2.5s baseline. After merging sidecar into ZenGM TypeScript (task 8), sim returns to ~2.5s.
+**No sidecar process.** Coach logic runs in the worker thread — pure TypeScript, no HTTP round-trips. Sim speed is ~2.5s/game (same as baseline).
+
+**DB:** All stores migrated to SQLite via `better-sqlite3` in Electron main process (Phases 1-7 complete).
 
 ---
 
 ## Active Plans
 
-### DB Conversion (research complete, not started)
+### DB Conversion -- COMPLETE (Phases 1-8 done)
 
 Full plan: `docs/db_conversion.md`
 
-Summary: Convert ZenGM from browser IndexedDB to SQLite + Electron runtime.
-
-- Research tasks 1-7: COMPLETE (all analysis done)
-- Tasks 8-9: defined, not yet executed (see below)
-- Implementation phases 1-7: defined in `docs/db_conversion.md`, not started
-
-**Key architectural decisions made:**
-
-- Runtime: **Electron** (not browser -- OPFS traps SQLite from external access)
-- Storage: **`better-sqlite3`** in Electron main process
-- No dual-write: each store is cut over immediately, leagues during migration are disposable
-- Players career stats: normalized into `player_stats` table (no JSON blobs)
-- Box scores: kept forever (never deleted), normalized into `game_player_stats` table
-- Phase 1 (Electron conversion) comes first -- DB untouched, UI identical
-- Phase 1 also adds a localhost HTTP API (~8 action endpoints + SQL query endpoint) for programmatic control
-
-**Key facts for implementation:**
-
-- `Cache.flush()` is the single point that covers all 241 write sites
-- `Cache.fill()` is the single load point
-- 28 files use `idb.league` directly (historical reads) -- each needs SQL SELECT
-- 12 `idb.meta` write sites -- must replace individually
-- GameSim makes ZERO db calls during simulation -- all writes are post-game
-
-### Task 8 -- Sidecar Consolidation (not started)
-
-Move sidecar logic into ZenGM TypeScript, eliminating the two-process architecture.
-See `docs/db_conversion.md` task 8 for full sub-task list.
-
-Key facts about current sidecar:
-
-- `play_decision.py`: `determine_mode()` + `play_decision()` -- pure arithmetic + if/else + random() on 1st down
-- `fourth_down.py`: `fourth_down_decision()` -- FG probability thresholds + position thresholds
-- `main.py`: FastAPI server, CORS, SQLite logging
-- Port to TypeScript is straightforward line-for-line conversion
+- Phases 1-7: SQLite migration complete, all stores cut over
+- Phase 8: Sidecar consolidation complete (coach logic now in `coachDecision.ts`)
 
 ### Task 9 -- Upstream Sync (not started)
 
@@ -99,20 +66,20 @@ Upstream diverges increasingly as we add Electron + SQLite. Manual diff review p
 **Linux (standard):**
 
 ```bash
-COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev -- --host
+SPORT=football node --run dev -- --host
 ```
 
 **Linux (background, LAN-accessible):**
 
 ```bash
-nohup bash -c 'COACH_SIDECAR_URL=http://192.168.1.142:3004 SPORT=football node --run dev -- --host' < /dev/null > /tmp/zengm-dev.log 2>&1 &
+nohup bash -c 'SPORT=football node --run dev -- --host' < /dev/null > /tmp/zengm-dev.log 2>&1 &
 echo "PID: $!"
 ```
 
 **PowerShell:**
 
 ```powershell
-$env:COACH_SIDECAR_URL="http://192.168.1.29:3004"; $env:SPORT="football"; node --run dev
+$env:SPORT="football"; node --run dev
 ```
 
 Add `-- --host` to bind to `0.0.0.0` and make it LAN-accessible.
@@ -124,8 +91,6 @@ Stop-Process -Id <PID>
 # or if you lost the PID:
 Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess
 ```
-
-Set `COACH_SIDECAR_URL` to whichever machine is running the sidecar. Without it, falls back to `Math.random() < this.probPass()`.
 
 Node 24 (nvm) and pnpm 10 required.
 
@@ -238,20 +203,9 @@ Each call blocks until the action completes before returning.
 
 ---
 
-## Running the Sidecar
-
-From `zengm-coach/`:
-
-```bash
-uvicorn main:app --host 0.0.0.0 --port 3004
-```
-
----
-
 ## Running Tests
 
 ```bash
-# Unit tests only (no sidecar calls)
 SPORT=football node --run test
 ```
 
@@ -261,22 +215,20 @@ SPORT=football node --run test
 
 ### `src/worker/core/GameSim.football/index.ts`
 
-- `coachSidecarPlayCall()` added -- POSTs game state JSON to sidecar, returns play decision
-- `COACH_SIDECAR_PLAY_CALLING = process.env.NODE_ENV !== "test"`
-- `COACH_SIDECAR_BASE_URL = process.env.COACH_SIDECAR_URL ?? ""`
-- Falls back to `Math.random() < this.probPass()` if sidecar URL unset or call fails
+- `coachPlayCall()` replaces `coachSidecarPlayCall()` -- calls TypeScript coach logic directly
+- `COACH_PLAY_CALLING = process.env.NODE_ENV !== "test"` -- disabled in tests
 
-### `tools/lib/rolldownConfig.ts`
+### `src/worker/core/GameSim.football/coachDecision.ts` (new)
 
-- `COACH_SIDECAR_URL` added to `define` block so rolldown bundles it into the worker
+- `determineMode()`, `playDecision()`, `fourthDownDecision()` -- ported from Python sidecar
 
 ### `src/worker/core/game/play.ts`
 
-- Async/await plumbing for the sidecar call path
+- Async/await plumbing (retained from sidecar era; `coachPlayCall` is now sync but callers still use await safely)
 
 ### `src/worker/api/exhibitionGame.ts`
 
-- Minor async change to support the async play-calling path
+- Minor async change (retained from sidecar era)
 
 ---
 

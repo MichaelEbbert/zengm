@@ -86,9 +86,6 @@ export const rolldownConfig = (
 				"process.env.GROQ_API_KEY": JSON.stringify(
 					process.env.GROQ_API_KEY ?? "",
 				),
-				"process.env.COACH_SIDECAR_URL": JSON.stringify(
-					process.env.COACH_SIDECAR_URL ?? "",
-				),
 			},
 			jsx: "react-jsx",
 		},
