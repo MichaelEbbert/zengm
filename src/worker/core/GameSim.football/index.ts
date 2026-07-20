@@ -31,7 +31,6 @@ import {
 	playDecision,
 	fourthDownDecision,
 } from "./coachDecision.ts";
-
 const teamNums: [TeamNum, TeamNum] = [0, 1];
 
 // Disable coach play-calling in tests so they don't depend on Math.random() from this module.
