@@ -156,17 +156,26 @@ const TeamNameAndScore = ({
 				</TeamNameLink>
 				{t.timeouts !== undefined && STARTING_NUM_TIMEOUTS !== undefined ? (
 					<div
-						className="d-flex gap-1 pt-1"
-						title={`${t.timeouts} ${helpers.plural("timeout", t.timeouts)} remaining`}
+						className="d-flex align-items-center gap-1 pt-1"
 						style={{ marginLeft: LOGO_SIZE + 4 }}
 					>
-						{range(STARTING_NUM_TIMEOUTS).map((i) => (
-							<div
-								key={i}
-								style={{ width: 12, height: 3 }}
-								className={i < t.timeouts ? "bg-warning" : "bg-tertiary"}
-							/>
-						))}
+						<div
+							className="d-flex gap-1"
+							title={`${t.timeouts} ${helpers.plural("timeout", t.timeouts)} remaining`}
+						>
+							{range(STARTING_NUM_TIMEOUTS).map((i) => (
+								<div
+									key={i}
+									style={{ width: 12, height: 3 }}
+									className={i < t.timeouts ? "bg-warning" : "bg-tertiary"}
+								/>
+							))}
+						</div>
+						{t.won !== undefined && t.lost !== undefined ? (
+							<div className="text-body-secondary fs-6">
+								({helpers.formatRecord(t)})
+							</div>
+						) : null}
 					</div>
 				) : null}
 			</div>
