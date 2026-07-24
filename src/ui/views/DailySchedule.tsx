@@ -154,7 +154,7 @@ const DailySchedule = ({
 										<div
 											className="flex-grow-1"
 											key={game.gid}
-											style={{ maxWidth: 510 }}
+											style={{ maxWidth: 550 }}
 										>
 											<ScoreBox
 												game={{
@@ -187,7 +187,7 @@ const DailySchedule = ({
 										<div
 											className="flex-grow-1"
 											key={game.gid}
-											style={{ maxWidth: 510 }}
+											style={{ maxWidth: 550 }}
 										>
 											<ScoreBox game={game} />
 										</div>

@@ -1,34 +1,18 @@
 # ---------------------------------------------
 #  HOW TO START ZENGM (Windows Desktop)
 # ---------------------------------------------
-# Three terminals are needed. Open each with:
+# Two terminals are needed. Open each with:
 #   Start -> "Windows PowerShell" (or Windows Terminal)
 # Run each command from the zengm project folder.
 # Electron is REQUIRED -- without it, game data is not saved.
 # ---------------------------------------------
 
-# STEP 1 (optional) -- Sidecar on another machine
-# Skip if no Linux machine is available; play-calling falls back to random.
-# Run this SSH'd into the Linux machine, inside the zengm-coach/ folder:
-#
-#   uvicorn main:app --host 0.0.0.0 --port 3004
+# STEP 1 -- Dev server  (PowerShell, this machine)
+$env:SPORT="football"; node --run dev
 
-# STEP 2 -- Dev server  (PowerShell, this machine)
-# Pick the line that matches which machine is running the sidecar.
-# If you skipped Step 1, use any line -- COACH_SIDECAR_URL is ignored when the sidecar is unreachable.
+# Wait for the dev server to print "ready" before continuing to Step 2.
 
-# Sidecar on this machine (Windows Desktop, 192.168.1.18):
-$env:COACH_SIDECAR_URL="http://192.168.1.18:3004"; $env:SPORT="football"; node --run dev
-
-# Sidecar on laptop (192.168.1.142):
-$env:COACH_SIDECAR_URL="http://192.168.1.142:3004"; $env:SPORT="football"; node --run dev
-
-# Sidecar on ThinkPad/Linux (192.168.1.29):
-$env:COACH_SIDECAR_URL="http://192.168.1.29:3004"; $env:SPORT="football"; node --run dev
-
-# Wait for the dev server to print "ready" before continuing to Step 3.
-
-# STEP 3 -- Electron  (NEW PowerShell window, this machine)
+# STEP 2 -- Electron  (NEW PowerShell window, this machine)
 # This opens the game window and enables SQLite storage.
 node --run electron
 

@@ -77,7 +77,7 @@ const Schedule = ({
 				</Dropdown>
 			) : null}
 			<div className="d-flex flex-wrap" style={{ gap: "2rem" }}>
-				<div style={{ maxWidth: 510 }} className="flex-grow-1">
+				<div style={{ maxWidth: 550 }} className="flex-grow-1">
 					<h2>Upcoming Games</h2>
 					<ul className="list-group">
 						{upcoming.map((game, i) => {
@@ -163,7 +163,7 @@ const Schedule = ({
 						})}
 					</ul>
 				</div>
-				<div style={{ maxWidth: 510 }} className="flex-grow-1">
+				<div style={{ maxWidth: 550 }} className="flex-grow-1">
 					<h2>Completed Games</h2>
 					{completed.map((game) => (
 						<ScoreBox

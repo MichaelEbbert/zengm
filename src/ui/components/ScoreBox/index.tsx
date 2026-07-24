@@ -415,7 +415,7 @@ export const ScoreBox = memo(
 										style={
 											!small
 												? {
-														width: 210,
+														width: 250,
 													}
 												: undefined
 										}
@@ -430,6 +430,15 @@ export const ScoreBox = memo(
 											>
 												{teamName}
 											</a>
+											{!small &&
+											t.playoffs &&
+											t.won !== undefined &&
+											t.lost !== undefined ? (
+												<span className="text-body-secondary">
+													{" "}
+													({helpers.formatRecord(t)})
+												</span>
+											) : null}
 											{!small ? (
 												<div className="text-body-secondary text-truncate">
 													{getRecord(t)}
