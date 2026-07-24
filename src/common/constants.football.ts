@@ -953,25 +953,20 @@ export const AWARD_NAMES = {
 
 export const DEFAULT_CONFS: NonEmptyArray<Conf> = [
 	{
-		cid: 0,
-		name: "American Conference",
-	},
-	{
 		cid: 1,
 		name: "National Conference",
+	},
+	{
+		cid: 0,
+		name: "American Conference",
 	},
 ];
 
 export const DEFAULT_DIVS: NonEmptyArray<Div> = [
 	{
-		did: 0,
+		did: 3,
 		cid: 0,
-		name: "East",
-	},
-	{
-		did: 1,
-		cid: 0,
-		name: "North",
+		name: "West",
 	},
 	{
 		did: 2,
@@ -979,19 +974,19 @@ export const DEFAULT_DIVS: NonEmptyArray<Div> = [
 		name: "South",
 	},
 	{
-		did: 3,
+		did: 1,
 		cid: 0,
-		name: "West",
+		name: "North",
 	},
 	{
-		did: 4,
-		cid: 1,
+		did: 0,
+		cid: 0,
 		name: "East",
 	},
 	{
-		did: 5,
+		did: 7,
 		cid: 1,
-		name: "North",
+		name: "West",
 	},
 	{
 		did: 6,
@@ -999,8 +994,13 @@ export const DEFAULT_DIVS: NonEmptyArray<Div> = [
 		name: "South",
 	},
 	{
-		did: 7,
+		did: 5,
 		cid: 1,
-		name: "West",
+		name: "North",
+	},
+	{
+		did: 4,
+		cid: 1,
+		name: "East",
 	},
 ];
