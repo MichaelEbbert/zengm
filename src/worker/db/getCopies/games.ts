@@ -14,11 +14,12 @@ const PLAY_TYPE_META: Record<
 	{ type: string; td?: true; safety?: true }
 > = {
 	run: { type: "run", td: true },
-	pass: { type: "pass", td: true },
+	pass: { type: "passComplete", td: true },
 	kickoff_return: { type: "kickoffReturn", td: true },
 	punt_return: { type: "puntReturn", td: true },
 	fumble_recovery: { type: "fumbleRecovery", td: true },
-	interception: { type: "interception", td: true },
+	interception: { type: "interceptionReturn", td: true },
+	onside_kick_recovery: { type: "onsideKickRecovery", td: true },
 	field_goal: { type: "fieldGoal" },
 	extra_point: { type: "extraPoint" },
 	two_point_failed: { type: "twoPointConversionFailed" },

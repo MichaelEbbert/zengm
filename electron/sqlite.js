@@ -563,11 +563,12 @@ const SCORING_COLS = [
 
 const TD_TYPE_MAP = {
 	run: "run",
-	pass: "pass",
+	passComplete: "pass",
 	kickoffReturn: "kickoff_return",
 	puntReturn: "punt_return",
 	fumbleRecovery: "fumble_recovery",
-	interception: "interception",
+	interceptionReturn: "interception",
+	onsideKickRecovery: "onside_kick_recovery",
 };
 
 function runMigrations(db) {
@@ -1262,6 +1263,32 @@ function runMigrations(db) {
 			).run(...undefinedKeys);
 			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
 				"006_fix_undefined_game_attributes",
+				new Date().toISOString(),
+			);
+		})();
+	}
+
+	if (!applied.has("007_fix_scoring_play_types")) {
+		db.transaction(() => {
+			// TD_TYPE_MAP previously used the wrong source event.type keys
+			// ("pass"/"interception" instead of the real "passComplete"/
+			// "interceptionReturn"), so those touchdowns were stored under their
+			// raw, unmapped type name. On read, PLAY_TYPE_META didn't recognize
+			// those raw values, so the events lost their `td` flag and were
+			// dropped from the reconstructed scoring summary entirely -- which
+			// also threw off extra-point pairing and running score totals for
+			// any game with a passing or interception-return touchdown.
+			db.prepare(
+				"UPDATE game_scoring_plays SET play_type = 'pass' WHERE play_type = 'passComplete'",
+			).run();
+			db.prepare(
+				"UPDATE game_scoring_plays SET play_type = 'interception' WHERE play_type = 'interceptionReturn'",
+			).run();
+			db.prepare(
+				"UPDATE game_scoring_plays SET play_type = 'onside_kick_recovery' WHERE play_type = 'onsideKickRecovery'",
+			).run();
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"007_fix_scoring_play_types",
 				new Date().toISOString(),
 			);
 		})();
