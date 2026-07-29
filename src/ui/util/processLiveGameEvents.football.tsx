@@ -383,6 +383,11 @@ export const getText = (event: PlayByPlayEventOutput, numPeriods: number) => {
 				local.getState().gender,
 				"he",
 			)} was tackled in the endzone for a safety!`;
+		} else if (event.names.length < 2) {
+			// Legacy scoring-play data recorded before the scorer/receiver pid
+			// bug was fixed -- the receiver was never captured, so fall back to
+			// a receiver-less line instead of showing a blank or wrong name.
+			text = `${event.names[0]} completed a touchdown pass for ${event.yds} yards`;
 		} else {
 			const result = descriptionYdsTD(
 				event.yds,

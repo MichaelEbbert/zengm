@@ -1293,6 +1293,134 @@ function runMigrations(db) {
 			);
 		})();
 	}
+
+	if (!applied.has("008_fix_pass_td_scorer_pid")) {
+		db.transaction(() => {
+			// The writer compared event.type (always "passComplete") against
+			// the string "pass" (only the *stored* play_type value, mapped
+			// via TD_TYPE_MAP, is "pass"), so that check never matched. Every
+			// passing TD fell into the non-pass branch, which stored the QB's
+			// pid in `pid` and left `passer_pid` null -- dropping the
+			// receiver entirely and mislabeling the QB as the receiver on
+			// read. The QB's pid is recoverable (it's sitting in `pid`), but
+			// the receiver's pid was never captured and can't be reliably
+			// reconstructed from per-game stats, so it's left null; the read
+			// side falls back to a receiver-less line for these rows.
+			db.prepare(
+				"UPDATE game_scoring_plays SET passer_pid = pid, pid = NULL WHERE play_type = 'pass' AND passer_pid IS NULL",
+			).run();
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"008_fix_pass_td_scorer_pid",
+				new Date().toISOString(),
+			);
+		})();
+	}
+
+	if (!applied.has("009_fix_two_point_conversion_pts")) {
+		db.transaction(() => {
+			// The writer always scored a `td` event as 6 points, never checking
+			// whether it was actually a successful two-point conversion (same
+			// event shape -- run/passComplete/etc with td: true -- distinguished
+			// only by twoPointConversionTeam, which wasn't checked). Every made
+			// 2-point conversion got stored as a 6-point TD, a +4 overcount per
+			// occurrence. There's no stored flag to know which rows were
+			// conversions, but a phantom row is detectable: it's credited to a
+			// scorer whose matching *_td stat for that game is lower than the
+			// number of same-type TD rows credited to them. Where a player has
+			// more scoring rows of one type than their real *_td count, the
+			// excess rows are corrected to 2 points.
+			const STAT_COL_BY_PLAY_TYPE = {
+				run: "rus_td",
+				pass: "rec_td",
+				interception: "def_int_td",
+				kickoff_return: "kr_td",
+				punt_return: "pr_td",
+				fumble_recovery: "def_fmb_td",
+			};
+
+			const rows = db
+				.prepare(
+					`SELECT id, gid, pid, play_type FROM game_scoring_plays
+					 WHERE pts_scored = 6 AND pid IS NOT NULL
+					   AND play_type IN ('run','pass','interception','kickoff_return','punt_return','fumble_recovery')`,
+				)
+				.all();
+
+			const groups = new Map();
+			for (const r of rows) {
+				const key = `${r.gid}:${r.pid}:${r.play_type}`;
+				let ids = groups.get(key);
+				if (!ids) {
+					ids = [];
+					groups.set(key, ids);
+				}
+				ids.push(r.id);
+			}
+
+			const getStat = db.prepare(
+				`SELECT rus_td, rec_td, def_int_td, kr_td, pr_td, def_fmb_td FROM game_players WHERE gid = ? AND pid = ?`,
+			);
+			const updatePts = db.prepare(
+				`UPDATE game_scoring_plays SET pts_scored = 2 WHERE id = ?`,
+			);
+
+			for (const [key, ids] of groups) {
+				const [gidStr, pidStr, playType] = key.split(":");
+				const gid = Number(gidStr);
+				const pid = Number(pidStr);
+				const col = STAT_COL_BY_PLAY_TYPE[playType];
+				const statRow = getStat.get(gid, pid);
+				const actualTd = statRow ? (statRow[col] ?? 0) : 0;
+				const excess = ids.length - actualTd;
+				for (let i = 0; i < excess; i++) {
+					updatePts.run(ids[i]);
+				}
+			}
+
+			// Legacy pass rows where the receiver was never recorded (pid NULL,
+			// from 008_fix_pass_td_scorer_pid) can't be grouped by receiver, but
+			// the passer is still known -- fall back to checking against pss_td.
+			const passRowsNoReceiver = db
+				.prepare(
+					`SELECT id, gid, passer_pid FROM game_scoring_plays
+					 WHERE pts_scored = 6 AND pid IS NULL AND passer_pid IS NOT NULL
+					   AND play_type = 'pass'`,
+				)
+				.all();
+
+			const passerGroups = new Map();
+			for (const r of passRowsNoReceiver) {
+				const key = `${r.gid}:${r.passer_pid}`;
+				let ids = passerGroups.get(key);
+				if (!ids) {
+					ids = [];
+					passerGroups.set(key, ids);
+				}
+				ids.push(r.id);
+			}
+
+			const getPassStat = db.prepare(
+				`SELECT pss_td FROM game_players WHERE gid = ? AND pid = ?`,
+			);
+
+			for (const [key, ids] of passerGroups) {
+				const [gidStr, passerPidStr] = key.split(":");
+				const gid = Number(gidStr);
+				const passerPid = Number(passerPidStr);
+				const statRow = getPassStat.get(gid, passerPid);
+				const actualTd = statRow ? (statRow.pss_td ?? 0) : 0;
+				const excess = ids.length - actualTd;
+				for (let i = 0; i < excess; i++) {
+					updatePts.run(ids[i]);
+				}
+			}
+
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"009_fix_two_point_conversion_pts",
+				new Date().toISOString(),
+			);
+		})();
+	}
 }
 
 // ---- Phase 5A store serialization helpers ----------------------------------------
@@ -2836,8 +2964,11 @@ export function writeGame(db, gameStats) {
 				yds = null;
 			} else if (event.td) {
 				playType = TD_TYPE_MAP[event.type] ?? event.type;
-				ptsScored = 6;
-				if (event.type === "pass") {
+				// A successful two-point conversion is logged as a normal TD event
+				// (run/passComplete/etc, td: true) with twoPointConversionTeam set,
+				// not a distinct event type -- worth 2 points, not 6.
+				ptsScored = event.twoPointConversionTeam !== undefined ? 2 : 6;
+				if (event.type === "passComplete") {
 					passerPid =
 						names[0] !== undefined ? (nameToPid.get(names[0]) ?? null) : null;
 					pid =

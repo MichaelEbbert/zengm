@@ -148,7 +148,12 @@ function assembleGames(
 				names.push(
 					sr.passer_pid !== null ? (pidToName.get(sr.passer_pid) ?? "") : "",
 				);
-				names.push(sr.pid !== null ? (pidToName.get(sr.pid) ?? "") : "");
+				// pid (the receiver) is null for legacy rows recorded before the
+				// scorer/receiver pid bug was fixed -- omit rather than push "",
+				// so the UI can render a receiver-less fallback line for those.
+				if (sr.pid !== null) {
+					names.push(pidToName.get(sr.pid) ?? "");
+				}
 			} else if (sr.pid !== null) {
 				names.push(pidToName.get(sr.pid) ?? "");
 			}
@@ -162,6 +167,14 @@ function assembleGames(
 			};
 			if (sr.yds !== null) event.yds = sr.yds;
 			if (sr.made !== null) event.made = sr.made === 1;
+			// A td-type row worth 2 points is a made two-point conversion, not a
+			// touchdown (see 009_fix_two_point_conversion_pts) -- there's no stored
+			// flag for which team originally attempted it, so this always renders
+			// as the scoring team's own conversion rather than the rarer defensive
+			// return-for-2 case.
+			if (meta.td && sr.pts_scored === 2) {
+				event.twoPointConversionTeam = t;
+			}
 			return event;
 		});
 
