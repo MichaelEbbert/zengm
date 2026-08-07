@@ -72,7 +72,7 @@ export function playDecision(
 		if (toGo > 10) return "pass";
 		const ra = rushAttempts || 0;
 		const pa = passAttempts || 0;
-		if (ra < 6 || pa < 6) return "run";
+		if (ra < 5 || pa < 5) return "run";
 		const ypc = (rushYards || 0) / ra;
 		const ypa = (passYards || 0) / pa;
 		const denom = ypc + ypa;

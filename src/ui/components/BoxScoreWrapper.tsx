@@ -557,10 +557,25 @@ const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 	const withRatios = teams.map((t) => {
 		const ypc = t.rus ? t.rusYds / t.rus : 0;
 		const ypa = t.pss ? t.pssYds / t.pss : 0;
-		const runPassRatioLive = (t.rus ?? 0) >= 6 && (t.pss ?? 0) >= 6;
+		// Sacks count as a passing play, and sack yardage counts against passing yards, for the coach's run/pass decision - but not for the saved pss/pssYds stats - see coachPlayCall()
+		const passAttemptsWithSacks = (t.pss ?? 0) + (t.pssSk ?? 0);
+		const passYardsWithSacks = (t.pssYds ?? 0) - (t.pssSkYds ?? 0);
+		const ypaWithSacks = passAttemptsWithSacks
+			? passYardsWithSacks / passAttemptsWithSacks
+			: 0;
+		const runPassRatioLive = (t.rus ?? 0) >= 5 && passAttemptsWithSacks >= 5;
 		const runPassRatio =
-			runPassRatioLive && ypc + ypa > 0 ? ypc / (ypc + ypa) : 0.5;
-		return { ...t, ypc, ypa, runPassRatio, runPassRatioLive };
+			runPassRatioLive && ypc + ypaWithSacks > 0
+				? ypc / (ypc + ypaWithSacks)
+				: 0.5;
+		return {
+			...t,
+			ypc,
+			ypa,
+			passAttemptsWithSacks,
+			runPassRatio,
+			runPassRatioLive,
+		};
 	});
 
 	return (
@@ -602,7 +617,7 @@ const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 							<td>
 								{t.runPassRatioLive
 									? formatRunPassRatio(t.runPassRatio)
-									: `(${t.rus ?? 0}|${t.pss ?? 0})`}
+									: `(${t.rus ?? 0}|${t.passAttemptsWithSacks})`}
 							</td>
 						</tr>
 					);

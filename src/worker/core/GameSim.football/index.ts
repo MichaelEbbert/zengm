@@ -632,6 +632,14 @@ class GameSim extends GameSimBase {
 			0,
 		);
 		const passYards = offPlayers.reduce((s, p) => s + (p.stat.pssYds ?? 0), 0);
+		const sackAttempts = offPlayers.reduce(
+			(s, p) => s + (p.stat.pssSk ?? 0),
+			0,
+		);
+		const sackYards = offPlayers.reduce(
+			(s, p) => s + (p.stat.pssSkYds ?? 0),
+			0,
+		);
 
 		const quarter = this.team[this.o].stat.ptsQtrs.length;
 		const scoreDiff = this.team[this.o].stat.pts - this.team[this.d].stat.pts;
@@ -659,8 +667,8 @@ class GameSim extends GameSimBase {
 			this.scrimmage,
 			rushAttempts,
 			rushYards,
-			passAttempts,
-			passYards,
+			passAttempts + sackAttempts,
+			passYards - sackYards,
 			passCompletions,
 			quarter,
 			this.clock,
