@@ -1095,6 +1095,20 @@ function startApiServer(win) {
 				return;
 			}
 
+			if (key === "POST /debug/eval") {
+				// Temporary debug passthrough to the existing worker-side
+				// evalOnWorker() dev tool (src/worker/api/index.ts), for one-off
+				// data repair scripts. Body is raw JS source, executed as an async
+				// function body in the worker; console.log/console.table output is
+				// captured and returned. Remove once no longer needed.
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const result = await callWorker(win, "main", "evalOnWorker", body);
+				send(200, { ok: true, result: result ?? null });
+				return;
+			}
+
 			send(404, { error: "Not found" });
 		} catch (err) {
 			send(500, { error: String(err) });
