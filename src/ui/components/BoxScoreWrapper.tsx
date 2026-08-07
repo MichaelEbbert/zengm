@@ -108,6 +108,8 @@ const TeamNameAndScore = ({
 }) => {
 	const LOGO_SIZE = 24;
 
+	const { challengeNoRatings } = useLocalPartial(["challengeNoRatings"]);
+
 	return (
 		<div className="d-flex">
 			{live && !boxScore.gameOver ? (
@@ -174,6 +176,9 @@ const TeamNameAndScore = ({
 						{t.won !== undefined && t.lost !== undefined ? (
 							<div className="text-body-secondary fs-6">
 								({helpers.formatRecord(t)})
+								{!challengeNoRatings && t.ovr !== undefined
+									? ` OVR ${t.ovr}`
+									: null}
 							</div>
 						) : null}
 					</div>
@@ -543,7 +548,21 @@ const FourFactors = ({ teams }: { teams: any[] }) => {
 	);
 };
 
+const formatRunPassRatio = (value: number) => {
+	const output = value.toFixed(2);
+	return output.startsWith("0") ? output.slice(1) : output;
+};
+
 const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
+	const withRatios = teams.map((t) => {
+		const ypc = t.rus ? t.rusYds / t.rus : 0;
+		const ypa = t.pss ? t.pssYds / t.pss : 0;
+		const runPassRatioLive = (t.rus ?? 0) >= 6 && (t.pss ?? 0) >= 6;
+		const runPassRatio =
+			runPassRatioLive && ypc + ypa > 0 ? ypc / (ypc + ypa) : 0.5;
+		return { ...t, ypc, ypa, runPassRatio, runPassRatioLive };
+	});
+
 	return (
 		<table className="table table-sm mb-2 mb-sm-0">
 			<thead>
@@ -552,15 +571,14 @@ const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 					<th title="Passing Yards">PssYds</th>
 					<th title="Rushing Yards">RusYds</th>
 					<th title="Penalties">Pen</th>
-					<th title="Turnovers">TOV</th>
+					<th title="Yards Per Carry">YPC</th>
+					<th title="Yards Per Pass Attempt">YPA</th>
+					<th title="Run/Pass Ratio">R/P</th>
 				</tr>
 			</thead>
 			<tbody>
-				{teams.map((t, i) => {
-					const t2 = teams[1 - i];
-
-					const tov = t.pssInt + t.fmbLost;
-					const tov2 = t2.pssInt + t2.fmbLost;
+				{withRatios.map((t, i) => {
+					const t2 = withRatios[1 - i];
 
 					return (
 						<tr key={t.abbrev}>
@@ -579,8 +597,12 @@ const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 							>
 								{t.pen}-{t.penYds}
 							</td>
-							<td className={tov < tov2 ? "table-success" : undefined}>
-								{tov}
+							<td>{t.ypc.toFixed(1)}</td>
+							<td>{t.ypa.toFixed(1)}</td>
+							<td>
+								{t.runPassRatioLive
+									? formatRunPassRatio(t.runPassRatio)
+									: `(${t.rus ?? 0}|${t.pss ?? 0})`}
 							</td>
 						</tr>
 					);
