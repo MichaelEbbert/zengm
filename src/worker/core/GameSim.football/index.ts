@@ -980,6 +980,20 @@ class GameSim extends GameSimBase {
 			this.toGo = 100 - this.scrimmage;
 		}
 
+		// For the 2NDDOWNTOGO custom stat -- captured here for the same reason
+		// as 1STDOWNGAIN below: this.down/this.toGo aren't overwritten until
+		// this.currentPlay.commit(), so they still reflect the down/distance
+		// this play was snapped on. Excludes kickoff/onsideKick: after a made
+		// or missed two-point conversion, checkDownAtEndOfPlay() in Play.ts
+		// recomputes toGo using the post-conversion kickoff scrimmage (35)
+		// against the conversion attempt's firstDownLine, leaving stale
+		// garbage like down=2/toGo=65 on the GameSim instance until the
+		// ensuing kickoff's possessionChange() resets it -- that garbage
+		// must not be recorded as a real 2nd down.
+		const track2ndDownToGo =
+			this.down === 2 && playType !== "kickoff" && playType !== "onsideKick";
+		const toGoAt2ndDown = this.toGo;
+
 		// For the 1STDOWNGAIN custom stat -- this.down isn't overwritten until
 		// this.currentPlay.commit() below, so it still reflects the down this
 		// play was snapped on.
@@ -1070,6 +1084,17 @@ class GameSim extends GameSimBase {
 				quarter,
 				statType: "STARTINGPOS",
 				value: this.scrimmage,
+			});
+		}
+
+		// Custom stat: 2NDDOWNTOGO -- yards to go, recorded for every play
+		// snapped on 2nd down (regardless of play type).
+		if (track2ndDownToGo) {
+			this.customStats.push({
+				tid: this.team[offenseBefore].id,
+				quarter,
+				statType: "2NDDOWNTOGO",
+				value: toGoAt2ndDown,
 			});
 		}
 
