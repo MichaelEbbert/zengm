@@ -369,6 +369,7 @@ export type Game = {
 	playoffs?: boolean;
 	overtimes: number;
 	scoringSummary?: any;
+	customStats?: any;
 	season: number;
 	teams: [GameTeam, GameTeam];
 	won: {

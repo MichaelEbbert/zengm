@@ -209,6 +209,7 @@ export const gameSimToBoxScore = async (results: GameResults, att: number) => {
 			pts: 0,
 		},
 		scoringSummary: results.scoringSummary,
+		customStats: results.customStats,
 		teams: [
 			{
 				tid: results.team[0].id,

@@ -130,6 +130,14 @@ class GameSim extends GameSimBase {
 
 	playCount = 0;
 
+	customStats: {
+		tid: number;
+		quarter: number;
+		statType: string;
+		value: number;
+		attribute1?: string;
+	}[] = [];
+
 	twoPointConversionTeam: TeamNum | undefined;
 
 	overtimeType =
@@ -284,6 +292,7 @@ class GameSim extends GameSimBase {
 			playByPlay: this.playByPlay.getPlayByPlay(this.team),
 			neutralSite: this.neutralSite,
 			scoringSummary,
+			customStats: this.customStats,
 		};
 		return out;
 	}
@@ -956,6 +965,8 @@ class GameSim extends GameSimBase {
 		// Reset before calling Play, so Play can set to true if necessary for the next play
 		this.playUntimedPossession = false;
 
+		const offenseBefore = this.o;
+
 		const playType = await this.getPlayType();
 
 		// Set these before creating a new Play so they are updated in there too
@@ -968,6 +979,22 @@ class GameSim extends GameSimBase {
 			this.down = 1;
 			this.toGo = 100 - this.scrimmage;
 		}
+
+		// For the 1STDOWNGAIN custom stat -- this.down isn't overwritten until
+		// this.currentPlay.commit() below, so it still reflects the down this
+		// play was snapped on.
+		const track1stDownGain =
+			this.down === 1 && (playType === "run" || playType === "pass");
+		const statBefore = track1stDownGain
+			? {
+					rus: this.team[this.o].stat.rus,
+					rusYds: this.team[this.o].stat.rusYds,
+					pss: this.team[this.o].stat.pss,
+					pssYds: this.team[this.o].stat.pssYds,
+					pssSk: this.team[this.o].stat.pssSk,
+					pssSkYds: this.team[this.o].stat.pssSkYds,
+				}
+			: undefined;
 
 		this.currentPlay = new Play(this);
 
@@ -1030,6 +1057,64 @@ class GameSim extends GameSimBase {
 			clockAtEndOfPlay <= 0 && this.kickoffAfterEndOfPeriod(quarter);
 
 		this.currentPlay.commit(timeExpiredAtEndOfHalf);
+
+		// Custom stat: STARTINGPOS -- offense changed as a result of this play,
+		// so this.o/this.scrimmage (just updated by commit() above) reflect the
+		// new drive's team and starting field position. Covers every way a
+		// drive can start (kickoff/punt return ending, fumble/interception
+		// recovery, turnover on downs) since it's just detecting the
+		// possession flip, not hooking each individual cause.
+		if (this.o !== offenseBefore) {
+			this.customStats.push({
+				tid: this.team[this.o].id,
+				quarter,
+				statType: "STARTINGPOS",
+				value: this.scrimmage,
+			});
+		}
+
+		// Custom stat: 1STDOWNGAIN -- net yards on a 1st down run/pass play,
+		// skipping fumbles/interceptions and plays nullified by an accepted
+		// penalty (down replayed, detected by the attempt counter not moving).
+		if (track1stDownGain && statBefore) {
+			const hadTurnover = this.currentPlay.events.some(
+				(e) => e.event.type === "fmb" || e.event.type === "int",
+			);
+			if (!hadTurnover) {
+				const statAfter = this.team[offenseBefore].stat;
+				if (statAfter.rus === statBefore.rus + 1 && playType === "run") {
+					this.customStats.push({
+						tid: this.team[offenseBefore].id,
+						quarter,
+						statType: "1STDOWNGAIN",
+						value: statAfter.rusYds - statBefore.rusYds,
+						attribute1: "R",
+					});
+				} else if (playType === "pass") {
+					if (statAfter.pss === statBefore.pss + 1) {
+						this.customStats.push({
+							tid: this.team[offenseBefore].id,
+							quarter,
+							statType: "1STDOWNGAIN",
+							value: statAfter.pssYds - statBefore.pssYds,
+							attribute1: "P",
+						});
+					} else if (statAfter.pssSk === statBefore.pssSk + 1) {
+						this.customStats.push({
+							tid: this.team[offenseBefore].id,
+							quarter,
+							statType: "1STDOWNGAIN",
+							value: -(statAfter.pssSkYds - statBefore.pssSkYds),
+							attribute1: "P",
+						});
+					}
+					// Otherwise neither pss nor pssSk moved -- the play was
+					// nullified by an accepted penalty. Skip.
+				}
+				// Otherwise (run whose rus didn't move) -- nullified by an
+				// accepted penalty. Skip.
+			}
+		}
 
 		// Two minute warning
 		let twoMinuteWarningHappening = false;

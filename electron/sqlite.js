@@ -561,6 +561,15 @@ const SCORING_COLS = [
 	"pts_scored",
 ];
 
+const CUSTOM_STAT_COLS = [
+	"gid",
+	"tid",
+	"quarter",
+	"stat_type",
+	"value",
+	"attribute1",
+];
+
 const TD_TYPE_MAP = {
 	run: "run",
 	passComplete: "pass",
@@ -1417,6 +1426,26 @@ function runMigrations(db) {
 
 			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
 				"009_fix_two_point_conversion_pts",
+				new Date().toISOString(),
+			);
+		})();
+	}
+	if (!applied.has("010_custom_game_stats")) {
+		db.transaction(() => {
+			db.exec(`
+				CREATE TABLE custom_game_stats (
+					id         INTEGER PRIMARY KEY,
+					gid        INTEGER NOT NULL REFERENCES games(gid),
+					tid        INTEGER NOT NULL,
+					quarter    INTEGER NOT NULL,
+					stat_type  TEXT NOT NULL,
+					value      INTEGER NOT NULL,
+					attribute1 TEXT
+				);
+				CREATE INDEX idx_custom_game_stats_tid_stat_type ON custom_game_stats(tid, stat_type);
+			`);
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"010_custom_game_stats",
 				new Date().toISOString(),
 			);
 		})();
@@ -2760,6 +2789,7 @@ export function deleteOldData(db, options, currentSeason, userTid) {
 	db.transaction(() => {
 		if (options.boxScores) {
 			db.prepare("DELETE FROM game_scoring_plays").run();
+			db.prepare("DELETE FROM custom_game_stats").run();
 			db.prepare("DELETE FROM game_players").run();
 			db.prepare("DELETE FROM game_teams").run();
 			db.prepare("DELETE FROM games").run();
@@ -2846,14 +2876,22 @@ function getStmts(db) {
 		insertScoringPlay: db.prepare(
 			buildInsert("game_scoring_plays", SCORING_COLS),
 		),
+		insertCustomStat: db.prepare(
+			buildInsert("custom_game_stats", CUSTOM_STAT_COLS),
+		),
 	};
 	_stmts.set(db, stmts);
 	return stmts;
 }
 
 export function writeGame(db, gameStats) {
-	const { insertGame, insertTeam, insertPlayer, insertScoringPlay } =
-		getStmts(db);
+	const {
+		insertGame,
+		insertTeam,
+		insertPlayer,
+		insertScoringPlay,
+		insertCustomStat,
+	} = getStmts(db);
 
 	const nameToPid = new Map();
 	for (const team of gameStats.teams) {
@@ -2993,6 +3031,18 @@ export function writeGame(db, gameStats) {
 				play_type: playType,
 				made,
 				pts_scored: ptsScored,
+			});
+		}
+
+		const customStats = gameStats.customStats ?? [];
+		for (const stat of customStats) {
+			insertCustomStat.run({
+				gid: gameStats.gid,
+				tid: stat.tid,
+				quarter: stat.quarter,
+				stat_type: stat.statType,
+				value: stat.value,
+				attribute1: stat.attribute1 ?? null,
 			});
 		}
 	})();
