@@ -10,6 +10,7 @@ import { MovOrDiff } from "../components/MovOrDiff.tsx";
 import ResponsiveTableWrapper from "../components/ResponsiveTableWrapper.tsx";
 import { getCol } from "../../common/getCol.ts";
 import { bySport, isSport } from "../../common/sportFunctions.ts";
+import { useLocalPartial } from "../util/local.ts";
 
 type StandingsTeam =
 	View<"standings">["rankingGroups"]["league"][number][number];
@@ -122,6 +123,7 @@ const GroupStandingsRow = ({
 	t: StandingsTeam;
 }) => {
 	const { clicked, toggleClicked } = useClickable();
+	const { challengeNoRatings } = useLocalPartial(["challengeNoRatings"]);
 
 	return (
 		<tr
@@ -169,6 +171,7 @@ const GroupStandingsRow = ({
 			</td>
 			<td>{t.seasonAttrs.streak}</td>
 			<td>{t.seasonAttrs.lastTen}</td>
+			<td>{challengeNoRatings ? null : t.ovr}</td>
 			<td>
 				{showTiebreakers && t.tiebreaker ? TIEBREAKERS[t.tiebreaker] : null}
 			</td>
@@ -269,6 +272,7 @@ const GroupStandings = ({
 						})}
 						<th>Streak</th>
 						<th>L10</th>
+						<th title="Current overall rating, accounting for injuries">OVR</th>
 						<th style={{ minWidth: 191 }}>Tiebreaker</th>
 					</tr>
 				</thead>

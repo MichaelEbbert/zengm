@@ -2,7 +2,8 @@ import { idb } from "../db/index.ts";
 import { g, helpers, orderTeams } from "../util/index.ts";
 import type { ByConf, UpdateEvents, ViewInput } from "../../common/types.ts";
 import { getTiebreakers } from "../util/orderTeams.ts";
-import { season } from "../core/index.ts";
+import { season, team } from "../core/index.ts";
+import { getActualPlayThroughInjuries } from "../core/game/loadTeams.ts";
 
 export const getMaxPlayoffSeed = async (
 	playoffSeason: number,
@@ -60,7 +61,7 @@ const updateStandings = async (
 		const teams = (
 			await idb.getCopies.teamsPlus(
 				{
-					attrs: ["tid"],
+					attrs: ["tid", "playThroughInjuries"],
 					seasonAttrs: [
 						"won",
 						"lost",
@@ -104,6 +105,7 @@ const updateStandings = async (
 			)
 		).map((t) => ({
 			...t,
+			ovr: 0,
 			gb: {
 				league: 0,
 				conf: 0,
@@ -116,6 +118,37 @@ const updateStandings = async (
 				div: 0,
 			},
 		}));
+
+		// Current OVR rating, accounting for present-day injuries
+		await Promise.all(
+			teams.map(async (t) => {
+				const players =
+					inputs.season === g.get("season")
+						? await idb.cache.players.indexGetAll("playersByTid", t.tid)
+						: await idb.getCopies.players(
+								{
+									activeSeason: inputs.season,
+									statsTid: t.tid,
+								},
+								"noCopyCache",
+							);
+
+				const playersPlus = await idb.getCopies.playersPlus(players, {
+					attrs: ["injury", "value", "pid"],
+					ratings: ["ovr", "pos", "ovrs"],
+					season: inputs.season,
+					tid: t.tid,
+					fuzz: true,
+				});
+
+				t.ovr = team.ovr(playersPlus, {
+					accountForInjuredPlayers: {
+						numDaysInFuture: 0,
+						playThroughInjuries: getActualPlayThroughInjuries(t),
+					},
+				});
+			}),
+		);
 
 		const orderTeamsOptions = {
 			addTiebreakersField: true,
