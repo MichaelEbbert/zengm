@@ -556,18 +556,18 @@ const formatRunPassRatio = (value: number) => {
 const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 	const withRatios = teams.map((t) => {
 		const ypc = t.rus ? t.rusYds / t.rus : 0;
-		const ypa = t.pss ? t.pssYds / t.pss : 0;
 		// Sacks count as a passing play, and sack yardage counts against passing yards, for the coach's run/pass decision - but not for the saved pss/pssYds stats - see coachPlayCall()
+		// Displayed YPA is computed the same way, on the fly, so it matches the R/P calculation below
 		const passAttemptsWithSacks = (t.pss ?? 0) + (t.pssSk ?? 0);
 		const passYardsWithSacks = (t.pssYds ?? 0) - (t.pssSkYds ?? 0);
-		const ypaWithSacks = passAttemptsWithSacks
+		const ypa = passAttemptsWithSacks
 			? passYardsWithSacks / passAttemptsWithSacks
 			: 0;
 		const runPassRatioLive = (t.rus ?? 0) >= 5 && passAttemptsWithSacks >= 5;
-		const runPassRatio =
-			runPassRatioLive && ypc + ypaWithSacks > 0
-				? ypc / (ypc + ypaWithSacks)
-				: 0.5;
+		const runPassRatioRaw =
+			runPassRatioLive && ypc + ypa > 0 ? ypc / (ypc + ypa) : 0.5;
+		const runPassRatio = Math.min(0.9, Math.max(0.1, runPassRatioRaw));
+		const tov = (t.pssInt ?? 0) + (t.fmbLost ?? 0);
 		return {
 			...t,
 			ypc,
@@ -575,6 +575,7 @@ const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 			passAttemptsWithSacks,
 			runPassRatio,
 			runPassRatioLive,
+			tov,
 		};
 	});
 
@@ -586,6 +587,7 @@ const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 					<th title="Passing Yards">PssYds</th>
 					<th title="Rushing Yards">RusYds</th>
 					<th title="Penalties">Pen</th>
+					<th title="Turnovers">TOV</th>
 					<th title="Yards Per Carry">YPC</th>
 					<th title="Yards Per Pass Attempt">YPA</th>
 					<th title="Run/Pass Ratio">R/P</th>
@@ -611,6 +613,9 @@ const FourFactorsFootball = ({ teams }: { teams: any[] }) => {
 								className={t.penYds < t2.penYds ? "table-success" : undefined}
 							>
 								{t.pen}-{t.penYds}
+							</td>
+							<td className={t.tov < t2.tov ? "table-success" : undefined}>
+								{t.tov}
 							</td>
 							<td>{t.ypc.toFixed(1)}</td>
 							<td>{t.ypa.toFixed(1)}</td>
