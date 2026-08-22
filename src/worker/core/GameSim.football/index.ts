@@ -1132,8 +1132,19 @@ class GameSim extends GameSimBase {
 							value: -(statAfter.pssSkYds - statBefore.pssSkYds),
 							attribute1: "P",
 						});
+					} else if (statAfter.rus === statBefore.rus + 1) {
+						// Called pass, but the QB scrambled -- doPass() logged a
+						// "dropback" event and then routed to doRun(), so rus/rusYds
+						// moved instead of pss/pssSk. Classify by actual result.
+						this.customStats.push({
+							tid: this.team[offenseBefore].id,
+							quarter,
+							statType: "1STDOWNGAIN",
+							value: statAfter.rusYds - statBefore.rusYds,
+							attribute1: "R",
+						});
 					}
-					// Otherwise neither pss nor pssSk moved -- the play was
+					// Otherwise neither pss, pssSk, nor rus moved -- the play was
 					// nullified by an accepted penalty. Skip.
 				}
 				// Otherwise (run whose rus didn't move) -- nullified by an

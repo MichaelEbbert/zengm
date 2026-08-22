@@ -266,6 +266,38 @@ test("interception on 4th down works", async () => {
 	assert.strictEqual(game.d, 0);
 });
 
+test("QB scramble on 1st down is recorded in 1STDOWNGAIN custom stat as a run", async () => {
+	const game = await initGameSim();
+
+	game.awaitingKickoff = undefined;
+	game.o = 0;
+	game.d = 1;
+	game.scrimmage = 50;
+	game.down = 1;
+	game.toGo = 10;
+
+	// Called pass, but always scrambles instead of throwing
+	game.getPlayType = async () => "pass";
+	game.probSack = () => 0;
+	game.probFumble = () => 0;
+	game.probInt = () => 0;
+	game.probScramble = () => 1;
+	game.checkPenalties = () => false;
+
+	await game.simPlay();
+
+	// Scramble shows up as a rush, not a pass attempt/sack
+	assert.strictEqual(game.team[0].stat.pss, 0);
+	assert.strictEqual(game.team[0].stat.pssSk, 0);
+	assert.strictEqual(game.team[0].stat.rus, 1);
+
+	const rows = game.customStats.filter((row) => row.statType === "1STDOWNGAIN");
+	assert.strictEqual(rows.length, 1);
+	assert.strictEqual(rows[0].tid, 0);
+	assert.strictEqual(rows[0].attribute1, "R");
+	assert.strictEqual(rows[0].value, game.team[0].stat.rusYds);
+});
+
 test("OT ends after failed 4th down conversion if 1st team kicked a FG", async () => {
 	// Down by 3, overtime, ball on own 20 yard line, 4th down, 1:30 left
 	const game = await initGameSim();
