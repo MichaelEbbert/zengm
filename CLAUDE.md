@@ -232,6 +232,31 @@ SPORT=football node --run test
 
 ---
 
+## Pass Defense Rating Priorities (from `GameSim.football/index.ts` analysis)
+
+- Priority to LOWER completion %: CB pcv/spd first, then S pcv/spd/hgt, then DL prs/stre/spd/hgt (and secondarily LB in both roles).
+- Priority to LOWER yards/catch: DL prs, stre, spd, hgt — LB same ratings secondarily. Your secondary's coverage skill won't shrink YAC.
+
+## Sack Prevention Rating Priorities (from `probSack` in `GameSim.football/index.ts`)
+
+- `probSack = (0.06 * defense.passRushing) / (0.5 * (QB.avoidingSacks + offense.passBlocking)) * sackFactor` — QB avoidingSacks and team passBlocking are additive and equally weighted, so gains on either side are interchangeable.
+- Priority to raise team passBlocking: OL pbk/stre first (weight 3 in composite), then TE pbk/stre (weight 2), then RB pbk/stre (weight 1). hgt is half-weight, spd barely matters.
+- Priority to raise QB avoidingSacks: thv and elu equally (weight 1 each), stre is a quarter-weight tiebreaker.
+
+## Fumble Rating Priorities (from `probFumble` in `GameSim.football/index.ts`)
+
+- `probFumble(p) = 0.0125 * (1.5 - p.ballSecurity) * fumbleFactor * (defense.tackling / 0.56) ** 2` — blocking (passBlocking/runBlocking) has no effect on fumbles at all.
+- To protect the ball: raise `bsc`/`stre` (ballSecurity) on whoever's carrying — RB on runs, WR/TE/RB after a catch, QB on a sack, KR/PR on returns.
+- To force fumbles on defense: raise DL/LB/S `tck` (tackling composite) — the defense's tackling term is squared, so it has an outsized effect vs. every other rating in the sim.
+
+## Run Defense Rating Priorities (from the rushing `meanYds` formula in `GameSim.football/index.ts`)
+
+- `meanYds = scrambleModifier * 1.75 * (offense.rushing + offense.runBlocking) / defense.runStopping` — defense's runStopping composite sits in the denominator un-squared, so it's directly (not exponentially) proportional: a 10% gain in team runStopping cuts expected rush yards ~10%. Individual run-block "win" rolls (OL/TE/RB vs. runStopping) only drive box-score/announcer stats, not the yardage itself.
+- Priority to raise team runStopping: DL/LB/S `rns` and `stre` first (weight 1 each in the per-player composite), then `tck` (weight 0.4), with `hgt`/`spd` as half-weight tiebreakers.
+- The per-play composite is drawn from DL/LB/S on the field, sorted by DL ovr and weighted most heavily toward the top two (weights 5, 4, then 3, 2, 2, 1, 1) — upgrading your best down-linemen and starting LBs matters far more than upgrading a third safety.
+
+---
+
 ## Upstream Reference
 
 Upstream: `https://github.com/zengm-games/zengm`
