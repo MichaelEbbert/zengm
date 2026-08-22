@@ -565,6 +565,7 @@ const processLiveGameEvents = ({
 	let t: 0 | 1 | undefined;
 	let textOnly = false;
 	let possessionChange: boolean = false;
+	let injury = false;
 
 	while (!stop && events.length > 0) {
 		const e = events.shift();
@@ -857,6 +858,7 @@ const processLiveGameEvents = ({
 			const initialText = getText(e, boxScore.numPeriods);
 			if (initialText !== undefined) {
 				if (e.type === "injury") {
+					injury = true;
 					const p = playersByPid[e.injuredPID] as any;
 					p.injury = {
 						type: "Injured",
@@ -1089,6 +1091,7 @@ const processLiveGameEvents = ({
 	}
 
 	return {
+		injury,
 		overtimes,
 		possessionChange,
 		quarters,

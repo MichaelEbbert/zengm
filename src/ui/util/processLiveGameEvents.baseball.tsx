@@ -542,6 +542,7 @@ const processLiveGameEvents = ({
 	let text;
 	let t: 0 | 1 | undefined;
 	let textOnly = false;
+	let injury = false;
 
 	while (!stop && events.length > 0) {
 		const e = events.shift();
@@ -652,6 +653,7 @@ const processLiveGameEvents = ({
 			}
 		} else if (e.type !== "init") {
 			if (e.type === "injury") {
+				injury = true;
 				const p = playersByPid[e.pid]!;
 				p.injury = {
 					type: "Injured",
@@ -700,6 +702,7 @@ const processLiveGameEvents = ({
 	}
 
 	return {
+		injury,
 		overtimes,
 		quarters,
 		sportState,

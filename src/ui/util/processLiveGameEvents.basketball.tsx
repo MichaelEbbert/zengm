@@ -418,6 +418,7 @@ const processLiveGameEvents = ({
 	let text;
 	let t: 0 | 1 | undefined;
 	let textOnly = false;
+	let injury = false;
 
 	while (!stop && events.length > 0) {
 		const e = events.shift();
@@ -537,6 +538,7 @@ const processLiveGameEvents = ({
 			}
 
 			if (e.type === "injury") {
+				injury = true;
 				const p = playersByPid[e.pid];
 				if (p) {
 					(p as any).injury = {
@@ -574,6 +576,7 @@ const processLiveGameEvents = ({
 	}
 
 	return {
+		injury,
 		overtimes,
 		quarters,
 		t,

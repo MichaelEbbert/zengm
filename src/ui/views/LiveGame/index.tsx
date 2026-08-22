@@ -128,6 +128,7 @@ type PlayByPlayEntryInfo = {
 	text: ReactNode;
 	textOnly: boolean;
 	time: string;
+	injury: boolean;
 };
 
 const PlayByPlayEntry = memo(
@@ -169,7 +170,14 @@ const PlayByPlayEntry = memo(
 		}
 
 		return (
-			<div className="d-flex">
+			<div
+				className="d-flex"
+				style={
+					entry.injury
+						? { border: "2px solid var(--bs-danger)", borderRadius: 4 }
+						: undefined
+				}
+			>
 				{entry.t !== undefined ? (
 					<TeamLogoInline
 						alt={boxScore.teams[entry.t].abbrev}
@@ -431,6 +439,7 @@ export const LiveGame = (props: View<"liveGame">) => {
 					textOnly: output.textOnly,
 					t,
 					time,
+					injury: !!output.injury,
 				});
 			}
 
