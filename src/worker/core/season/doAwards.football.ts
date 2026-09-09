@@ -14,6 +14,37 @@ import type { Conditions, PlayerFiltered } from "../../../common/types.ts";
 import type { AwardPlayer, Awards } from "../../../common/types.football.ts";
 import { orderBy } from "../../../common/utils.ts";
 
+export const leagueLeaderCategories = [
+	{
+		name: "League Passing Leader",
+		stat: "pssYds",
+	},
+	{
+		name: "League Rushing Leader",
+		stat: "rusYds",
+	},
+	{
+		name: "League Receiving Leader",
+		stat: "recYds",
+	},
+	{
+		name: "League Scrimmage Yards Leader",
+		stat: "ydsFromScrimmage",
+	},
+	{
+		name: "League Interceptions Leader",
+		stat: "defInt",
+	},
+	{
+		name: "League Sacks Leader",
+		stat: "defSk",
+	},
+	{
+		name: "League TD Leader",
+		stat: "totTD",
+	},
+];
+
 const getPlayerInfo = (p: PlayerFiltered): AwardPlayer => {
 	return {
 		pid: p.pid,
@@ -417,37 +448,7 @@ const doAwards = async (season: number, conditions: Conditions) => {
 	);
 	const players = await getPlayers(season);
 	const { bestRecord, bestRecordConfs } = await teamAwards(teams);
-	const categories = [
-		{
-			name: "League Passing Leader",
-			stat: "pssYds",
-		},
-		{
-			name: "League Rushing Leader",
-			stat: "rusYds",
-		},
-		{
-			name: "League Receiving Leader",
-			stat: "recYds",
-		},
-		{
-			name: "League Scrimmage Yards Leader",
-			stat: "ydsFromScrimmage",
-		},
-		{
-			name: "League Interceptions Leader",
-			stat: "defInt",
-		},
-		{
-			name: "League Sacks Leader",
-			stat: "defSk",
-		},
-		{
-			name: "League TD Leader",
-			stat: "totTD",
-		},
-	];
-	await leagueLeaders(players, categories, awardsByPlayer);
+	await leagueLeaders(players, leagueLeaderCategories, awardsByPlayer);
 
 	const mvpPlayers = getTopPlayers(
 		{

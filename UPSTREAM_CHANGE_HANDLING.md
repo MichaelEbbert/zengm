@@ -24,6 +24,13 @@ For each commit (or commit chain), work through these before setting a decision:
 9. **Dependency coupling** — is it riding along with a larger dependency bump that's really a separate decision (Electron/better-sqlite3 ABI compatibility)?
 10. **Effort vs. payoff** — for pure style/refactor commits, is the merge-conflict risk against our modified files worth the near-zero gameplay value?
 11. **Full commit scope** — always check the full commit stat (`git show --stat <sha>`), not just the football-filtered hunk. A commit can span multiple sports/files where only the football piece matched our path filter; applying just the filtered hunk in isolation can break the build if it depends on a companion change elsewhere (e.g. a type change in a shared, non-football-named file).
+12. **Follow-up sweep** — item 11 covers a commit that _did_ match the path filter. This is the inverse: a commit that matched nothing. **The `-- '*football*'` filter is a discovery heuristic, not a boundary.** Upstream routinely fixes a football bug in sport-agnostic files (`awards.ts`, `getLeaderRequirements.ts`, `views/leaders.ts`), and no such commit will ever appear in the log. Once the MERGE set is chosen, sweep the range again per merged row and reconcile against the SHAs already classified:
+
+    ```
+    git log --format="%h %s" <row-sha>..<watermark> -- $(git show --name-only --format="" <row-sha>)
+    ```
+
+    Read the surviving commits before applying the row. This is not hypothetical: it is exactly how `1e5472db1` — upstream's own fix for the crash row #9 shipped — was missed in the 2001 sync. See the Sync 1 follow-up section of `docs/upstream_sync_log.md`.
 
 Decision guide: `MERGE` when the change has real gameplay/bugfix value, doesn't conflict with the SQLite/coach layers (or the conflict is resolvable), and is safe to apply between seasons (with a backfill plan if it has retroactive impact). `DECLINE` otherwise — record the reason inline in the Summary column or a short note.
 
@@ -164,13 +171,14 @@ Every upstream commit since the last-synced SHA gets one of:
 1. `git fetch upstream`
 2. `git log --oneline <last-synced-sha>..upstream/master`
 3. Categorize each new commit (A/B/C/D) — record in `docs/upstream_sync_log.md` (SHA | description | category | status)
-4. Apply category A changes; run `SPORT=football node --run test` after each
-5. Translate category B changes into SQLite migrations
-6. Manually merge category C changes; run tests
-7. Update `<last-synced-sha>` in `docs/upstream_sync_log.md` and commit
+4. **Follow-up sweep** — for every row marked MERGE, re-scan the range for later commits touching that row's files (checklist item 12) and reconcile against the classified SHAs. Do this before applying anything.
+5. Apply category A changes; run `SPORT=football node --run test` after each
+6. Translate category B changes into SQLite migrations
+7. Manually merge category C changes; run tests
+8. Update `<last-synced-sha>` in `docs/upstream_sync_log.md` and commit
 
 ## Status
 
 As of 2026-09-08, all 43 football-touching commits since the fork baseline (through upstream/master tip `9e0de55c6`) have been researched across two batches: 17 `MERGE`, 26 `DECLINE`. Batch 1 (rows #1-#22, researched 2026-08-24) produced all 17 merges; batch 2 (rows #23-#43, researched 2026-09-08) is a single unfinished upstream awards rewrite and was declined in full as a deferred unit — see the standing note in the Resume checkpoint, and the two knock-on effects on rows #9 and #18 flagged above the batch 2 table.
 
-See the Resume checkpoint above for the watermark to use for the next sync. No commits have actually been applied yet — per the note at the top of this file, that requires a separate merge-tracking file (not created) and only happens between seasons. The 2001 season is now complete, so the merge window for the 17 approved batch-1 rows is open. `docs/upstream_sync_log.md` (referenced in `docs/db_conversion.md` Task 9 / Phase 9) still does not exist; this file has been serving that role for the football-scoped subset in the meantime.
+See the Resume checkpoint above for the watermark to use for the next sync. All 17 approved batch-1 rows were applied on 2026-09-08 and merged to `master` as `53160803f`; `docs/upstream_sync_log.md` now exists and is the merge record. One defect escaped that sync — a missing `totTD` leader requirement that crashed the awards phase change, fixed 2026-09-09 in `77ffaab74`; see checklist item 12 for the method change that would have caught it.

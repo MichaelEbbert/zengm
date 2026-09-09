@@ -56,8 +56,40 @@ Expect all four again on the next sync.
 - Tests gated per group with `node --run test` (~32s). Final: **52 files / 335 passed, 12 skipped, 0 failed** — up from 333 pre-merge, the +2 being new regression tests from rows #10 and #17.
 - The browser smoke-test project is excluded from `node --run test` and is expected to fail; see `FUTURE_PLANS.md`. It is unrelated to this sync — verified failing identically on `master` before any of it was applied.
 
+## Sync 1 follow-up — 2026-09-09, the `totTD` crash
+
+**Symptom.** Advancing past the Super Bowl in Test League 1 threw `Critical error during phase change: Missing leader requirements for totTD`, stranding the UI on "Playoffs Processing...". The Super Bowl result was saved; no further day could be advanced.
+
+**Cause.** Row #9 (`9349a6e`) replaced the ad-hoc `minValue` award thresholds with `getLeaderRequirements()`, which throws on any award category it has no entry for (`awards.ts:397`). Football's "League TD Leader" uses `totTD`, and `totTD` had no entry.
+
+**Fix.** `77ffaab74` — one line, `totTD: {}` in the football block of `getLeaderRequirements.ts`. This is upstream's own fix, `1e5472db1` ("Fix", 2026-05-25). The rest of that commit was deliberately skipped: it routes stat loading through a new `getLeaderRequirementsStats` helper we don't have and don't need — none of football's seven award categories carry `minStats`, and every stat they read is already in `awardStats`.
+
+**Why the sync missed it.** `1e5472db1` sits inside batch 1's commit range, but touches only `TODO`, `awards.ts`, `getLeaderRequirements.ts` and `views/leaders.ts`. No path contains "football", so `git log -- '*football*' '*Football*'` — the command the entire research log is built on — never surfaced it. This is a structural hole in the method, not a one-off; see checklist item 12 in `UPSTREAM_CHANGE_HANDLING.md`.
+
+**Regression guard.** `doAwards.football.test.ts` asserts every league-leader award category has a `getLeaderRequirements` entry. The `categories` array in `doAwards.football.ts` was hoisted to module scope and exported as `leagueLeaderCategories` to make it reachable. Verified by deleting the `totTD` entry and confirming the test fails naming the stat. Football only — basketball and baseball have vitest projects but their `doAwards` paths never run in this fork, and each hoist adds conflict surface in a file upstream actively edits; hockey has no vitest project at all.
+
+The sibling throw at `getSeasonLeaders.ts:146` needs no guard. It iterates `PLAYER_STATS_TABLES` via `getPlayerProfileStats()`, predates row #9, and has been exercised by 26 seasons of play. `totTD` is not in those tables, which is exactly why only the awards path broke.
+
+### Follow-up sweep of the applied rows
+
+Ran the item-12 sweep retroactively over the seven behavior-changing merged rows (`git log <row-sha>..4ee432c5b -- <files that row touched>`, minus the 45 SHAs already classified):
+
+- **Rows #17 (`d416f92`), #21/#22 (`19539ff`/`a3ffb36`): zero unclassified follow-ups.** Complete as applied.
+- **Row #9 has a five-commit follow-up chain**, 2026-05-25→27, all in `src/worker/views/leaders.ts`:
+
+| SHA         | Subject                                           | Effect                                                    |
+| ----------- | ------------------------------------------------- | --------------------------------------------------------- |
+| `c4c0dcfdf` | Logging                                           | `throw` on a missing minStat value → bugsnag + `continue` |
+| `da7579622` | It is expected that some stat values are missing  | drops the bugsnag, also catches `NaN`                     |
+| `0e69c08e5` | Fix                                               | skip career rows with `min === 0`                         |
+| `21e0c67b5` | Skip players with no stats row for a given season | `iterateAllPlayers` → `iterateAllPlayersWithStats`        |
+| `22e31e709` | Fix                                               | `showNoStats: true` for deleted teamStats rows            |
+
+**Deferred, not merged.** The chain cannot reproduce the football awards crash: all seven football award categories have no `minStats`, so `playerMeetsCategoryRequirements` short-circuits at `let pass = !cat.minStats && ...` before reaching any of this code. Our tree also predates `c4c0dcfdf`, so we never had the `throw` those commits walk back — a missing value currently just fails the comparison silently. The chain only affects the Leaders page. Recorded here so the next sync doesn't rediscover it from scratch.
+
 ### Not yet done
 
-- Merge `upstream-sync-2001` into `master` and push.
-- Run the row #16 HoF backfill.
+- Run the row #16 Hall of Fame backfill (`recomputeHallOfFame`, league open in Electron).
 - Sim a season in Electron to confirm drive stats and punt distances behave as expected.
+
+Merging `upstream-sync-2001` into `master` is done — `53160803f`, pushed 2026-09-08.
