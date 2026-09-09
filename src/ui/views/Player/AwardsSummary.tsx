@@ -6,7 +6,7 @@ const style = {
 	maxWidth: 520,
 };
 
-const AwardsSummary = ({ awards }: { awards: Player["awards"] }) => {
+export const AwardsSummary = ({ awards }: { awards: Player["awards"] }) => {
 	if (awards.length === 0) {
 		return null;
 	}
@@ -37,5 +37,3 @@ const AwardsSummary = ({ awards }: { awards: Player["awards"] }) => {
 		</div>
 	);
 };
-
-export default AwardsSummary;
