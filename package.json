@@ -22,7 +22,8 @@
 		"lint-ts": "node --run pre-test && tsc --build",
 		"pre-test": "node tools/pre-test.ts",
 		"format": "oxfmt",
-		"test": "node --run pre-test && vitest --run",
+		"test": "node --run pre-test && vitest --run --project football --project basketball --project baseball",
+		"test-browser": "node --run pre-test && vitest --run --project browser",
 		"prepare": "husky",
 		"postinstall": "playwright install"
 	},
