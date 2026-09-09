@@ -50,3 +50,27 @@ Code changes only happen between seasons, so this is a holding note, not a live 
 1. Pull actual play-by-play/game logs (`logs/worker.log` across several live games, or query `game_scoring_plays`/`player_stats` if enough context is in there) to check whether INTs really cluster in the trailing-and-late window, and whether it's costing wins or just producing dramatic, memorable losses.
 2. If real, consider a more surgical fix than broadly dialing back pass rate: e.g. distinguish "still need a full scoring drive" from "already in field-goal range with clock to spare," where a steadier down/distance approach might preserve win probability with less turnover risk, rather than loosening the `toGo <= 2` run carve-out across the board.
 3. Re-verify the `hurryUp()`/`determineMode()` thresholds and line numbers above against the code at that time -- this note was written from memory of an earlier read, not a fresh search.
+
+---
+
+### Browser Smoke Test -- incompatible with the SQLite architecture, excluded from `node --run test`
+
+`vitest.config.ts` defines four projects. Three are node (`football`, `basketball`, `baseball`); the fourth, `browser`, runs `src/test/smoke.test.browser.ts` against chromium + firefox + webkit via Playwright. That test creates a league and auto-plays a full basketball season.
+
+**It hangs in this fork and always has.** Measured 2026-09-08 on `master` at `c2bda8a80`, with no local changes in flight:
+
+```
+Test Files  3 failed | 3 passed (6)
+Tests       3 failed | 33 passed (36)
+Duration    615.51s
+```
+
+The three "failures" are the same test timing out once per browser, not assertion failures -- `smoke.test.browser.ts` sets `timeout = 10 * 60 * 1000`, and the run lands just past it. The process sits pinned at ~17s CPU for ten minutes: blocked, not computing. The `genPlayoffSeries.ts` / `makeMatchups` stack in the output is just where the sim happened to be when the clock ran out, which vitest says explicitly ("The latest test that might've caused the error is...").
+
+**Why it can't work as architected:** Phases 1-7 moved all league storage to `better-sqlite3` in the Electron **main** process. A headless Playwright browser has no Electron main process, so `league.createStream` -> `autoPlay` stalls on DB calls that can never resolve. We already had to hand-edit this test in Phase 7 (`5e57d0eb3`) to strip its IndexedDB teardown (`idb.meta.close()`, `deleteDB("meta")`); this is the remainder of that same incompatibility, never noticed because nobody ran the browser project.
+
+**What changed:** `package.json` `test` now runs only the three node projects. The browser project is still reachable on demand via `node --run test-browser`.
+
+Cost/benefit of the exclusion: **623s -> 32s** for the default suite, with no loss of real coverage -- the node projects cover 52 files / 333 tests including basketball and baseball, which is what actually guards cross-sport shared code (`common/constants.ts`, `player/skills.ts`, `db/getCopies/playersPlus.ts`).
+
+**To revisit:** the test would need a headless harness that stands in for the Electron main process -- either an in-memory SQLite shim usable from the browser context, or moving the smoke test to a node project that drives the worker directly instead of through a browser. Neither is scoped. Until then `test-browser` is expected to fail and should not gate anything.

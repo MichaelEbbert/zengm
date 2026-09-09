@@ -72,7 +72,8 @@ const info = {
 		kickingAccuracy: [1, 1],
 	},
 	P: {
-		punting: [1, 1],
+		puntingPower: [1, 1],
+		puntingAccuracy: [1, 1],
 	},
 	KR: {
 		speed: [4, 1],
@@ -91,11 +92,11 @@ const ovr = (ratings: PlayerRatings, pos?: Position): number => {
 		constant0: 0,
 	};
 
-	for (const k of Object.keys(COMPOSITE_WEIGHTS)) {
-		compositeRatings[k] = compositeRating(
+	for (const [key, value] of Object.entries(COMPOSITE_WEIGHTS)) {
+		compositeRatings[key] = compositeRating(
 			ratings,
-			COMPOSITE_WEIGHTS[k]!.ratings,
-			COMPOSITE_WEIGHTS[k]!.weights,
+			value.ratings,
+			value.weights,
 			false,
 		);
 	}

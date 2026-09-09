@@ -301,8 +301,6 @@ some way to export play-by-play and box score
 
 some way to export season summary https://old.reddit.com/r/BasketballGM/comments/1nutcno/monthly_suggestions_thread/nhaadkv/
 
-retired jersey number should not block the player it was retired for, and instead they should favor it https://discord.com/channels/290013534023057409/331882115119448065/1434939012585488515
-
 button to undo or redo a players preseason progs https://discord.com/channels/290013534023057409/331882115119448065/1433886857481162893
 - some way to bulk do it?
 
@@ -542,6 +540,7 @@ ability to add custom teams to the default list of teams, for selecting when sta
 if a player comes back to your team for a 2nd stint but his jersey number is retired, he should be allowed to wear that retired number (and actually it should be his preference) https://old.reddit.com/r/BasketballGM/comments/1ieujhu/monthly_suggestions_thread/
 - what if 2 numbers are retired?
 - after implementing this, maybe the "Retire Jersey" button should be enabled for players still on your team, since they can keep their jersey number
+- retired jersey number should not block the player it was retired for, and instead they should favor it https://discord.com/channels/290013534023057409/331882115119448065/1434939012585488515
 
 if you download a spreadsheet of the most lopsided trades, the spreadsheet leaves out the "team" columns https://old.reddit.com/r/BasketballGM/comments/1ieujhu/monthly_suggestions_thread/mceee7x/
 
@@ -930,6 +929,7 @@ new achievements
   - Defense Wins Championships: win the chip while having a bottom 5 offense
   - Offense Is The Best Defense: win the chip while having a bottom 5 defense
   - Height Doesn't Matter: have a player under 6 feet tall win mvp
+- rebuild achievements before 1980 https://discord.com/channels/290013534023057409/290013534023057409/1513623237064528073
 
 arrow navigation between players on team https://old.reddit.com/r/BasketballGM/comments/1afy7ba/monthly_suggestions_thread/kr9whzi/
 - make it a select? or listen for keyboard shortcut?
@@ -1380,9 +1380,6 @@ add some way to delete players after exporting them https://discord.com/channels
 in real players league, start at draft should give you the option to start at your team's first pick, with other teams picks being made like IRL https://mail.google.com/mail/u/0/?zx=82hreb1i3vdd#inbox/FMfcgzGpGwsMgptrrHzfvcVQTTWJMchN
 
 Injuries page for players traded during injury season shows the last team that season, not the team the injury occurred on https://old.reddit.com/r/BasketballGM/comments/w301nx/version_202207190879_on_player_profile_pages_for/iguxzxk/?context=3
-
-separate "TOT" line for stats on player stats page
-- need to support season+new mergeStats setting
 
 put GOAT formula in advanced stats? https://discord.com/channels/290013534023057409/331882115119448065/998425104155418696
 

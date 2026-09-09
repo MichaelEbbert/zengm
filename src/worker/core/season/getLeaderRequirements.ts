@@ -473,7 +473,17 @@ const getLeaderRequirements = () => {
 			pntYds: {},
 			pntLng: {},
 			pntIn20: {},
+			pntIn20Pct: {
+				minStats: {
+					pnt: numGames,
+				},
+			},
 			pntTB: {},
+			pntTBPct: {
+				minStats: {
+					pnt: numGames,
+				},
+			},
 			pntBlk: {},
 			pr: {},
 			prYds: {},

@@ -1,5 +1,5 @@
 import { g, helpers, random, toUI } from "../../util/index.ts";
-import { POSITIONS } from "../../../common/constants.football.ts";
+import { FATIGUE_POS, POSITIONS } from "../../../common/constants.football.ts";
 import PlayByPlayLogger, {
 	type PlayByPlayEventScore,
 } from "./PlayByPlayLogger.ts";
@@ -46,9 +46,6 @@ const NUM_DOWNS = 4; // Not used everywhere!
 const TWO_MINUTE_WARNING_TIME = 2; // Not used everywhere!
 
 const FEWER_INJURIES_POS = new Set(["QB", "P", "K"]);
-
-// For some positions, filter out some players based on fatigue
-const FATIGUE_POS = new Set(["RB", "WR", "TE", "DL", "LB", "CB", "S"]);
 
 // Only apples to default ratings leagues
 const AVERAGE_TACKLING_COMPOSITE = 0.56;
@@ -107,6 +104,11 @@ class GameSim extends GameSimBase {
 	awaitingAfterTouchdown = false;
 
 	awaitingAfterSafety = false;
+
+	// This is used for drive-based team stats such as "drives" and "totStartYds".
+	// Turnover edge cases - two turnovers on the same play means this is not a new drive, but recovering a fumbled punt or an onside kick are new drives.
+	// Set this to undefined in situations where it'll be a new drive for either team (such as after a kickoff/punt) but not when it'll be a new drive only for a new team (fumble/interception).
+	currentDrive: TeamNum | undefined;
 
 	awaitingKickoff: TeamNum | undefined;
 	lastHalfAwaitingKickoff: TeamNum;
@@ -1022,6 +1024,21 @@ class GameSim extends GameSimBase {
 			toGo: this.toGo,
 		});
 
+		// Track team drive stats - easier here than directly in Play.ts because we have playType here
+		if (this.o !== this.currentDrive && this.down === 1) {
+			// Ignore play types that are never part of a drive
+			if (
+				playType !== "kickoff" &&
+				playType !== "onsideKick" &&
+				playType !== "extraPoint" &&
+				playType !== "twoPointConversion"
+			) {
+				this.currentPlay.addEvent({
+					type: "newDrive",
+				});
+			}
+		}
+
 		let dt;
 
 		if (playType === "kickoff") {
@@ -1557,8 +1574,8 @@ class GameSim extends GameSimBase {
 			if (!success) {
 				this.currentPlay.addEvent({
 					type: "possessionChange",
+					subtype: "kickoff",
 					yds: 0,
-					kickoff: true,
 				});
 
 				const rawLength = Math.random() < 0.003 ? 100 : random.randInt(0, 5);
@@ -1654,8 +1671,8 @@ class GameSim extends GameSimBase {
 
 			this.currentPlay.addEvent({
 				type: "possessionChange",
+				subtype: "kickoff",
 				yds: 0,
-				kickoff: true,
 			});
 			if (touchback) {
 				this.currentPlay.addEvent({
@@ -1709,14 +1726,6 @@ class GameSim extends GameSimBase {
 			}
 		}
 
-		this.recordStat(this.currentPlay.state.current.o, undefined, "drives");
-		this.recordStat(
-			this.currentPlay.state.current.o,
-			undefined,
-			"totStartYds",
-			this.currentPlay.state.current.scrimmage,
-		);
-
 		return dt;
 	}
 
@@ -1736,13 +1745,26 @@ class GameSim extends GameSimBase {
 
 		const punter = this.getTopPlayerOnField(this.o, "P");
 		const puntReturner = this.getTopPlayerOnField(this.d, "PR");
-		const adjustment = (punter.compositeRating.punting - 0.6) * 20; // 100 ratings - 8 yd bonus. 0 ratings - 12 yard penalty
+		const adjustment = (punter.compositeRating.puntingPower - 0.7) * 20; // 100 ratings - 6 yd bonus. 0 ratings - 14 yard penalty
 
 		const maxDistance = 109 - this.scrimmage;
-		const distance = Math.min(
-			Math.round(random.truncGauss(44 + adjustment, 8, 25, 90)),
-			maxDistance,
+		const averageDistance = 50 + adjustment;
+		const sigma = 8;
+
+		// If close to endzone, try to avoid it. Otherwise, kick as far as possible
+		let distance = Math.round(
+			random.truncGauss(averageDistance, sigma, 25, 90),
 		);
+		if (
+			this.scrimmage + distance >= 100 &&
+			Math.random() < punter.compositeRating.puntingAccuracy ** 1.5 * 0.95
+		) {
+			const target = random.randInt(99, Math.max(81, this.scrimmage));
+			distance = target - this.scrimmage;
+		}
+
+		const distanceAccountingForFieldSize = Math.min(distance, maxDistance);
+
 		let dt = random.randInt(5, 9);
 
 		this.checkPenalties("punt");
@@ -1750,7 +1772,7 @@ class GameSim extends GameSimBase {
 		const { touchback } = this.currentPlay.addEvent({
 			type: "p",
 			p: punter,
-			yds: distance,
+			yds: distanceAccountingForFieldSize,
 		});
 
 		this.playByPlay.logEvent({
@@ -1764,6 +1786,7 @@ class GameSim extends GameSimBase {
 
 		this.currentPlay.addEvent({
 			type: "possessionChange",
+			subtype: "punt",
 			yds: 0,
 		});
 
@@ -1817,14 +1840,6 @@ class GameSim extends GameSimBase {
 					: puntReturner.seasonStats["prTD"] + puntReturner.stat["prTD"],
 			});
 		}
-
-		this.recordStat(this.currentPlay.state.current.o, undefined, "drives");
-		this.recordStat(
-			this.currentPlay.state.current.o,
-			undefined,
-			"totStartYds",
-			this.currentPlay.state.current.scrimmage,
-		);
 
 		return dt;
 	}
@@ -1981,8 +1996,8 @@ class GameSim extends GameSimBase {
 			if (!made) {
 				this.currentPlay.addEvent({
 					type: "possessionChange",
+					subtype: "missedFg",
 					yds: -7,
-					scrimmageAtLeastTouchback: true,
 				});
 			}
 		}
@@ -2114,6 +2129,7 @@ class GameSim extends GameSimBase {
 		if (lost) {
 			this.currentPlay.addEvent({
 				type: "possessionChange",
+				subtype: "turnover",
 				yds: 0,
 			});
 		}
@@ -2187,6 +2203,7 @@ class GameSim extends GameSimBase {
 
 		this.currentPlay.addEvent({
 			type: "possessionChange",
+			subtype: "turnover",
 			yds: ydsPass,
 		});
 

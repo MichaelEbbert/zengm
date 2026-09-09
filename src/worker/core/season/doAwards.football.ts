@@ -421,40 +421,33 @@ const doAwards = async (season: number, conditions: Conditions) => {
 		{
 			name: "League Passing Leader",
 			stat: "pssYds",
-			minValue: 0,
 		},
 		{
 			name: "League Rushing Leader",
 			stat: "rusYds",
-			minValue: 0,
 		},
 		{
 			name: "League Receiving Leader",
 			stat: "recYds",
-			minValue: 0,
 		},
 		{
 			name: "League Scrimmage Yards Leader",
 			stat: "ydsFromScrimmage",
-			minValue: 0,
 		},
 		{
 			name: "League Interceptions Leader",
 			stat: "defInt",
-			minValue: 0,
 		},
 		{
 			name: "League Sacks Leader",
 			stat: "defSk",
-			minValue: 0,
 		},
 		{
 			name: "League TD Leader",
 			stat: "totTD",
-			minValue: 0,
 		},
 	];
-	leagueLeaders(players, categories, awardsByPlayer);
+	await leagueLeaders(players, categories, awardsByPlayer);
 
 	const mvpPlayers = getTopPlayers(
 		{
@@ -464,6 +457,14 @@ const doAwards = async (season: number, conditions: Conditions) => {
 		players,
 	);
 	const mvp = getTopByPos(mvpPlayers);
+
+	const offensePlayers = getTopPlayers(
+		{
+			amount: Infinity,
+			score: offScore,
+		},
+		players,
+	);
 
 	const opoyPlayers = getTopPlayers(
 		{
@@ -476,13 +477,6 @@ const doAwards = async (season: number, conditions: Conditions) => {
 	if (mvp) {
 		if (mvp.pos === "QB") {
 			// MVP is a QB - OPOY is best non-QB unless the MVP is way better than any other offensive player (including other QBs)
-			const offensePlayers = getTopPlayers(
-				{
-					amount: 2,
-					score: offScore,
-				},
-				players,
-			);
 
 			// Make sure MVP is best offensive player (in case MVP is a two way player)
 			if (
@@ -528,7 +522,7 @@ const doAwards = async (season: number, conditions: Conditions) => {
 	);
 	const dpoy = getTopByPos(dpoyPlayers, DEFENSIVE_POSITIONS);
 
-	const allLeague = makeTeams(opoyPlayers, poyPlayers, dpoyPlayers);
+	const allLeague = makeTeams(offensePlayers, poyPlayers, dpoyPlayers);
 
 	const oroyPlayers = getTopPlayers(
 		{
