@@ -11,11 +11,13 @@ Full plan: `docs/db_conversion.md`
 - Phases 1-7: SQLite migration complete, all stores cut over
 - Phase 8: Sidecar consolidation complete (coach logic now in `coachDecision.ts`)
 
-### Preseason Games -- planned, not started
+### Preseason Exhibition Games -- planned, not started
 
-Full plan: `docs/preseason_games.md`
+Full plan: `docs/preseason_exhibition_games.md`
 
-League-wide preseason games that appear in the Weekly Schedule, persist viewable box scores, but don't affect standings/player season stats/head-to-head, plus a depth-chart rotation seam in `GameSim.football` so backups get snaps without touching the persisted depth chart.
+A "Preseason Games" screen under LEAGUE showing three randomly-paired matchups you can sim for fun during the preseason, with the depth chart inverted so buried backups and draft picks play the whole game. Live play-by-play, injuries that evaporate at the whistle, and nothing persisted but the matchups and final scores. Deliberately built to be ripped out in one directory delete if upstream ever ships its own preseason.
+
+Supersedes the earlier league-wide plan in `docs/preseason_games.md`, which is kept for reference but marked do-not-implement -- it was correct but cost far more, concentrated in the files upstream edits most.
 
 ### Task 9 -- Upstream Sync (not started)
 

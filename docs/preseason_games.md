@@ -1,5 +1,9 @@
 # Preseason Games
 
+> **SUPERSEDED 2026-09-09 — do not implement.** Replaced by `docs/preseason_exhibition_games.md`, which reaches the same goal (watch draft picks and buried backups play) at a fraction of the cost and without touching `writePlayerStats` / `writeTeamStats` / `writeGameStats` / `play.ts` / `GameSim.football`.
+>
+> Nothing below is wrong — every structural claim was re-verified against the tree on 2026-09-09 and still holds. It was dropped on cost: 6 build steps across ~15 files, a SQLite migration, a new league setting, phase-transition rewiring, persistence guards and a GameSim rotation hook, all concentrated in the files upstream edits most. Kept for reference; the research on how "doesn't count" games work and how the depth chart feeds game sim is still the best writeup we have.
+
 ## Context
 
 Right now the only way to play a "doesn't count" football game in this fork is the **Exhibition Game** feature (`src/worker/api/exhibitionGame.ts`), which is a fully synthetic, one-off, non-persisted matchup picker — good for a single ad hoc game, but not built for a real week-by-week preseason slate that every team plays through as part of the league calendar.
