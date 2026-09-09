@@ -31,7 +31,7 @@ const History = (props: View<"history">) => {
 		);
 	}
 
-	const { awards, champ, confs, retiredPlayers, userTid } =
+	const { awards, champ, confs, retiredPlayers, retiredStat, userTid } =
 		props as ActualProps;
 
 	return (
@@ -48,7 +48,7 @@ const History = (props: View<"history">) => {
 						userTid={userTid}
 					/>
 				</div>
-				<div className="col-md-3 col-sm-4 col-6">
+				<div className="col-xl-2 col-md-3 col-sm-4 col-6">
 					<Team
 						className="mb-3"
 						name="All-League 1st Team"
@@ -64,7 +64,7 @@ const History = (props: View<"history">) => {
 						userTid={userTid}
 					/>
 				</div>
-				<div className="col-md-3 col-sm-4 col-6">
+				<div className="col-xl-2 col-md-3 col-sm-4 col-6">
 					<Team
 						className="mb-3"
 						name="All-Rookie Team"
@@ -73,9 +73,10 @@ const History = (props: View<"history">) => {
 						userTid={userTid}
 					/>
 				</div>
-				<div className="col-md-3 col-sm-12">
+				<div className="col-xl-5 col-md-3 col-sm-12">
 					<RetiredPlayers
 						retiredPlayers={retiredPlayers}
+						retiredStat={retiredStat}
 						season={season}
 						userTid={userTid}
 					/>
