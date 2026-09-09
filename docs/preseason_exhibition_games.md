@@ -81,7 +81,9 @@ with matching helpers in `electronApi.ts`, following the existing `readAllTeams`
 
 ### 3. Depth inversion (pure function, new file)
 
-For each position, reverse **only the players whose natural position is that position** — the leading run of the array — and leave the out-of-position tail untouched. With ten DL, the field becomes DL10, DL9, DL8, DL7; with the tail intact, no kicker lines up at tackle.
+For each position, reverse **only the players whose natural position is that position**, permuting them among the slots they already occupy. Every other slot keeps the player it had. With ten DL at the top of the list, the field becomes DL10, DL9, DL8, DL7, and no kicker lines up at tackle.
+
+Permuting in place, rather than reversing a leading run, is deliberate: natural-position players are **not** guaranteed to be contiguous at the top. `genDepth` sorts by `ovrs[pos]` plus a +15 natural-position bonus, so a well-rated out-of-position player can outrank a weak natural one, and the user can reorder the chart by hand besides. Because non-natural players never move, "no out-of-position player is ever promoted" is a structural invariant rather than a hoped-for outcome — and it is directly assertable in a test.
 
 Take `Team["depth"]` (a plain `{QB: pid[], ...}` object) plus enough player info to read `ratings.pos`, and return a new object. Never mutates its input, never touches the persisted depth chart.
 
