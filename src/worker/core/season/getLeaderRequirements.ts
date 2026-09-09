@@ -518,6 +518,7 @@ const getLeaderRequirements = () => {
 					pba: 10 * numGames,
 				},
 			},
+			totTD: {},
 		},
 		hockey: {
 			pm: {
