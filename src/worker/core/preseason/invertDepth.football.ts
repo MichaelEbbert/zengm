@@ -27,10 +27,10 @@ type FootballDepth = Record<string, number[]>;
  *
  * Pure: the input is never mutated.
  */
-const invertDepth = (
-	depth: FootballDepth,
+const invertDepth = <T extends Record<string, number[]>>(
+	depth: T,
 	posByPid: Map<number, Position | string>,
-): FootballDepth => {
+): T => {
 	const inverted: FootballDepth = {};
 
 	for (const pos of Object.keys(depth)) {
@@ -59,7 +59,7 @@ const invertDepth = (
 		inverted[pos] = next;
 	}
 
-	return inverted;
+	return inverted as T;
 };
 
 export default invertDepth;
