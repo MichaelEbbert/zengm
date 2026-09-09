@@ -148,6 +148,28 @@ SPORT=football node --run test
 
 ---
 
+## Punter Rating Priorities (from `punt()` in `GameSim.football/index.ts`)
+
+**The raw ratings did not change — punters still have exactly `ppw` and `pac`.** What changed is the composite layer above them: the single `punting` composite (`["ppw","pac"]`, weights `[1,1]`) was split into two independent composites.
+
+```
+adjustment      = (puntingPower - 0.7) * 20
+averageDistance = 50 + adjustment
+distance        = truncGauss(averageDistance, 8, 25, 90)
+if (scrimmage + distance >= 100 && random < puntingAccuracy ** 1.5 * 0.95) {
+    target   = randInt(99, max(81, scrimmage))   // yard lines 82-99
+    distance = target - scrimmage
+}
+```
+
+- **`ppw` → `puntingPower` → distance, and nothing else.** Baseline average is 50 yards (was 44), moved +/-20 yards across the full rating range.
+- **`pac` → `puntingAccuracy` → touchback avoidance, and nothing else.** It only matters on punts that would otherwise reach the end zone. When the roll passes, the ball is downed between the opponent's 18 and their 1.
+- **Accuracy pays off non-linearly** (`pac ** 1.5 * 0.95`): 0.5 converts ~34% of those attempts, 0.8 ~68%, 1.0 95%. The top of the rating range is worth disproportionately more than the middle.
+
+**Punter ovr is unchanged.** `player/ovr.football.ts` went `punting: [1, 1]` → `puntingPower: [1, 1], puntingAccuracy: [1, 1]` — the same shape the kicker already used — and the old composite was a 50/50 blend of the same two ratings, so the arithmetic lands in the same place.
+
+**Consequence for evaluation: ovr no longer tells you what kind of punter you have.** Two punters at the same ovr play very differently depending on the split. Before this change `pac` was averaged into `punting` and then used only for distance, so accuracy just made the leg look stronger; it now drives a separate mechanic. Judge a punter on `ppw` and `pac` separately, and check `pntIn20Pct` / `pntTBPct` on the depth chart rather than the composite.
+
 ## Roster Philosophy: The First Man Out Is a Starter
 
 **Team goal: field a team that performs steadily all year, not one that peaks on paper.** Team ovr measures the paper team. Build past it.
