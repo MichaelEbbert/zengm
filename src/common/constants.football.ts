@@ -1004,3 +1004,6 @@ export const DEFAULT_DIVS: NonEmptyArray<Div> = [
 		name: "East",
 	},
 ];
+
+// For some positions, filter out some players based on fatigue
+export const FATIGUE_POS = new Set(["RB", "WR", "TE", "DL", "LB", "CB", "S"]);
