@@ -371,3 +371,34 @@ test("fumble recovered by offense should only cost one down", async () => {
 	assert.strictEqual(game.o, 0);
 	assert.strictEqual(game.d, 1);
 });
+
+test("coachPlayCalling is off by default in tests", async () => {
+	const game = await initGameSim();
+	assert.strictEqual(game.coachPlayCalling, false);
+});
+
+test("coachPlayCalling routes play calls through coachPlayCall", async () => {
+	const game = await initGameSim();
+	game.awaitingKickoff = undefined;
+	game.o = 0;
+	game.d = 1;
+	game.down = 1;
+	game.toGo = 10;
+	game.scrimmage = 25;
+	game.clock = 10;
+	game.currentPlay = new Play(game);
+
+	let calls = 0;
+	const coachPlayCall = game.coachPlayCall.bind(game);
+	game.coachPlayCall = (...args) => {
+		calls += 1;
+		return coachPlayCall(...args);
+	};
+
+	await game.getPlayType();
+	assert.strictEqual(calls, 0, "off: stock play-calling");
+
+	game.coachPlayCalling = true;
+	await game.getPlayType();
+	assert.strictEqual(calls, 1, "on: coach play-calling");
+});

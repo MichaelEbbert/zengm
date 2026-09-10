@@ -130,6 +130,9 @@ class GameSim extends GameSimBase {
 	// For penalties at the end of a half
 	playUntimedPossession = false;
 
+	// Defaults to COACH_PLAY_CALLING. The sim harness sets it per game to compare coach and stock play-calling.
+	coachPlayCalling = COACH_PLAY_CALLING;
+
 	playCount = 0;
 
 	customStats: {
@@ -862,7 +865,7 @@ class GameSim extends GameSimBase {
 		}
 
 		if (this.down === 4) {
-			if (COACH_PLAY_CALLING) {
+			if (this.coachPlayCalling) {
 				return this.coachPlayCall({
 					fieldGoalProbability: this.probMadeFieldGoal(),
 					canPunt: !neverPunt,
@@ -952,7 +955,7 @@ class GameSim extends GameSimBase {
 			}
 		}
 
-		if (COACH_PLAY_CALLING) {
+		if (this.coachPlayCalling) {
 			return this.coachPlayCall();
 		}
 

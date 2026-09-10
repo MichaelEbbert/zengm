@@ -100,6 +100,18 @@ See `ELECTRON.md` for: native module (better-sqlite3) ABI rebuilds, per-machine 
 SPORT=football node --run test
 ```
 
+### Sim harness (throwaway games for experiments)
+
+`src/worker/core/GameSim.football/simHarness.ts` sims any number of games between two generated teams in the test cache -- nothing persisted, no Electron, ~30ms/game. `simGames({ n, coach })` runs with the coach play-calling on or off per batch; `setPosition(tid, pos, specs)` pins exact ratings (`[80, 70, 60, 50, 40, 40, 40]` for OL ovrs, or `{ ratings: { ppw: 99, pac: 39 } }` for raw ratings). Every snap is recorded with its outcome and the game-clock gap to the next snap.
+
+Set up the scenario in the experiment test in `simHarness.test.ts`, then:
+
+```bash
+SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t experiment
+```
+
+`SIM_OUT=<path>` also writes the summaries as JSON. Use it for before/after deltas, not absolute levels -- generated teams run ~5 more offensive plays per team-game than a real league.
+
 ---
 
 ## Modified Files (from upstream)
@@ -108,6 +120,7 @@ SPORT=football node --run test
 
 - `coachPlayCall()` replaces `coachSidecarPlayCall()` -- calls TypeScript coach logic directly
 - `COACH_PLAY_CALLING = process.env.NODE_ENV !== "test"` -- disabled in tests
+- `coachPlayCalling` instance field (defaults to `COACH_PLAY_CALLING`) -- read at both play-call sites, so the sim harness can switch coach vs stock play-calling per game
 
 ### `src/worker/core/GameSim.football/coachDecision.ts` (new)
 
