@@ -223,6 +223,9 @@ export type Snap = {
 	kind: SnapKind;
 	// Kick or punt that was returned rather than a touchback
 	returned: boolean;
+	// The time to the next snap used hurry-up pacing (5-13s huddle) rather than
+	// the normal 37-62s one. hurryUp() has a single caller, in that branch.
+	hurryUp: boolean;
 	// Seconds of game clock until the next snap in the same period
 	gap?: number;
 };
@@ -303,12 +306,21 @@ export const simGames = async ({
 		const game = await newGame(i, setting);
 
 		const snaps: Snap[] = [];
+		let hurried = false;
+		const hurryUp = game.hurryUp.bind(game);
+		game.hurryUp = () => {
+			const result = hurryUp();
+			hurried ||= result;
+			return result;
+		};
+
 		const simPlay = game.simPlay.bind(game);
 		game.simPlay = async () => {
 			const quarter = game.team[0].stat.ptsQtrs.length;
 			const clock = game.clock;
 			const offense = game.o;
 
+			hurried = false;
 			const out = await simPlay();
 
 			const types = new Set(
@@ -320,6 +332,7 @@ export const simGames = async ({
 				offense,
 				kind: classify(types),
 				returned: types.has("kr") || types.has("pr"),
+				hurryUp: hurried,
 			});
 
 			return out;
@@ -798,4 +811,81 @@ export const formatStateResults = (results: Record<string, StateResult>) => {
 			.join("  ");
 
 	return [fmt(header), ...rows.map(fmt)].join("\n");
+};
+
+export type ClockReport = ReturnType<typeof clockReport>;
+
+/**
+ * Offensive plays per team-game, and the time between snaps outside hurry-up
+ * pacing in 5-second bins. Gaps are rounded to whole seconds first, so 5.4s is
+ * 0-5s and 5.6s is 6-10s. Every bin up to the largest gap is listed, empty
+ * ones included, so gaps in the distribution stay visible.
+ */
+export const clockReport = (records: GameRecord[]) => {
+	const plays: number[] = [];
+	for (const r of records) {
+		for (const t of [0, 1]) {
+			plays.push(
+				r.snaps.filter((s) => s.offense === t && OFFENSIVE_KINDS.has(s.kind))
+					.length,
+			);
+		}
+	}
+	const sortedPlays = [...plays].sort((a, b) => a - b);
+	const quantile = (q: number) =>
+		sortedPlays[
+			Math.min(sortedPlays.length - 1, Math.floor(q * sortedPlays.length))
+		]!;
+
+	const withGap = records
+		.flatMap((r) => r.snaps)
+		.filter((s) => s.gap !== undefined);
+	const gaps = withGap.filter((s) => !s.hurryUp).map((s) => Math.round(s.gap!));
+
+	const counts: number[] = [];
+	for (const sec of gaps) {
+		const bin = sec <= 5 ? 0 : Math.ceil((sec - 5) / 5);
+		while (counts.length <= bin) {
+			counts.push(0);
+		}
+		counts[bin]! += 1;
+	}
+
+	return {
+		games: records.length,
+		teamGames: plays.length,
+		offensivePlays: {
+			mean: mean(plays),
+			min: sortedPlays[0]!,
+			p10: quantile(0.1),
+			median: median(plays),
+			p90: quantile(0.9),
+			max: sortedPlays.at(-1)!,
+		},
+		gaps: gaps.length,
+		hurryUpGaps: withGap.length - gaps.length,
+		buckets: counts.map((count, bin) => ({
+			label: bin === 0 ? "0-5s" : `${5 * bin + 1}-${5 * bin + 5}s`,
+			count,
+			share: count / gaps.length,
+		})),
+	};
+};
+
+/** Text histogram of a clockReport, for console output. */
+export const formatClockReport = (report: ClockReport) => {
+	const p = report.offensivePlays;
+	const lines = [
+		`${report.games} games, ${report.teamGames} team-games`,
+		`offensive plays / team-game: mean ${p.mean.toFixed(1)}, min ${p.min}, p10 ${p.p10}, median ${p.median}, p90 ${p.p90}, max ${p.max}`,
+		`gaps between snaps, hurry-up excluded: ${report.gaps} (${report.hurryUpGaps} hurry-up gaps left out)`,
+		"",
+	];
+	const width = Math.max(...report.buckets.map((b) => String(b.count).length));
+	for (const b of report.buckets) {
+		lines.push(
+			`${b.label.padStart(8)}  ${String(b.count).padStart(width)}  ${(100 * b.share).toFixed(1).padStart(5)}%  ${"#".repeat(Math.round(100 * b.share))}`,
+		);
+	}
+	return lines.join("\n");
 };

@@ -35,6 +35,20 @@ ZenGM (TypeScript, browser web worker, Electron runtime)
 
 ---
 
+## Resume Checkpoint (2026-09-10)
+
+**Working on `docs/clock_play_pacing.md`. Currently deciding whether or not to make clock changes at all** -- nothing in the engine's clock code has been changed yet.
+
+Where things stand:
+
+- **The problem:** time between snaps is bimodal -- 62% of non-hurry-up gaps are 0-10s, 36% are 41-70s, and only ~2% fall in the realistic 11-40s band. The five candidate fixes, ranked, are in `FUTURE_PLANS.md` under "Clock / Play Pacing".
+- **Baseline measured:** the "Harness baseline, 2026-09-10" section of `docs/clock_play_pacing.md` has plays per team-game and the 5-second gap histogram from 500 harness games. Re-measure any change with `-t "clock distribution"` (see "Sim harness" below) and compare against it.
+- **Decided if fix #1 goes ahead:** after a kick or punt return the clock keeps running (with an out-of-bounds roll, rate still to be chosen -- the sim has no fair catches, so punts may want a higher stop rate), and the existing late-game timeout logic must be able to respond. It already can: the timeout block runs after `commit()` with possession and the clock flag updated, so no timeout code is needed.
+- **The catch that makes this a real decision:** fix #1 alone burns ~10 minutes of game clock per game (13.8 returns/game x 85% x ~50s), roughly 10 fewer offensive plays per team. It likely needs pairing with fix #5 (narrowing the 37-62s dead-time band) to keep plays per game realistic. Measure both together before deciding.
+- **No unit tests cover `isClockRunning` today.** Any clock change gets red-then-green tests first, in `Play.test.ts` (build the play by hand) and/or the harness.
+
+---
+
 ## Future Plans
 
 See `FUTURE_PLANS.md` for planned and in-progress work items (DB conversion history, preseason games, upstream sync, desperation mode tuning, etc.). Read it if the user starts talking about between-season changes, upcoming features, or "what's next."
@@ -102,7 +116,7 @@ SPORT=football node --run test
 
 ### Sim harness (throwaway games for experiments)
 
-`src/worker/core/GameSim.football/simHarness.ts` sims any number of games between two generated teams in the test cache -- nothing persisted, no Electron, ~30ms/game. `simGames({ n, coach })` runs with the coach play-calling on or off -- `coach: true/false` for both teams, or `[team0, team1]` for head-to-head, which alternates sides every game so roster differences cancel; `setPosition(tid, pos, specs)` pins exact ratings (`[80, 70, 60, 50, 40, 40, 40]` for OL ovrs, or `{ ratings: { ppw: 99, pac: 39 } }` for raw ratings). Every snap is recorded with its outcome and the game-clock gap to the next snap.
+`src/worker/core/GameSim.football/simHarness.ts` sims any number of games between two generated teams in the test cache -- nothing persisted, no Electron, ~30ms/game. `simGames({ n, coach })` runs with the coach play-calling on or off -- `coach: true/false` for both teams, or `[team0, team1]` for head-to-head, which alternates sides every game so roster differences cancel; `setPosition(tid, pos, specs)` pins exact ratings (`[80, 70, 60, 50, 40, 40, 40]` for OL ovrs, or `{ ratings: { ppw: 99, pac: 39 } }` for raw ratings). Every snap is recorded with its outcome, the game-clock gap to the next snap, and whether that gap used hurry-up pacing. `clockReport()` gives plays per team-game and a 5-second histogram of non-hurry-up gaps -- the baseline to compare against when changing clock timing.
 
 `simFromState({ n, coach, state })` replays one situation `n` times -- down, distance, `scrimmage` (opp 20 = 80), `clock` in minutes (0:09 = 0.15), quarter, score `diff` and timeouts -- and sims to the end of the period. It reports the first-snap call distribution, win/tie/loss (a 4th-quarter tie stays a tie, no overtime), and points for/against.
 
@@ -112,7 +126,7 @@ Set up the scenario in the experiment test in `simHarness.test.ts`, then:
 SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t experiment
 ```
 
-`-t "coach vs stock"`, `-t "head-to-head,"` or `-t "4th and 2"` runs one experiment; `-t experiment` runs all of them. `summarize()` also splits points, win/tie/loss, pass rate and INT rate by each side's play-calling.
+`-t "coach vs stock"`, `-t "head-to-head,"`, `-t "4th and 2"` or `-t "clock distribution"` runs one experiment; `-t experiment` runs all of them. `summarize()` also splits points, win/tie/loss, pass rate and INT rate by each side's play-calling.
 
 `SIM_OUT=<path>` also writes the summaries as JSON. Use it for before/after deltas, not absolute levels -- generated teams run ~5 more offensive plays per team-game than a real league.
 

@@ -3,6 +3,8 @@ import { writeFileSync } from "node:fs";
 import { idb } from "../../db/index.ts";
 import {
 	ROSTER_TEMPLATE,
+	clockReport,
+	formatClockReport,
 	formatStateResults,
 	formatSummaries,
 	genHarnessTeams,
@@ -334,6 +336,7 @@ describe("head-to-head", () => {
 			offense,
 			kind,
 			returned: false,
+			hurryUp: false,
 		});
 		const records: GameRecord[] = [
 			{
@@ -424,6 +427,96 @@ test.skipIf(!process.env.SIM_HARNESS)(
 		);
 		if (process.env.SIM_OUT) {
 			writeFileSync(process.env.SIM_OUT, JSON.stringify(summary, null, 2));
+		}
+	},
+	60 * 60 * 1000,
+);
+
+describe("clock", () => {
+	test("hurry-up timing only happens in the last two minutes of a half", async () => {
+		await genHarnessTeams();
+		const records = await simGames({ n: 20, coach: false });
+		const hurried = records.flatMap((r) => r.snaps).filter((s) => s.hurryUp);
+
+		assert.ok(hurried.length > 0, "no hurry-up snaps in 20 games");
+		for (const s of hurried) {
+			assert.ok(s.clock <= 2, `hurry-up at ${s.clock} min`);
+			assert.ok(
+				s.quarter === 2 || s.quarter >= 4,
+				`hurry-up in quarter ${s.quarter}`,
+			);
+		}
+	}, 60_000);
+
+	test("clockReport bins non-hurry-up gaps in 5-second steps, by whole seconds", () => {
+		const snap = (
+			offense: number,
+			gap: number | undefined,
+			hurryUp = false,
+		) => ({
+			quarter: 1,
+			clock: 10,
+			offense,
+			kind: "run" as SnapKind,
+			returned: false,
+			hurryUp,
+			gap,
+		});
+		const records: GameRecord[] = [
+			{
+				pts: [0, 0],
+				overtimes: 0,
+				coachPlayCalling: [true, true],
+				snaps: [
+					snap(0, 0),
+					snap(0, 5.4), // rounds to 5 -> 0-5s
+					snap(0, 5.6), // rounds to 6 -> 6-10s
+					snap(0, 12),
+					snap(0, 44),
+					snap(0, 8, true), // hurry-up: excluded from the bins
+					snap(1, undefined), // last snap of a period: no gap
+				],
+			},
+		];
+
+		const report = clockReport(records);
+		assert.strictEqual(report.gaps, 5);
+		assert.strictEqual(report.hurryUpGaps, 1);
+		assert.deepStrictEqual(
+			report.buckets.map((b) => [b.label, b.count]),
+			[
+				["0-5s", 2],
+				["6-10s", 1],
+				["11-15s", 1],
+				["16-20s", 0],
+				["21-25s", 0],
+				["26-30s", 0],
+				["31-35s", 0],
+				["36-40s", 0],
+				["41-45s", 1],
+			],
+		);
+
+		// Team 0 ran 6 offensive plays, team 1 ran 1
+		assert.strictEqual(report.offensivePlays.mean, 3.5);
+		assert.strictEqual(report.offensivePlays.min, 1);
+		assert.strictEqual(report.offensivePlays.max, 6);
+	});
+});
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_GAMES=500 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "clock distribution"
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: clock distribution, coach play-calling",
+	async () => {
+		const n = Number(process.env.SIM_GAMES ?? 500);
+
+		await genHarnessTeams();
+		const report = clockReport(await simGames({ n, coach: true }));
+
+		process.stdout.write(`\n${formatClockReport(report)}\n\n`);
+		if (process.env.SIM_OUT) {
+			writeFileSync(process.env.SIM_OUT, JSON.stringify(report, null, 2));
 		}
 	},
 	60 * 60 * 1000,

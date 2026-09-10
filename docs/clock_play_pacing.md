@@ -19,6 +19,50 @@ to `zengm-press`.
 | Per-outcome `isClockRunning` rolls              | `Play.ts:728-841`                                 |
 | `kr` / `pr` handlers -- no `isClockRunning`     | `Play.ts:754`, `:767`                             |
 
+## Harness baseline, 2026-09-10 -- the "before" numbers for clock changes
+
+Measured with the sim harness (`src/worker/core/GameSim.football/simHarness.ts`) rather than real games, so any clock change can be re-measured the same way in a minute. 500 games, coach play-calling for both teams, two generated 50-man rosters with real ovrs, neutral site. Re-run with:
+
+```bash
+SIM_HARNESS=1 SIM_GAMES=500 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "clock distribution"
+```
+
+**The harness matches real games.** Its gap by play type reproduces the 1,458-play real-game sample below almost exactly (medians, harness vs real: run 46s / 46s, completion 42s / 41s, incompletion 4.5s / 5s, kickoff 2.4s / 2s, punt 8s / 8s, sack 51s / 48s, kneel 41s / 42s). Absolute play counts run about 5 per team-game higher than a real league, so compare before/after deltas, not absolute levels.
+
+### Offensive plays per team-game
+
+Runs, passes, sacks and kneels; 1,000 team-games.
+
+| Mean | Min | 10th pct | Median | 90th pct | Max |
+| ---- | --- | -------- | ------ | -------- | --- |
+| 67.0 | 40  | 56       | 67     | 78       | 100 |
+
+### Time between snaps, hurry-up excluded
+
+A snap is "hurry-up" when its gap came from the 5-13s huddle branch rather than the normal 37-62s one -- `hurryUp()` has a single caller, in that branch, so the flag is exact. Coach desperation mode is **not** excluded; only hurry-up clock timing is. 78,562 gaps, with 1,984 hurry-up gaps (2.5%) left out. Gaps are rounded to whole seconds (5.4s counts in 0-5s, 5.6s in 6-10s).
+
+| Gap    | Count  | Share |
+| ------ | ------ | ----- |
+| 0-5s   | 34,818 | 44.3% |
+| 6-10s  | 14,149 | 18.0% |
+| 11-15s | 653    | 0.8%  |
+| 16-20s | 81     | 0.1%  |
+| 21-25s | 61     | 0.1%  |
+| 26-30s | 73     | 0.1%  |
+| 31-35s | 79     | 0.1%  |
+| 36-40s | 706    | 0.9%  |
+| 41-45s | 5,481  | 7.0%  |
+| 46-50s | 5,340  | 6.8%  |
+| 51-55s | 5,547  | 7.1%  |
+| 56-60s | 5,321  | 6.8%  |
+| 61-65s | 5,116  | 6.5%  |
+| 66-70s | 1,137  | 1.4%  |
+
+**Hurry-up isn't what empties the middle.** With it excluded, only 2.1% of gaps fall between 11 and 40 seconds. The split is stopped-clock vs running-clock plays:
+
+- **0-10s (62%):** plays after which the clock is stopped -- incompletions, kicks, penalties, extra points -- charge only the play's own few seconds.
+- **41-70s (36%):** the flat ~7%-per-bin block is `randInt(37, 62)` seconds of dead time, uniform across its range, plus 2-4s for the play itself.
+
 ## The observation
 
 Prompted by a live-note complaint about Buffalo running "12+ plays in 90
