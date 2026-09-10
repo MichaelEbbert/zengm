@@ -102,13 +102,17 @@ SPORT=football node --run test
 
 ### Sim harness (throwaway games for experiments)
 
-`src/worker/core/GameSim.football/simHarness.ts` sims any number of games between two generated teams in the test cache -- nothing persisted, no Electron, ~30ms/game. `simGames({ n, coach })` runs with the coach play-calling on or off per batch; `setPosition(tid, pos, specs)` pins exact ratings (`[80, 70, 60, 50, 40, 40, 40]` for OL ovrs, or `{ ratings: { ppw: 99, pac: 39 } }` for raw ratings). Every snap is recorded with its outcome and the game-clock gap to the next snap.
+`src/worker/core/GameSim.football/simHarness.ts` sims any number of games between two generated teams in the test cache -- nothing persisted, no Electron, ~30ms/game. `simGames({ n, coach })` runs with the coach play-calling on or off -- `coach: true/false` for both teams, or `[team0, team1]` for head-to-head, which alternates sides every game so roster differences cancel; `setPosition(tid, pos, specs)` pins exact ratings (`[80, 70, 60, 50, 40, 40, 40]` for OL ovrs, or `{ ratings: { ppw: 99, pac: 39 } }` for raw ratings). Every snap is recorded with its outcome and the game-clock gap to the next snap.
+
+`simFromState({ n, coach, state })` replays one situation `n` times -- down, distance, `scrimmage` (opp 20 = 80), `clock` in minutes (0:09 = 0.15), quarter, score `diff` and timeouts -- and sims to the end of the period. It reports the first-snap call distribution, win/tie/loss (a 4th-quarter tie stays a tie, no overtime), and points for/against.
 
 Set up the scenario in the experiment test in `simHarness.test.ts`, then:
 
 ```bash
 SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t experiment
 ```
+
+`-t "coach vs stock"`, `-t "head-to-head,"` or `-t "4th and 2"` runs one experiment; `-t experiment` runs all of them. `summarize()` also splits points, win/tie/loss, pass rate and INT rate by each side's play-calling.
 
 `SIM_OUT=<path>` also writes the summaries as JSON. Use it for before/after deltas, not absolute levels -- generated teams run ~5 more offensive plays per team-game than a real league.
 
@@ -120,7 +124,7 @@ SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src
 
 - `coachPlayCall()` replaces `coachSidecarPlayCall()` -- calls TypeScript coach logic directly
 - `COACH_PLAY_CALLING = process.env.NODE_ENV !== "test"` -- disabled in tests
-- `coachPlayCalling` instance field (defaults to `COACH_PLAY_CALLING`) -- read at both play-call sites, so the sim harness can switch coach vs stock play-calling per game
+- `coachPlayCalling: [boolean, boolean]` instance field, one per team (both default to `COACH_PLAY_CALLING`) -- `getPlayType()` reads `this.coachPlayCalling[this.o]` at both play-call sites, so the sim harness can run coach vs stock, including head-to-head in one game
 
 ### `src/worker/core/GameSim.football/coachDecision.ts` (new)
 

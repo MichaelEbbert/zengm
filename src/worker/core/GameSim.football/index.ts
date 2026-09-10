@@ -130,8 +130,11 @@ class GameSim extends GameSimBase {
 	// For penalties at the end of a half
 	playUntimedPossession = false;
 
-	// Defaults to COACH_PLAY_CALLING. The sim harness sets it per game to compare coach and stock play-calling.
-	coachPlayCalling = COACH_PLAY_CALLING;
+	// Per team, indexed like this.team; both default to COACH_PLAY_CALLING. The team with the ball uses its own setting. The sim harness sets it to compare coach and stock play-calling, including head-to-head.
+	coachPlayCalling: [boolean, boolean] = [
+		COACH_PLAY_CALLING,
+		COACH_PLAY_CALLING,
+	];
 
 	playCount = 0;
 
@@ -865,7 +868,7 @@ class GameSim extends GameSimBase {
 		}
 
 		if (this.down === 4) {
-			if (this.coachPlayCalling) {
+			if (this.coachPlayCalling[this.o]) {
 				return this.coachPlayCall({
 					fieldGoalProbability: this.probMadeFieldGoal(),
 					canPunt: !neverPunt,
@@ -955,7 +958,7 @@ class GameSim extends GameSimBase {
 			}
 		}
 
-		if (this.coachPlayCalling) {
+		if (this.coachPlayCalling[this.o]) {
 			return this.coachPlayCall();
 		}
 

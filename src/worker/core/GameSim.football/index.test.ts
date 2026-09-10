@@ -372,9 +372,9 @@ test("fumble recovered by offense should only cost one down", async () => {
 	assert.strictEqual(game.d, 1);
 });
 
-test("coachPlayCalling is off by default in tests", async () => {
+test("coachPlayCalling is off for both teams by default in tests", async () => {
 	const game = await initGameSim();
-	assert.strictEqual(game.coachPlayCalling, false);
+	assert.deepStrictEqual(game.coachPlayCalling, [false, false]);
 });
 
 test("coachPlayCalling routes play calls through coachPlayCall", async () => {
@@ -398,7 +398,22 @@ test("coachPlayCalling routes play calls through coachPlayCall", async () => {
 	await game.getPlayType();
 	assert.strictEqual(calls, 0, "off: stock play-calling");
 
-	game.coachPlayCalling = true;
+	// Only the team with the ball uses its own setting
+	game.coachPlayCalling = [true, false];
 	await game.getPlayType();
-	assert.strictEqual(calls, 1, "on: coach play-calling");
+	assert.strictEqual(
+		calls,
+		1,
+		"team 0 has the ball, coach on: coach play-calling",
+	);
+
+	game.o = 1;
+	game.d = 0;
+	game.currentPlay = new Play(game);
+	await game.getPlayType();
+	assert.strictEqual(
+		calls,
+		1,
+		"team 1 has the ball, coach off: stock play-calling",
+	);
 });
