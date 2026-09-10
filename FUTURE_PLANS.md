@@ -11,7 +11,7 @@ Full plan: `docs/db_conversion.md`
 - Phases 1-7: SQLite migration complete, all stores cut over
 - Phase 8: Sidecar consolidation complete (coach logic now in `coachDecision.ts`)
 
-### Preseason Exhibition Games -- planned, not started
+### Preseason Exhibition Games -- COMPLETE (merged 2026-09-10, `6e21ee6ca`)
 
 Full plan: `docs/preseason_exhibition_games.md`
 
@@ -19,10 +19,10 @@ A "Preseason Games" screen under LEAGUE showing three randomly-paired matchups y
 
 Supersedes the earlier league-wide plan in `docs/preseason_games.md`, which is kept for reference but marked do-not-implement -- it was correct but cost far more, concentrated in the files upstream edits most.
 
-### Task 9 -- Upstream Sync (not started)
+### Task 9 -- Upstream Sync (batch 1 applied 2026-09-08, ongoing)
 
-Record details for future upstream sync approach. See `docs/db_conversion.md` task 9.
-Upstream diverges increasingly as we add Electron + SQLite. Manual diff review preferred.
+Process and research checklist: `UPSTREAM_CHANGE_HANDLING.md`. Per-sync record: `docs/upstream_sync_log.md`.
+Upstream diverges increasingly as we add Electron + SQLite. Manual per-commit review.
 
 ### Injury Tracking Bug -- instant injuries lost, not started
 
@@ -33,6 +33,22 @@ Found 2026-09-04 while investigating LAR's 2001-season defensive injury rate (Da
 **Scope:** checked every LAR defensive player-game this season for the same signature (`gs=1` with near-zero minutes but still "Healthy") -- this was the only occurrence in 19 games. Rare edge case (injury lands before the stat-recording path ever touches that player), not a systemic undercount, but worth fixing since it silently drops a real injury from the record.
 
 **Root cause not yet located** -- likely in `GameSim.football/index.ts`'s injury/stat-recording sequencing (the `injuries()` check vs. whatever writes the box-score row), or in how `game_players` rows get persisted for players who never accrued a stat. Needs a fresh code read before attempting a fix.
+
+### Clock / Play Pacing -- findings only, not started
+
+Full findings: `docs/clock_play_pacing.md` (moved from `zengm-press` 2026-09-10).
+
+Time between plays is bimodal. Across 1,458 plays from 10 late-2001 games the median gap is 7s: 55.9% are under 10s, 39.1% over 40s, and only 5.0% land in the realistic 10-40s band. Runs and completions are fine (41-46s medians); the problem is the third of all plays that never charge any huddle time. Candidate fixes, in the doc's impact-to-risk order:
+
+1. **Kick and punt returns never set `isClockRunning`** (`Play.ts:754`, `:767`), unlike the `rus` handler right below them, so the next snap comes ~2s after every return. 11.3% of plays, and an outright omission rather than a tuning question.
+2. **Pre-snap penalties charge 0s of game clock**, delay of game included.
+3. **Kickoff returns run at 8 yd/s** (`index.ts:1691`, `returnLength / 8`) -- near a sprinter's top speed. ~5 yd/s plus a small catch term is closer.
+4. **Incompletions add only 2-6s** (`doPass()` base `dt`, `index.ts:2464`), and are 15.6% of plays. Raising the floor touches every play type, so it has the largest blast radius.
+5. **Huddle time is binary** -- 5-13s under hurry-up or 37-62s otherwise (`index.ts:1231-1239`), nothing in between. A smaller contributor than 1-4.
+
+Closed: the 15%/25% out-of-bounds clock stops on runs and completions fire exactly as coded (measured 14.8% / 25.1%), and the "gets out of bounds 90% of the time on late drives" complaint traced entirely to incompletions, penalties, the two-minute warning and labeled timeouts.
+
+Overlaps Desperation Mode Tuning below: `hurryUp()` feeds both, so the late-game play volume measured there depends on item 5 here. Fix pacing first, then measure desperation.
 
 ### Desperation Mode Tuning -- come back to between seasons, not started
 
