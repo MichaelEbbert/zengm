@@ -35,9 +35,46 @@ Applied against `upstream/master` at `9e0de55c615e301512862bb188cc0f6e77bb6a1e`,
 | #22 | `a3ffb36`    | C        | punting power vs accuracy                          | applied, hand-merged           |
 | #18 | `dcb2884`    | C        | show career stat for retired players               | applied, hand-merged           |
 
-### Outstanding action
+### Row #16 Hall of Fame backfill — done 2026-09-10
 
-**Row #16 requires a backfill that has not been run.** The new HoF thresholds only apply to players evaluated after this point; every already-retired player in the league was judged under the old ones. Run `recomputeHallOfFame` from the debug tools with the league open in Electron. Expect currently-enshrined players — especially defensive backs, who needed a score of 40 against the new 95 — to be removed.
+The new HoF thresholds only applied to players evaluated after the merge; every
+already-retired player had been judged under the old ones. Ran
+`recomputeHallOfFame` via the `POST /debug/eval` passthrough with each league
+open in Electron.
+
+**Only one of the four leagues was affected.** Goin Fast League (lid
+`1784584722697`, 1920, 5034 retired) went from **230 enshrined to 39** — 203
+removed, 12 added. The other three leagues (Daily League, TEST_LEAGUE_1, No Help
+Desktop League 5) are all too young for anyone to clear the bar: no changes, and
+none had a single HoF player to begin with. TEST_LEAGUE_1's best retired player
+scores 94.5 against a 114 threshold.
+
+Every change traces to the new position-specific thresholds, not to any change
+in scoring:
+
+| Pos | Threshold (× `hofFactor` 1.2) | Before | After |
+| --- | ----------------------------- | ------ | ----- |
+| OL  | 180                           | 73     | 3     |
+| CB  | 114                           | 58     | 1     |
+| LB  | 156                           | 36     | 5     |
+| DL  | 168                           | 30     | 4     |
+| S   | 96                            | 15     | 0     |
+| RB  | 114                           | 11     | 8     |
+| WR  | 138                           | 4      | 3     |
+| TE  | 72                            | 0      | 5     |
+| QB  | 156                           | 3      | 10    |
+
+The sync note predicted defensive backs would be hit hardest; offensive linemen
+took the bigger loss, going from the easiest position to enshrine to the
+strictest threshold in the game. QB and TE are the only positions that gained.
+
+Verified afterwards: 0 mismatches between stored `hof` and `madeHof()` across
+all 5034 retired players, and `hof=1` count on disk is 39, so the write flushed
+through rather than sitting in the cache.
+
+**The backfill is per-league by design** — `recomputeHallOfFame` reads
+`g.get("lid")` and only touches the open league. A future sync that moves these
+thresholds again needs one run per league that has real history.
 
 ### Hand-merge notes
 
@@ -89,7 +126,6 @@ Ran the item-12 sweep retroactively over the seven behavior-changing merged rows
 
 ### Not yet done
 
-- Run the row #16 Hall of Fame backfill (`recomputeHallOfFame`, league open in Electron).
 - Sim a season in Electron to confirm drive stats and punt distances behave as expected.
 
 Merging `upstream-sync-2001` into `master` is done — `53160803f`, pushed 2026-09-08.
