@@ -24,17 +24,23 @@ import getMatchups from "./getMatchups.ts";
  * but processTeam hands GameSim a copy of each player, so they never reach the
  * database.
  */
-const simMatchup = async (week: number, conditions: Conditions) => {
+const simMatchup = async (
+	week: number,
+	idx: number,
+	conditions: Conditions,
+) => {
 	const season = g.get("season");
 
 	const matchups = await getMatchups();
-	const matchup = matchups.find((m) => m.week === week);
+	const matchup = matchups.find((m) => m.week === week && m.idx === idx);
 	if (!matchup) {
-		throw new Error(`No preseason matchup for week ${week}`);
+		throw new Error(`No preseason matchup for week ${week}, game ${idx}`);
 	}
 
 	if (matchup.homePts !== undefined) {
-		throw new Error(`Preseason week ${week} has already been played`);
+		throw new Error(
+			`Preseason week ${week} game ${idx} has already been played`,
+		);
 	}
 
 	const { homeTid, awayTid } = matchup;
@@ -90,7 +96,7 @@ const simMatchup = async (week: number, conditions: Conditions) => {
 	const homePts = result.team[0].stat.pts;
 	const awayPts = result.team[1].stat.pts;
 
-	await writePreseasonScore(g.get("lid"), season, week, homePts, awayPts);
+	await writePreseasonScore(g.get("lid"), season, week, idx, homePts, awayPts);
 
 	const liveSim = await boxScoreToLiveSim({
 		allStars: undefined,

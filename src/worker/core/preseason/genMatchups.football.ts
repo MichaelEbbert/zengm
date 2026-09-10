@@ -1,62 +1,89 @@
-import { randInt } from "../../../common/random.ts";
+import { shuffle } from "../../../common/random.ts";
 
 export type PreseasonMatchup = {
 	week: number;
+	idx: number;
 	homeTid: number;
 	awayTid: number;
 };
 
 export const NUM_PRESEASON_WEEKS = 3;
 
-// Week 3 is the rematch of last season's final, when there was one.
+// Week 3 carries the rematch of last season's final, when there was one.
 export const REMATCH_WEEK = 3;
 
 const pairKey = (a: number, b: number) => (a < b ? `${a},${b}` : `${b},${a}`);
 
-// Give up avoiding a repeat after this many draws. Only reachable in a league
-// with very few teams, where there aren't 3 distinct pairs to be had.
-const MAX_DRAWS = 200;
+// Each week is drawn by shuffling and pairing greedily, which can paint itself
+// into a corner near the end -- the last two teams left may already have played
+// each other. Reshuffling is far simpler than backtracking and succeeds almost
+// immediately, so just try again.
+const MAX_WEEK_ATTEMPTS = 200;
 
-const drawPair = (
-	pool: number[],
+/**
+ * Pair off every team for one week, avoiding any matchup already used.
+ *
+ * `fixed` is placed first and its two teams are excluded from the draw, which
+ * is how the Super Bowl rematch claims its slot in week 3. With an odd number
+ * of teams, one is left over and gets a bye.
+ *
+ * Returns undefined if it could not find a full slate.
+ */
+const pairWeek = (
+	tids: number[],
 	used: Set<string>,
-): [number, number] | undefined => {
-	if (pool.length < 2) {
-		return undefined;
-	}
+	fixed?: [number, number],
+): [number, number][] | undefined => {
+	for (let attempt = 0; attempt < MAX_WEEK_ATTEMPTS; attempt++) {
+		const pairs: [number, number][] = [];
 
-	let fallback: [number, number] | undefined;
-
-	for (let i = 0; i < MAX_DRAWS; i++) {
-		const a = pool[randInt(0, pool.length - 1)]!;
-		const b = pool[randInt(0, pool.length - 1)]!;
-		if (a === b) {
-			continue;
+		let remaining = [...tids];
+		if (fixed) {
+			remaining = remaining.filter((tid) => !fixed.includes(tid));
+			pairs.push(fixed);
 		}
 
-		fallback ??= [a, b];
+		shuffle(remaining);
 
-		if (!used.has(pairKey(a, b))) {
-			return [a, b];
+		let failed = false;
+		while (remaining.length > 1) {
+			const a = remaining.shift()!;
+
+			const j = remaining.findIndex((b) => !used.has(pairKey(a, b)));
+			if (j === -1) {
+				// `a` has already played everyone still unpaired. Reshuffle.
+				failed = true;
+				break;
+			}
+
+			const [b] = remaining.splice(j, 1) as [number];
+			pairs.push([a, b]);
+		}
+
+		if (!failed) {
+			// remaining.length is 0 or 1 here; a leftover team has a bye.
+			return pairs;
 		}
 	}
 
-	return fallback;
+	return undefined;
 };
 
 /**
- * Pick the preseason matchups for one season.
+ * Build the full preseason: three weeks, with every team playing a random
+ * opponent each week.
  *
- * Weeks 1 and 2 are drawn at random -- any team may face any other, with no
- * regard to conference, division or record. Week 3 replays last season's
- * final. No pair repeats across the three weeks, though a team may well turn
- * up in more than one of them (with ~32 teams that happens about a third of
- * the time, and it is allowed).
+ * Opponents are drawn without regard to conference, division or record, and no
+ * team faces the same opponent twice across the three weeks -- so each team
+ * gets three different opponents. One game in week 3 is a rematch of last
+ * season's final.
+ *
+ * With an odd number of teams, one team has a bye each week.
  *
  * Everything it needs is passed in, so it stays pure and testable; reading the
  * standings is the caller's job. Pass `champTid`/`runnerUpTid` as undefined
  * when there is no previous season, no playoffs were played, or either team
- * can't be resolved -- week 3 then falls back to a random pair like the others.
+ * can't be resolved -- week 3 is then drawn like any other week.
  */
 const genMatchups = ({
 	tids,
@@ -72,47 +99,60 @@ const genMatchups = ({
 		return [];
 	}
 
-	const used = new Set<string>();
-	const pairs = new Map<number, [number, number]>();
-
-	// Seed the rematch first so it is guaranteed a slot, then let the random
-	// weeks work around it.
-	if (
+	const haveRematch =
 		champTid !== undefined &&
 		runnerUpTid !== undefined &&
 		champTid !== runnerUpTid &&
 		pool.includes(champTid) &&
-		pool.includes(runnerUpTid)
-	) {
-		pairs.set(REMATCH_WEEK, [champTid, runnerUpTid]);
-		used.add(pairKey(champTid, runnerUpTid));
+		pool.includes(runnerUpTid);
+
+	const used = new Set<string>();
+	const byWeek = new Map<number, [number, number][]>();
+
+	// Week 3 first, so the rematch is guaranteed its slot and the random weeks
+	// have to work around it rather than the other way round.
+	const order = [REMATCH_WEEK];
+	for (let week = 1; week <= NUM_PRESEASON_WEEKS; week++) {
+		if (week !== REMATCH_WEEK) {
+			order.push(week);
+		}
 	}
 
-	for (let week = 1; week <= NUM_PRESEASON_WEEKS; week++) {
-		if (pairs.has(week)) {
+	for (const week of order) {
+		const fixed =
+			week === REMATCH_WEEK && haveRematch
+				? ([champTid, runnerUpTid] as [number, number])
+				: undefined;
+
+		const pairs = pairWeek(pool, used, fixed);
+		if (!pairs) {
+			// Not enough distinct opponents left to fill this week. Only reachable
+			// in a tiny league; skip the week rather than fail the whole preseason.
 			continue;
 		}
 
-		const pair = drawPair(pool, used);
-		if (pair) {
-			pairs.set(week, pair);
-			used.add(pairKey(pair[0], pair[1]));
+		byWeek.set(week, pairs);
+		for (const [a, b] of pairs) {
+			used.add(pairKey(a, b));
 		}
 	}
 
 	const matchups: PreseasonMatchup[] = [];
 	for (let week = 1; week <= NUM_PRESEASON_WEEKS; week++) {
-		const pair = pairs.get(week);
-		if (!pair) {
+		const pairs = byWeek.get(week);
+		if (!pairs) {
 			continue;
 		}
 
-		const flip = randInt(0, 1) === 1;
-		matchups.push({
-			week,
-			homeTid: flip ? pair[1] : pair[0],
-			awayTid: flip ? pair[0] : pair[1],
-		});
+		for (const [idx, [a, b]] of pairs.entries()) {
+			const flip = Math.random() < 0.5;
+			matchups.push({
+				week,
+				idx,
+				homeTid: flip ? b : a,
+				awayTid: flip ? a : b,
+			});
+		}
 	}
 
 	return matchups;

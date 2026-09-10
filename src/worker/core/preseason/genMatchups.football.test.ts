@@ -1,5 +1,8 @@
 import { assert, test } from "vitest";
-import genMatchups, { REMATCH_WEEK } from "./genMatchups.football.ts";
+import genMatchups, {
+	NUM_PRESEASON_WEEKS,
+	REMATCH_WEEK,
+} from "./genMatchups.football.ts";
 
 const TIDS = Array.from({ length: 32 }, (_, i) => i);
 
@@ -8,24 +11,55 @@ const pairKey = (m: { homeTid: number; awayTid: number }) =>
 		? `${m.homeTid},${m.awayTid}`
 		: `${m.awayTid},${m.homeTid}`;
 
-test("returns three matchups, weeks 1 through 3", () => {
+const byWeek = (matchups: { week: number }[], week: number) =>
+	matchups.filter((m) => m.week === week);
+
+test("every team plays once a week, for three weeks", () => {
 	const output = genMatchups({ tids: TIDS });
-	assert.deepStrictEqual(
-		output.map((m) => m.week),
-		[1, 2, 3],
-	);
+
+	for (let week = 1; week <= NUM_PRESEASON_WEEKS; week++) {
+		const games = byWeek(output, week);
+		assert.strictEqual(games.length, TIDS.length / 2, `week ${week}`);
+
+		const playing = games.flatMap((m: any) => [m.homeTid, m.awayTid]);
+		assert.deepStrictEqual(
+			[...playing].sort((a, b) => a - b),
+			[...TIDS].sort((a, b) => a - b),
+			`week ${week} did not use every team exactly once`,
+		);
+	}
 });
 
-test("week 3 replays the final", () => {
+test("no team ever faces the same opponent twice", () => {
+	// Probabilistic: the greedy pairing can corner itself, so this is really a
+	// test that the retry logic recovers every time.
+	for (let i = 0; i < 200; i++) {
+		const output = genMatchups({ tids: TIDS });
+		const keys = output.map(pairKey);
+		assert.strictEqual(
+			new Set(keys).size,
+			keys.length,
+			`repeated matchup on iteration ${i}`,
+		);
+	}
+});
+
+test("week 3 contains the Super Bowl rematch", () => {
+	for (let i = 0; i < 50; i++) {
+		const output = genMatchups({ tids: TIDS, champTid: 7, runnerUpTid: 12 });
+		const found = byWeek(output, REMATCH_WEEK).some(
+			(m: any) => pairKey(m) === "7,12",
+		);
+		assert.ok(found, `rematch missing on iteration ${i}`);
+	}
+});
+
+test("the rematch is one game among a full week 3 slate", () => {
 	const output = genMatchups({ tids: TIDS, champTid: 7, runnerUpTid: 12 });
-	const week3 = output.find((m) => m.week === REMATCH_WEEK)!;
-	assert.deepStrictEqual(
-		[week3.homeTid, week3.awayTid].sort((x, y) => x - y),
-		[7, 12],
-	);
+	assert.strictEqual(byWeek(output, REMATCH_WEEK).length, TIDS.length / 2);
 });
 
-test("week 3 falls back to a random pair when the final can't be resolved", () => {
+test("week 3 is drawn normally when the final can't be resolved", () => {
 	const cases: { champTid?: number; runnerUpTid?: number }[] = [
 		{}, // no previous season
 		{ champTid: 7 }, // runner-up missing
@@ -37,66 +71,71 @@ test("week 3 falls back to a random pair when the final can't be resolved", () =
 
 	for (const c of cases) {
 		const output = genMatchups({ tids: TIDS, ...c });
-		assert.strictEqual(output.length, 3, JSON.stringify(c));
-
-		const week3 = output.find((m) => m.week === REMATCH_WEEK)!;
-		assert.notStrictEqual(week3.homeTid, week3.awayTid);
-		assert.ok(TIDS.includes(week3.homeTid), JSON.stringify(c));
-		assert.ok(TIDS.includes(week3.awayTid), JSON.stringify(c));
-	}
-});
-
-test("no pair is ever repeated across the three weeks", () => {
-	// Small pool so collisions are likely -- 5 teams gives only 10 distinct
-	// pairs, so a naive draw would repeat often. Many iterations because this is
-	// a probabilistic failure that a single run would almost never surface.
-	for (let i = 0; i < 500; i++) {
-		const output = genMatchups({
-			tids: [0, 1, 2, 3, 4],
-			champTid: 0,
-			runnerUpTid: 1,
-		});
-		const keys = output.map(pairKey);
 		assert.strictEqual(
-			new Set(keys).size,
-			keys.length,
-			`repeated pair on iteration ${i}: ${keys.join(" / ")}`,
+			byWeek(output, REMATCH_WEEK).length,
+			TIDS.length / 2,
+			JSON.stringify(c),
 		);
+		for (const m of output) {
+			assert.ok(TIDS.includes(m.homeTid), JSON.stringify(c));
+			assert.ok(TIDS.includes(m.awayTid), JSON.stringify(c));
+		}
 	}
 });
 
 test("never pairs a team against itself", () => {
-	for (let i = 0; i < 500; i++) {
+	for (let i = 0; i < 200; i++) {
 		for (const m of genMatchups({ tids: TIDS })) {
 			assert.notStrictEqual(m.homeTid, m.awayTid);
 		}
 	}
 });
 
-test("a team may appear in more than one matchup", () => {
-	// Allowed by design. With only 3 teams every draw must reuse someone, so
-	// this also proves we don't deadlock trying to avoid it.
-	const output = genMatchups({ tids: [0, 1, 2] });
-	assert.strictEqual(output.length, 3);
+test("an odd team count gives exactly one bye per week", () => {
+	const odd = Array.from({ length: 9 }, (_, i) => i);
+	const output = genMatchups({ tids: odd });
 
-	const appearances = output.flatMap((m) => [m.homeTid, m.awayTid]);
-	assert.strictEqual(appearances.length, 6);
-	assert.ok(new Set(appearances).size < appearances.length);
+	for (let week = 1; week <= NUM_PRESEASON_WEEKS; week++) {
+		const games = byWeek(output, week);
+		assert.strictEqual(games.length, 4, `week ${week}`);
+
+		const playing = new Set(games.flatMap((m: any) => [m.homeTid, m.awayTid]));
+		assert.strictEqual(
+			playing.size,
+			8,
+			`week ${week} should leave exactly one team out`,
+		);
+	}
+});
+
+test("games within a week are indexed from zero", () => {
+	const output = genMatchups({ tids: TIDS });
+
+	for (let week = 1; week <= NUM_PRESEASON_WEEKS; week++) {
+		const idxs = byWeek(output, week).map((m: any) => m.idx);
+		assert.deepStrictEqual(
+			[...idxs].sort((a, b) => a - b),
+			idxs.map((_, i) => i),
+			`week ${week}`,
+		);
+	}
 });
 
 test("home and away both get used over many runs", () => {
-	// Guards against a hardcoded home side.
 	const homes = new Set<number>();
 	for (let i = 0; i < 200; i++) {
-		const week3 = genMatchups({
+		for (const m of genMatchups({
 			tids: TIDS,
 			champTid: 7,
 			runnerUpTid: 12,
-		}).find((m) => m.week === REMATCH_WEEK)!;
-		homes.add(week3.homeTid);
+		})) {
+			if (pairKey(m) === "7,12") {
+				homes.add(m.homeTid);
+			}
+		}
 	}
 	assert.deepStrictEqual(
-		[...homes].sort((x, y) => x - y),
+		[...homes].sort((a, b) => a - b),
 		[7, 12],
 	);
 });
@@ -104,5 +143,10 @@ test("home and away both get used over many runs", () => {
 test("degenerate team counts don't throw", () => {
 	assert.deepStrictEqual(genMatchups({ tids: [] }), []);
 	assert.deepStrictEqual(genMatchups({ tids: [0] }), []);
-	assert.strictEqual(genMatchups({ tids: [0, 1] }).length, 3);
+
+	// Only one pairing exists, so weeks 2 and 3 are skipped rather than repeat
+	// it. Week 3 is generated first, so that is the one that survives.
+	const two = genMatchups({ tids: [0, 1] });
+	assert.strictEqual(two.length, 1);
+	assert.strictEqual(two[0]!.week, REMATCH_WEEK);
 });

@@ -341,9 +341,9 @@ function startApiServer(win) {
 				let body = "";
 				req.on("data", (chunk) => (body += chunk));
 				await new Promise((resolve) => req.on("end", resolve));
-				const { lid, season, week, homePts, awayPts } = JSON.parse(body);
+				const { lid, season, week, idx, homePts, awayPts } = JSON.parse(body);
 				const db = openDb(process.env.ZENGM_DB_DIR, lid);
-				writePreseasonScore(db, season, week, homePts, awayPts);
+				writePreseasonScore(db, season, week, idx, homePts, awayPts);
 				send(200, { ok: true });
 				return;
 			}

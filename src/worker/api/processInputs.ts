@@ -472,6 +472,18 @@ const dailySchedule = (params: Params) => {
 	};
 };
 
+const preseasonGame = (params: Params, ctxBBGM: any) => {
+	return {
+		liveSim: ctxBBGM.liveSim as
+			| Awaited<ReturnType<typeof boxScoreToLiveSim>>
+			| undefined,
+	};
+};
+
+const preseasonGames = () => {
+	return {};
+};
+
 const exhibitionGame = (params: Params, ctxBBGM: any) => {
 	return {
 		liveSim: ctxBBGM.liveSim as
@@ -1142,6 +1154,8 @@ export default {
 	teamGraphs,
 	teamHistory,
 	teamRecords,
+	preseasonGame,
+	preseasonGames,
 	teamStatDists: validateSeasonOnly,
 	teamStats,
 	tradeSummary,

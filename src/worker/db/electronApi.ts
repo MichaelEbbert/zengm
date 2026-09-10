@@ -1288,6 +1288,7 @@ export async function deleteOldData(
 export type PreseasonMatchupRow = {
 	season: number;
 	week: number;
+	idx: number;
 	homeTid: number;
 	awayTid: number;
 	homePts?: number;
@@ -1329,6 +1330,7 @@ export async function writePreseasonScore(
 	lid: number,
 	season: number,
 	week: number,
+	idx: number,
 	homePts: number,
 	awayPts: number,
 ): Promise<void> {
@@ -1337,7 +1339,7 @@ export async function writePreseasonScore(
 		await fetch(`${API}/preseason/score`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ lid, season, week, homePts, awayPts }),
+			body: JSON.stringify({ lid, season, week, idx, homePts, awayPts }),
 		});
 	} catch {}
 }

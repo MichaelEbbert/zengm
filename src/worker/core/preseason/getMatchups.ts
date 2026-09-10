@@ -55,8 +55,9 @@ const getFinalists = async (season: number) => {
 };
 
 /**
- * The three preseason matchups for the current season, generating and storing
- * them on first call and returning the stored rows (scores included) after.
+ * Every preseason matchup for the current season -- three weeks, with each team
+ * playing once a week. Generated and stored on first call; later calls return
+ * the stored rows, scores included.
  */
 const getMatchups = async (): Promise<PreseasonMatchupRow[]> => {
 	const lid = g.get("lid");
@@ -79,6 +80,7 @@ const getMatchups = async (): Promise<PreseasonMatchupRow[]> => {
 	}).map((m) => ({
 		season,
 		week: m.week,
+		idx: m.idx,
 		homeTid: m.homeTid,
 		awayTid: m.awayTid,
 	}));

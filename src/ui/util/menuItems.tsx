@@ -278,6 +278,14 @@ export const menuItems: (MenuItemLink | MenuItemHeader)[] = [
 				path: ["notes"],
 				text: "Notes",
 			},
+			{
+				type: "link",
+				active: (pageID) => pageID === "preseasonGames",
+				league: true,
+				commandPalette: true,
+				path: ["preseason_games"],
+				text: "Preseason Games",
+			},
 		],
 	},
 	{
