@@ -66,14 +66,12 @@ const getBestPenaltyResult = <
 		}
 
 		// Penalty at end of period to give an untimed possession - good at end of game if losing/tied, and good at end of half if team didn't score
+		// Only the result that actually grants the extra play counts. Declining also leaves the offense with the ball when time runs out, so without the state.playUntimedPossession check both results scored the same here and a trailing team declined its last snap whenever the play gained more than the penalty.
 		let playUntimedPossession = 0;
-		if (timeExpiredAtEndOfHalf) {
+		if (timeExpiredAtEndOfHalf && state.playUntimedPossession) {
 			const pointsDown = state.pts[t2] - state.pts[t];
 			if (
-				(state.o === t &&
-					gameCanEndAtEndOfPeriod &&
-					pointsDown >= 0 &&
-					pointsDown <= 8) ||
+				(state.o === t && gameCanEndAtEndOfPeriod && pointsDown >= 0) ||
 				(!gameCanEndAtEndOfPeriod && ptsScoredThisPlay[t] === 0)
 			) {
 				playUntimedPossession = 1;

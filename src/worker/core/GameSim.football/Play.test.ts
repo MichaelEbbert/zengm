@@ -495,6 +495,96 @@ describe("penalty situations", () => {
 		);
 	});
 
+	// Time expires on a play where the defense fouled but the offense gained more
+	// than the penalty is worth. Declining keeps the bigger gain but ends the
+	// period; accepting replays the down untimed.
+	const endOfPeriodPenalty = async ({
+		pts,
+		quarter,
+	}: {
+		pts: [number, number];
+		quarter: number;
+	}) => {
+		const game = await initGameSim();
+		game.o = 0;
+		game.d = 1;
+		game.down = 2;
+		game.toGo = 10;
+		game.scrimmage = 50;
+		for (const t of [0, 1] as const) {
+			game.team[t].stat.pts = pts[t];
+			game.team[t].stat.ptsQtrs = Array(quarter).fill(0);
+		}
+		game.currentPlay = new Play(game);
+
+		game.updatePlayersOnField("pass");
+		const qb = game.getTopPlayerOnField(game.o, "QB");
+		const target = game.getTopPlayerOnField(game.o, "WR");
+		const defender = game.pickPlayer(game.d);
+
+		const play = game.currentPlay;
+
+		play.addEvent({
+			type: "dropback",
+			pbw: new Map(),
+		});
+		play.addEvent({
+			type: "penalty",
+			p: defender,
+			automaticFirstDown: false,
+			name: "Offside",
+			penYds: 5,
+			spotYds: undefined,
+			t: game.d,
+			tackOn: false,
+		});
+		play.addEvent({
+			type: "pss",
+			qb,
+			target,
+		});
+		play.addEvent({
+			type: "pssCmp",
+			qb,
+			target,
+			yds: 21,
+		});
+
+		play.adjudicatePenalties(true);
+
+		return play.state.current;
+	};
+
+	test("time expires while trailing -> accept defensive penalty for an untimed down", async () => {
+		const state = await endOfPeriodPenalty({ pts: [17, 20], quarter: 4 });
+		assert.strictEqual(state.playUntimedPossession, true);
+		assert.strictEqual(state.scrimmage, 55);
+	});
+
+	test("time expires trailing by more than one score -> still accept", async () => {
+		const state = await endOfPeriodPenalty({ pts: [10, 20], quarter: 4 });
+		assert.strictEqual(state.playUntimedPossession, true);
+		assert.strictEqual(state.scrimmage, 55);
+	});
+
+	test("time expires tied -> accept for a chance to win in regulation", async () => {
+		const state = await endOfPeriodPenalty({ pts: [20, 20], quarter: 4 });
+		assert.strictEqual(state.playUntimedPossession, true);
+		assert.strictEqual(state.scrimmage, 55);
+	});
+
+	test("time expires while leading -> decline and keep the gain", async () => {
+		const state = await endOfPeriodPenalty({ pts: [20, 17], quarter: 4 });
+		assert.strictEqual(state.playUntimedPossession, false);
+		assert.strictEqual(state.scrimmage, 71);
+	});
+
+	test("time expires at halftime -> accept for an untimed down", async () => {
+		const state = await endOfPeriodPenalty({ pts: [0, 0], quarter: 2 });
+		assert.strictEqual(state.playUntimedPossession, true);
+		assert.strictEqual(state.scrimmage, 55);
+	});
+
 	test("offensive penalty on pass -> down does not increase", async () => {
 		const game = await initGameSim();
 		game.o = 0;
