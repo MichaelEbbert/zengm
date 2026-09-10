@@ -1281,3 +1281,65 @@ export async function deleteOldData(
 		});
 	} catch {}
 }
+
+// ---- Preseason exhibition matchups ----------------------------------------
+// Ours alone; upstream has no preseason. See docs/preseason_exhibition_games.md.
+
+export type PreseasonMatchupRow = {
+	season: number;
+	week: number;
+	idx: number;
+	homeTid: number;
+	awayTid: number;
+	homePts?: number;
+	awayPts?: number;
+};
+
+export async function readPreseasonMatchups(
+	lid: number,
+	season: number,
+): Promise<PreseasonMatchupRow[] | null> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(
+			`${API}/preseason/matchups?lid=${lid}&season=${season}`,
+		);
+		if (!r.ok) return null;
+		const data = await r.json();
+		return data.matchups;
+	} catch {
+		return null;
+	}
+}
+
+export async function writePreseasonMatchups(
+	lid: number,
+	matchups: PreseasonMatchupRow[],
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/preseason/matchups`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, matchups }),
+		});
+	} catch {}
+}
+
+export async function writePreseasonScore(
+	lid: number,
+	season: number,
+	week: number,
+	idx: number,
+	homePts: number,
+	awayPts: number,
+): Promise<void> {
+	if (!(await isAvailable())) return;
+	try {
+		await fetch(`${API}/preseason/score`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lid, season, week, idx, homePts, awayPts }),
+		});
+	} catch {}
+}

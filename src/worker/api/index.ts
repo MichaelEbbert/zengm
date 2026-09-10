@@ -157,6 +157,7 @@ import {
 import { TOO_MANY_TEAMS_TOO_SLOW } from "../core/season/getInitialNumGamesConfDivSettings.ts";
 import { advancedPlayerSearch } from "./advancedPlayerSearch.ts";
 import * as exhibitionGame from "./exhibitionGame.ts";
+import * as preseasonGames from "./preseasonGames.ts";
 import { getSummary } from "../views/trade.ts";
 import { statTypes } from "../views/playerGraphs.ts";
 import {
@@ -5137,6 +5138,7 @@ const setScheduleFromEditor = async ({
 export default {
 	actions,
 	exhibitionGame,
+	preseasonGames,
 	leagueFileUpload,
 	playMenu,
 	toolsMenu,

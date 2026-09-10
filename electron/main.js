@@ -97,6 +97,9 @@ import {
 	getMaxPlayerPid,
 	cloneLeague,
 	deleteOldData,
+	writePreseasonMatchups,
+	readPreseasonMatchups,
+	writePreseasonScore,
 } from "./sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -305,6 +308,42 @@ function startApiServer(win) {
 				const { lid, teams, deleteTids } = JSON.parse(body);
 				const db = openDb(process.env.ZENGM_DB_DIR, lid);
 				writeTeams(db, teams, deleteTids ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			// ---- Preseason exhibition matchups (ours, not upstream) ----
+			if (key === "GET /preseason/matchups") {
+				const url2 = new URL(req.url, `http://127.0.0.1:${apiPort}`);
+				const lid = Number(url2.searchParams.get("lid"));
+				const season = Number(url2.searchParams.get("season"));
+				if (!lid || !Number.isFinite(season)) {
+					send(400, { error: "lid and season required" });
+					return;
+				}
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				send(200, { matchups: readPreseasonMatchups(db, season) });
+				return;
+			}
+
+			if (key === "POST /preseason/matchups") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, matchups } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writePreseasonMatchups(db, matchups ?? []);
+				send(200, { ok: true });
+				return;
+			}
+
+			if (key === "POST /preseason/score") {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				const { lid, season, week, idx, homePts, awayPts } = JSON.parse(body);
+				const db = openDb(process.env.ZENGM_DB_DIR, lid);
+				writePreseasonScore(db, season, week, idx, homePts, awayPts);
 				send(200, { ok: true });
 				return;
 			}

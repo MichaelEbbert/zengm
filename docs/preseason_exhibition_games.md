@@ -39,9 +39,9 @@ Verified against the tree on 2026-09-09:
 Upstream may ship its own preseason someday. Removal should be a directory delete, not archaeology.
 
 - All real logic lives in new files under one prefix. Nothing in `GameSim.football/index.ts`, `play.ts`, or any `write*.ts` — which is precisely what calling `GameSim` directly buys.
-- Touch points in upstream-owned files stay countable and one line each: `menuItems.tsx`, `routeInfos.ts`, `ui/views/index.ts`, `worker/views/index.ts`.
+- Touch points in upstream-owned files stay small and additive. There are seven, one or two lines each: `menuItems.tsx`, `routeInfos.ts`, `ui/views/index.ts`, `worker/views/index.ts`, `worker/api/index.ts`, `worker/api/processInputs.ts`, and `worker/index.ts` — that last because `WorkerAPICategory` is a closed union that has to name the new namespace.
 - The depth inversion is a pure function: depth object in, new depth object out. No caller inside the game engine.
-- Removal = delete the module directory, revert four one-line registrations, drop the table. The migration stays (they are append-only), but an unused table is inert.
+- Removal = delete the module directory and the four new view/api files, revert the seven registrations, drop the table. The migration stays (they are append-only), but an unused table is inert.
 
 If upstream does ship preseason, this likely survives anyway — theirs would be a scheduled slate that counts nothing; this is a backups-first exhibition. Different features.
 
@@ -63,7 +63,9 @@ CREATE TABLE preseason_matchups (
 );
 ```
 
-Three rows per season, `week` 1-3 — one per column on the screen.
+Three weeks per season, each a full slate: every team plays once a week, so 16 games a week in a 32-team league. `idx` numbers the games within a week.
+
+Migration `012_preseason_matchups_idx` rebuilds this table. `011` shipped without `idx`, from an earlier reading where the whole preseason was three games total; by the time that was corrected `011` had already run, and migrations are append-only once applied.
 
 Scores are `NULL` until played, and a non-null score is what disables that matchup's Watch button. Box scores are deliberately **not** stored; add later if it proves useful.
 
@@ -81,7 +83,9 @@ with matching helpers in `electronApi.ts`, following the existing `readAllTeams`
 
 ### 3. Depth inversion (pure function, new file)
 
-For each position, reverse **only the players whose natural position is that position** — the leading run of the array — and leave the out-of-position tail untouched. With ten DL, the field becomes DL10, DL9, DL8, DL7; with the tail intact, no kicker lines up at tackle.
+For each position, reverse **only the players whose natural position is that position**, permuting them among the slots they already occupy. Every other slot keeps the player it had. With ten DL at the top of the list, the field becomes DL10, DL9, DL8, DL7, and no kicker lines up at tackle.
+
+Permuting in place, rather than reversing a leading run, is deliberate: natural-position players are **not** guaranteed to be contiguous at the top. `genDepth` sorts by `ovrs[pos]` plus a +15 natural-position bonus, so a well-rated out-of-position player can outrank a weak natural one, and the user can reorder the chart by hand besides. Because non-natural players never move, "no out-of-position player is ever promoted" is a structural invariant rather than a hoped-for outcome — and it is directly assertable in a test.
 
 Take `Team["depth"]` (a plain `{QB: pid[], ...}` object) plus enough player info to read `ratings.pos`, and return a new object. Never mutates its input, never touches the persisted depth chart.
 
@@ -89,14 +93,14 @@ K and P are single-deep by design — skip them.
 
 ### 4. Worker module (new file)
 
-- **Generate matchups**: see the pairing rules below. Called on first visit during preseason, then never again for that season.
+- **Generate matchups**: see the pairing rules below. Called from the page's worker view, so the slate is generated the first time you open Preseason Games and reused thereafter. Nothing hooks the phase transition — that would mean editing `newPhasePreseason.ts`, which this design exists to avoid. If you never open the page, nothing is generated.
 - **Sim one matchup**: load both teams' players from cache, then `processTeam` -> invert depth -> `getDepthPlayers` -> `new GameSim({...})` -> `gameSimToBoxScore` -> `boxScoreToLiveSim` -> hand to the UI, then write only the final score back to `preseason_matchups`.
 
 Mirror exhibition's `{liveSim}` handoff shape rather than the league route's `{gidOneGame, playByPlay}` — there is no real gid, because no game row is ever written.
 
 ### 4a. Pairing rules
 
-**Week 3 is the Super Bowl rematch.** Last season's two finalists play each other. Derive them from last season's `teamSeasons`: the champion is `playoffRoundsWon === numGamesPlayoffSeries.length` (the same test `views/history.ts:145` uses), and the runner-up is `playoffRoundsWon === length - 1`, which is unique — every other team eliminated in the semifinals won two fewer rounds.
+**Week 3 contains the Super Bowl rematch** as one of its games; the rest of that week is drawn like any other. Derive the finalists from last season's `teamSeasons`: the champion is `playoffRoundsWon === numGamesPlayoffSeries.length` (the same test `views/history.ts:145` uses), and the runner-up is `playoffRoundsWon === length - 1`, which is unique — every other team eliminated in the semifinals won two fewer rounds.
 
 Guard every one of these, falling back to a random pair for week 3:
 
@@ -105,24 +109,25 @@ Guard every one of these, falling back to a random pair for week 3:
 - either finalist is not found, or the two resolve to the same tid
 - a finalist team has since been disabled or contracted
 
-**Weeks 1 and 2 are purely random** — any team may draw any other, with no regard to conference, division or record.
+**Every team plays once a week**, drawn at random with no regard to conference, division or record. An odd team count leaves one team with a bye each week.
 
-**One constraint across all three weeks: no pair repeats.** A team may appear in more than one matchup, but never against the same opponent twice. Generate week 3 first (so the rematch is guaranteed), then draw weeks 1 and 2 rejecting any pair already used.
+**No team faces the same opponent twice across the three weeks**, so each team gets three different opponents. Each week is built by shuffling and pairing greedily, retrying the whole week when it corners itself — the last two unpaired teams having already met is reachable, not hypothetical, which is what the retry loop and its 200-iteration test exist for.
 
-Worth expecting on screen: with 3 pairs drawn from ~32 teams, there is roughly a 1-in-3 chance some team turns up in two of the three matchups. That is allowed by the rule as stated — it is not a bug.
+Week 3 is generated first so the rematch is guaranteed its slot and the other weeks work around it. A week that cannot be filled is skipped rather than treated as an error; only reachable in a tiny league.
 
 ### 5. UI (new view plus four registrations)
 
-- **View**: three columns, one per matchup (weeks 1-3), each with team names and a Watch button. Once a score is stored, the column shows the final score and **the Watch button is disabled** — each matchup is watchable exactly once, so no stored score is ever overwritten. Week 3 is labelled as the Super Bowl rematch when it actually is one.
+- **View**: three columns, one per week, each listing that week's games as `AWAY @ HOME` with a Watch button. Once a score is stored the row shows the final score and **the button is gone** — each game is watchable exactly once, so no stored score is overwritten. Games involving the user's team are highlighted.
 - **Menu**: `menuItems.tsx`, directly beneath Notes (`:278`) in the `League` header. Always visible — there is no phase-conditional flag on `MenuItemLink` (only `league` / `nonLeague` / `godMode`), and adding one is unnecessary. Outside the preseason the page shows an error, matching the Trade page's after-the-deadline behavior (`ui/views/Trade/index.tsx:517`).
 - **Route**: `/l/:lid/preseason_games` in `routeInfos.ts`, plus exports in `ui/views/index.ts` and `worker/views/index.ts`.
 
 ## Decisions
 
-- Three matchups, one per preseason week.
-- Weeks 1-2 random; week 3 is last season's Super Bowl rematch, with fallbacks.
-- No pair repeats across the three weeks; a team may appear twice.
-- Watch is disabled once a score is stored — one watch per matchup, no overwrites.
+- Three preseason weeks; every team plays once a week.
+- Opponents random; one game in week 3 is last season's Super Bowl rematch, with fallbacks.
+- No team faces the same opponent twice across the three weeks.
+- Watch disappears once a score is stored — one watch per game, no overwrites.
+- Odd team count gives one team a bye each week.
 
 ## Testing
 

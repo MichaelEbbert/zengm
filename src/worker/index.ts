@@ -19,6 +19,7 @@ export type WorkerAPICategory =
 	| "leagueFileUpload"
 	| "main"
 	| "playMenu"
+	| "preseasonGames"
 	| "toolsMenu";
 
 // API functions should have at most 2 arguments. First argument is passed here from toWorker. If you need to pass multiple variables, use an object/array. Second argument is Conditions.

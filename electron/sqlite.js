@@ -1450,6 +1450,52 @@ function runMigrations(db) {
 			);
 		})();
 	}
+
+	if (!applied.has("011_preseason_matchups")) {
+		db.transaction(() => {
+			db.exec(`
+				CREATE TABLE preseason_matchups (
+					season     INTEGER NOT NULL,
+					week       INTEGER NOT NULL,
+					home_tid   INTEGER NOT NULL,
+					away_tid   INTEGER NOT NULL,
+					home_pts   INTEGER,
+					away_pts   INTEGER,
+					PRIMARY KEY (season, week)
+				);
+			`);
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"011_preseason_matchups",
+				new Date().toISOString(),
+			);
+		})();
+	}
+
+	// 011 shipped with one game per week. The design changed to a full slate --
+	// every team plays each week -- so the table needs a per-week game index.
+	// Rebuilt rather than altered: the only rows 011 could have produced are
+	// from the superseded one-game-per-week design and are meaningless now.
+	if (!applied.has("012_preseason_matchups_idx")) {
+		db.transaction(() => {
+			db.exec(`
+				DROP TABLE IF EXISTS preseason_matchups;
+				CREATE TABLE preseason_matchups (
+					season     INTEGER NOT NULL,
+					week       INTEGER NOT NULL,
+					idx        INTEGER NOT NULL,
+					home_tid   INTEGER NOT NULL,
+					away_tid   INTEGER NOT NULL,
+					home_pts   INTEGER,
+					away_pts   INTEGER,
+					PRIMARY KEY (season, week, idx)
+				);
+			`);
+			db.prepare("INSERT INTO _migrations (name, run_at) VALUES (?, ?)").run(
+				"012_preseason_matchups_idx",
+				new Date().toISOString(),
+			);
+		})();
+	}
 }
 
 // ---- Phase 5A store serialization helpers ----------------------------------------
@@ -1654,6 +1700,53 @@ export function countSchedule(db) {
 }
 export function maxScheduleGid(db) {
 	return db.prepare("SELECT MAX(gid) AS m FROM schedule").get()?.m ?? -1;
+}
+
+// ---- Preseason exhibition matchups -----------------------------------------
+// Ours alone -- upstream has no preseason. Stores only the pairings and the
+// final score; box scores are deliberately not persisted. A non-null score is
+// what disables that matchup's Watch button.
+
+export function writePreseasonMatchups(db, matchups) {
+	const upsert = db.prepare(
+		"INSERT OR REPLACE INTO preseason_matchups (season, week, idx, home_tid, away_tid, home_pts, away_pts) VALUES (@season, @week, @idx, @home_tid, @away_tid, @home_pts, @away_pts)",
+	);
+	db.transaction(() => {
+		for (const m of matchups) {
+			upsert.run({
+				season: m.season,
+				week: m.week,
+				idx: m.idx,
+				home_tid: m.homeTid,
+				away_tid: m.awayTid,
+				home_pts: m.homePts ?? null,
+				away_pts: m.awayPts ?? null,
+			});
+		}
+	})();
+}
+
+export function readPreseasonMatchups(db, season) {
+	return db
+		.prepare(
+			"SELECT * FROM preseason_matchups WHERE season = ? ORDER BY week ASC, idx ASC",
+		)
+		.all(season)
+		.map((row) => ({
+			season: row.season,
+			week: row.week,
+			idx: row.idx,
+			homeTid: row.home_tid,
+			awayTid: row.away_tid,
+			homePts: row.home_pts === null ? undefined : row.home_pts,
+			awayPts: row.away_pts === null ? undefined : row.away_pts,
+		}));
+}
+
+export function writePreseasonScore(db, season, week, idx, homePts, awayPts) {
+	db.prepare(
+		"UPDATE preseason_matchups SET home_pts = ?, away_pts = ? WHERE season = ? AND week = ? AND idx = ?",
+	).run(homePts, awayPts, season, week, idx);
 }
 
 export function writeDraftPicks(db, draftPicks, deleteDpids = []) {
