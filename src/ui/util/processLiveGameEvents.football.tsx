@@ -484,6 +484,8 @@ export const getText = (event: PlayByPlayEventOutput, numPeriods: number) => {
 		} remaining)${event.toStopClock ? " to stop the clock" : ""}`;
 	} else if (event.type === "twoMinuteWarning") {
 		text = "Two minute warning";
+	} else if (event.type === "outOfBounds") {
+		text = `${event.names[0]} went out of bounds`;
 	} else if (event.type === "kneel") {
 		text = `${event.names[0]} kneels`;
 	} else if (event.type === "flag") {

@@ -4,6 +4,7 @@
 
 import GameSim from "./index.ts";
 import Play from "./Play.ts";
+import type { DeadTimeCase } from "./playClock.ts";
 import loadTeams from "../game/loadTeams.ts";
 import ovr from "../player/ovr.football.ts";
 import { player, team } from "../index.ts";
@@ -96,6 +97,9 @@ const fromRoster = (tid: number, spec: RosterPlayer) => {
 	}
 	ratings.pos = spec.pos;
 	recomputeOvrs(ratings);
+	// No scouting fuzz: depth charts sort on fuzzed ratings, so a fresh fuzz
+	// roll per load would change the starters (even the QB) between runs
+	ratings.fuzz = 0;
 	toHarnessSeason(p);
 	return p;
 };
@@ -347,9 +351,41 @@ export type Snap = {
 	// Set when the clock was stopped going into the next snap; undefined means
 	// it kept running
 	stop?: StopCause;
+	// Seconds of live action the engine charged for the play itself, before
+	// any dead time
+	playTime?: number;
+	// The offense was in hurry-up at the snap (as opposed to hurryUp, which is
+	// about the dead time after the play)
+	hurriedSnap?: boolean;
+	// Seconds of dead time charged after the play (after the pace setting),
+	// and which rule of the plan charged it
+	deadTime?: number;
+	deadTimeCase?: DeadTimeCase;
 	// Seconds of game clock until the next snap in the same period
 	gap?: number;
+	// Down and distance at the snap (meaningless on kickoffs and tries)
+	down?: number;
+	toGo?: number;
+	// What the play added to the offense's stat line -- the totals the coach
+	// reads for its YPC vs YPA ratio
+	stat?: OffenseStat;
 };
+
+const OFFENSE_STATS = [
+	"rus",
+	"rusYds",
+	"pss",
+	"pssYds",
+	"pssSk",
+	"pssSkYds",
+] as const;
+
+export type OffenseStat = Record<(typeof OFFENSE_STATS)[number], number>;
+
+const offenseStat = (stat: Record<string, number>): OffenseStat =>
+	Object.fromEntries(
+		OFFENSE_STATS.map((key) => [key, stat[key] ?? 0]),
+	) as OffenseStat;
 
 export type GameRecord = {
 	pts: [number, number];
@@ -469,13 +505,6 @@ export const simGames = async ({
 		const game = await newGame(i, setting);
 
 		const snaps: Snap[] = [];
-		let hurried = false;
-		const hurryUp = game.hurryUp.bind(game);
-		game.hurryUp = () => {
-			const result = hurryUp();
-			hurried ||= result;
-			return result;
-		};
 
 		const simPlay = game.simPlay.bind(game);
 		game.simPlay = async () => {
@@ -485,9 +514,16 @@ export const simGames = async ({
 			const ptsBefore = [game.team[0].stat.pts, game.team[1].stat.pts];
 			const timeoutsBefore = game.timeouts[0] + game.timeouts[1];
 			const warnedBefore = game.twoMinuteWarningHappened;
+			const down = game.down;
+			const toGo = game.toGo;
+			const statBefore = offenseStat(game.team[offense].stat);
 
-			hurried = false;
 			const out = await simPlay();
+
+			const statAfter = offenseStat(game.team[offense].stat);
+			const stat = Object.fromEntries(
+				OFFENSE_STATS.map((key) => [key, statAfter[key] - statBefore[key]]),
+			) as OffenseStat;
 
 			const types = new Set(
 				game.currentPlay.events.map(({ event }) => event.type as string),
@@ -503,9 +539,16 @@ export const simGames = async ({
 				offense,
 				kind,
 				returned: types.has("kr") || types.has("pr"),
-				hurryUp: hurried,
+				hurryUp: game.lastDeadTimeCase === "hurryUp",
 				ptsScored,
 				newDrive: types.has("newDrive"),
+				playTime: game.lastPlayLength,
+				hurriedSnap: game.currentPlay.hurryUp,
+				deadTime: game.lastDeadTime,
+				deadTimeCase: game.lastDeadTimeCase,
+				down,
+				toGo,
+				stat,
 				stop: game.isClockRunning
 					? undefined
 					: stopCause({
@@ -1122,6 +1165,12 @@ export const gameReport = (records: GameRecord[]) => {
 		drivesPerTeamGame: drives / teamGames,
 		ptsPerDrive: pts / drives,
 		hurryUpSnapsPerGame: snaps.filter((s) => s.hurryUp).length / games,
+		// Plays whose live action took under 4 seconds -- not the 0s snaps
+		// (kickoff touchbacks, extra points, pre-snap fouls)
+		shortPlaysPerGame:
+			snaps.filter(
+				(s) => s.playTime !== undefined && s.playTime > 0 && s.playTime < 4,
+			).length / games,
 		lateHalfPtsPerGame: {
 			firstHalf: lateHalfPts(2) / games,
 			secondHalf: lateHalfPts(4) / games,
@@ -1139,6 +1188,7 @@ export const formatGameReport = (report: GameReport) => {
 		`drives / team-game: ${num(report.drivesPerTeamGame)}`,
 		`pts / drive: ${num(report.ptsPerDrive)}`,
 		`hurry-up snaps / game: ${num(report.hurryUpSnapsPerGame)}`,
+		`plays under 4s / game: ${num(report.shortPlaysPerGame)}`,
 		`pts in the last 2:00 of the 1st half / game: ${num(report.lateHalfPtsPerGame.firstHalf)}`,
 		`pts in the last 2:00 of the 2nd half / game: ${num(report.lateHalfPtsPerGame.secondHalf)}`,
 		"",
@@ -1146,6 +1196,134 @@ export const formatGameReport = (report: GameReport) => {
 	];
 	for (const cause of STOP_CAUSES) {
 		lines.push(`${cause.padStart(18)}  ${num(report.stopsPerGame[cause])}`);
+	}
+	return lines.join("\n");
+};
+
+export type OffenseReport = ReturnType<typeof offenseReport>;
+
+// playDecision's threshold: the YPC vs YPA ratio only runs once the offense
+// has this many rushes and this many dropbacks in the game
+const RATIO_MIN_PLAYS = 5;
+
+/**
+ * Each team's offense (tid 0 and 1): scoring, efficiency as the coach measures
+ * it (YPA is per dropback, sacks included), and its 1st-down calls. "Ratio
+ * calls" are 1st-and-10-or-less runs and passes in quarters 1-3 -- where
+ * playDecision is always in normal mode and the YPC vs YPA ratio decides once
+ * the threshold is met; before it, the coach always runs.
+ */
+export const offenseReport = (records: GameRecord[]) => {
+	const games = records.length;
+
+	const teams = [0, 1].map((t) => {
+		const total = offenseStat({});
+		let pts = 0;
+		let drives = 0;
+		const calls = {
+			before: { n: 0, passes: 0 },
+			after: { n: 0, passes: 0 },
+			byQuarter: [1, 2, 3].map(() => ({ n: 0, passes: 0 })),
+		};
+
+		for (const r of records) {
+			pts += r.pts[t]!;
+			const banked = offenseStat({});
+			for (const s of r.snaps) {
+				if (s.offense !== t) {
+					continue;
+				}
+				if (s.newDrive) {
+					drives += 1;
+				}
+
+				const isPass = PASS_KINDS.has(s.kind);
+				if (
+					(isPass || s.kind === "run") &&
+					s.down === 1 &&
+					s.toGo! <= 10 &&
+					s.quarter <= 3
+				) {
+					const before =
+						banked.rus < RATIO_MIN_PLAYS ||
+						banked.pss + banked.pssSk < RATIO_MIN_PLAYS;
+					for (const bucket of [
+						before ? calls.before : calls.after,
+						calls.byQuarter[s.quarter - 1]!,
+					]) {
+						bucket.n += 1;
+						bucket.passes += isPass ? 1 : 0;
+					}
+				}
+
+				for (const key of OFFENSE_STATS) {
+					banked[key] += s.stat![key];
+					total[key] += s.stat![key];
+				}
+			}
+		}
+
+		const dropbacks = total.pss + total.pssSk;
+		const plays = total.rus + dropbacks;
+		const rate = (b: { n: number; passes: number }) => b.passes / b.n;
+		return {
+			ptsPerTeamGame: pts / games,
+			drivesPerTeamGame: drives / games,
+			ptsPerDrive: pts / drives,
+			playsPerTeamGame: plays / games,
+			ypc: total.rusYds / total.rus,
+			ypa: (total.pssYds - total.pssSkYds) / dropbacks,
+			passRate: dropbacks / plays,
+			firstDown: {
+				callsPerTeamGame: (calls.before.n + calls.after.n) / games,
+				beforeThresholdShare: calls.before.n / (calls.before.n + calls.after.n),
+				passRateBeforeThreshold: rate(calls.before),
+				passRateAfterThreshold: rate(calls.after),
+				passRateByQuarter: calls.byQuarter.map(rate),
+			},
+		};
+	});
+
+	return { games, teams };
+};
+
+/** Side-by-side table of an offenseReport, for console output. */
+export const formatOffenseReport = (
+	report: OffenseReport,
+	names: [string, string],
+) => {
+	const num = (x: number) => x.toFixed(2);
+	const pct = (x: number) => `${(100 * x).toFixed(1)}%`;
+	type Team = OffenseReport["teams"][number];
+	const rows: [string, (t: Team) => string][] = [
+		["pts / team-game", (t) => num(t.ptsPerTeamGame)],
+		["drives / team-game", (t) => num(t.drivesPerTeamGame)],
+		["pts / drive", (t) => num(t.ptsPerDrive)],
+		["plays / team-game", (t) => num(t.playsPerTeamGame)],
+		["YPC", (t) => num(t.ypc)],
+		["YPA (per dropback)", (t) => num(t.ypa)],
+		["pass rate", (t) => pct(t.passRate)],
+		["1st-down ratio calls / game", (t) => num(t.firstDown.callsPerTeamGame)],
+		["  taken before 5 + 5", (t) => pct(t.firstDown.beforeThresholdShare)],
+		[
+			"  pass rate before 5 + 5",
+			(t) => pct(t.firstDown.passRateBeforeThreshold),
+		],
+		["  pass rate after 5 + 5", (t) => pct(t.firstDown.passRateAfterThreshold)],
+		...[1, 2, 3].map((q): [string, (t: Team) => string] => [
+			`  pass rate Q${q}`,
+			(t) => pct(t.firstDown.passRateByQuarter[q - 1]!),
+		]),
+	];
+	const width = Math.max(...rows.map(([label]) => label.length));
+	const lines = [
+		`${report.games} games`,
+		`${"".padEnd(width)}  ${names.map((n) => n.padStart(10)).join("")}`,
+	];
+	for (const [label, fmt] of rows) {
+		lines.push(
+			`${label.padEnd(width)}  ${report.teams.map((t) => fmt(t).padStart(10)).join("")}`,
+		);
 	}
 	return lines.join("\n");
 };

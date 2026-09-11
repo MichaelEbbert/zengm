@@ -1,6 +1,7 @@
 import { assert, describe, test } from "vitest";
 import processLiveGameEvents, {
 	DEFAULT_SPORT_STATE,
+	getText,
 	penaltySegments,
 	type SportState,
 } from "./processLiveGameEvents.football.tsx";
@@ -29,6 +30,14 @@ describe("penaltySegments", () => {
 		// Gain and penalty cancel out: nothing to draw
 		assert.deepStrictEqual(penaltySegments(0, -5), { play: 0, penalty: 0 });
 	});
+});
+
+test("getText says who went out of bounds", () => {
+	const text = getText(
+		{ type: "outOfBounds", clock: 10, names: ["Kyle Philon"], t: 0 },
+		4,
+	);
+	assert.strictEqual(text, "Kyle Philon went out of bounds");
 });
 
 describe("processLiveGameEvents penalty yards", () => {

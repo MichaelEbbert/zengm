@@ -86,6 +86,188 @@ Taken off the game clock after the play's own seconds (part 1). The play clock i
 
 Hurry-up gets the same play + dead-time model, with a shorter dead time than #2 (snapping with ~25s on the play clock, ~10-15s of dead time, as a starting guess) in place of today's 5-13s band. **Keep the existing "leave time for a field goal" rule** (`index.ts:1241`): if the hurry-up dead time would run out the half, charge only 0-4s -- a stand-in for a spike or quick snap so the trailing team keeps its last kick. **Change it gently: the engine's comeback ability must survive.** Measure hurry-up before and after with the harness -- late-game comeback win rate, points in the final two minutes, hurry-up plays per game -- and keep the after close to the before.
 
+### Order of work, and tuning
+
+Build all four pieces with the starting values above first -- play length, out-of-bounds rates, dead time, hurry-up -- each with red-then-green tests and a harness run after it to catch breakage. Tune only once all four are in, because they pull plays per game in opposite directions (piece 1 cost ~5 plays; the shorter dead time should give them back).
+
+**Tuning targets:** ~60-63 offensive plays per team-game (the league runs ~60, the NFL ~63), a real middle in the 11-40s gap band, and comeback rates close to baseline v3.
+
+**Tuning steps (decided 2026-09-10):**
+
+- Push the three dead-time means down 2s per round -- in bounds 32 -> 30 -> 28..., out of bounds 24 -> 22..., penalty 16 -> 14... -- until the targets are met.
+- Also try 1-2s less on the average live-ball time. Note the 4s floor: lowering the 5.8 center alone barely moves the average (at 4.8, a fifth of draws fall under 4 and are redrawn, so the average only reaches ~5.3). A real 1-2s cut needs the floor lowered too.
+- **Preference: avoid 3-second plays** (not a hard rule). So live-ball time is the last lever -- lower the dead-time means first, then nudge the play-length center, and keep the 4s floor unless nothing else gets there.
+
+### Progress
+
+| Piece                  | Status                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1. Play length         | Done (`playClock.ts`, wired into `simPlay`); tested; uncommitted                                                          |
+| 2. Out-of-bounds rates | Done (`OUT_OF_BOUNDS_RATE` in `playClock.ts`, read by `Play.ts`); tested; uncommitted                                     |
+| 3. Dead time           | Done (`DEAD_TIME`, `deadTimeCase` in `playClock.ts`; `outOfBounds` / `penaltyEnforced` in `Play.ts`); tested; uncommitted |
+| 4. Hurry-up            | Done as rethought below (`HURRY_UP_OUT_OF_BOUNDS_RATE`; `Play.hurryUp` set at the snap); tested; uncommitted              |
+
+**After piece 1** (1,000 games + comebacks, vs baseline v3): offensive plays per team-game 63.4 -> 58.4, points 23.5 -> 22.1, points per drive unchanged (2.03 -> 2.07), hurry-up snaps per game 4.8 -> 3.9. 0-5s gaps 45.6% -> 25.9% and 6-10s 14.5% -> 32.4% (stopped-clock plays now take ~6s, not ~2-6s). Comeback TD rates fell 4-10 points in the tight-clock cells (1:00 left, or no timeouts), most for the weaker BUF offense: 2:00 / 0 TO / down 8 went 29.8% -> 20.2%. Piece 4 (hurry-up) has to win that back; piece 3 won't, since hurry-up snaps skip normal dead time.
+
+**After piece 2:** offensive plays per team-game 58.4 -> 56.0 (fewer out-of-bounds stops, 14.7 -> 9.3 per game, means more running-clock snaps); points 22.1 -> 21.2, points per drive unchanged (2.08). Comeback rates within noise of piece 1 -- the tight-clock drop is piece 1's.
+
+**After piece 3:** offensive plays per team-game 56.0 -> **61.2** (in the 60-63 target); the gap shape is transformed -- 0-10s 33.7%, **11-40s 55.8%** (was 2.2%), 41s+ 10.5%; points 23.1 per team-game, 2.09 per drive. But comebacks took a second hit: tight-clock TD rate 17.1% -> 13.9% (v3: 20.2%), 2:00-with-timeouts 32.4% -> 28.9% (v3: 31.8%); late-half points 5.1 -> 4.3 (1st half) and 4.0 -> 3.6 (2nd). Main suspect: a penalty now costs 16s even inside the late windows (~0.6 penalties per two-minute drive, ~10s lost), plus timeouts costing 0-2s instead of 0.
+
+**After piece 4** (hurry-up out of bounds 30% / 10%): plays 60.9; tight-clock comeback TD 14.4% (+0.5 on piece 3) -- the first step barely moves it.
+
+**Tuning round 1** (comeback scenarios only, 1,000 replays per cell; `SIM_TUNE` overrides, source unchanged). Comeback TD rate in the tight cells (1:00 left, or no timeouts) and in the 2:00-with-timeouts cells, then win+tie in the same two groups:
+
+| Config                                    | TD tight | TD 2:00 w/ TOs | Win+tie tight | Win+tie 2:00 w/ TOs |
+| ----------------------------------------- | -------- | -------------- | ------------- | ------------------- |
+| Baseline v3                               | 20.2%    | 31.8%          | 19.1%         | 23.1%               |
+| Piece 4 as built (hurry-up OOB 30% / 10%) | 14.4%    | 28.7%          | 16.2%         | 24.7%               |
+| A: hurry-up OOB 45% / 15%                 | 16.4%    | 30.6%          | 17.4%         | 26.1%               |
+| B: hurry-up OOB 60% / 20%                 | 17.8%    | 32.4%          | 18.8%         | 26.8%               |
+| C (diagnostic): penalty dead time ~0      | 17.5%    | 32.6%          | 18.9%         | 26.4%               |
+| D (diagnostic): hurry-up band 3-9s        | 15.8%    | 30.1%          | 17.2%         | 24.8%               |
+
+B restores the tight-clock win+tie rate; penalty dead time inside the late windows accounts for ~3 points of the TD drop; a shorter hurry-up band helps least.
+
+**Tuning round 2** (1,000 games + comebacks at 2,000 replays per cell). E is B plus the first dead-time step (every mean 2s lower: 30 / 22 / 22 / 14).
+
+| Measure                       | Baseline v3  | B (hurry-up OOB 60/20) | E (B + dead time -2s) |
+| ----------------------------- | ------------ | ---------------------- | --------------------- |
+| Plays per team-game           | 63.4         | **61.5**               | 64.4                  |
+| Gaps 0-10s / 11-40s / 41s+    | 60 / 2 / 38% | 35 / 55 / 10%          | 34 / 61 / 5%          |
+| Points per team-game          | 23.5         | 22.8                   | 23.9                  |
+| Points per drive              | 2.03         | 2.03                   | 2.06                  |
+| Points, last 2:00 of 1st half | 5.56         | 4.42                   | 4.49                  |
+| Points, last 2:00 of 2nd half | 4.48         | 3.81                   | 3.80                  |
+| Comeback TD, tight cells      | 20.2%        | 16.8%                  | 16.6%                 |
+| Comeback TD, 2:00 w/ TOs      | 31.8%        | 30.7%                  | 31.0%                 |
+| Comeback win+tie, tight       | 19.1%        | 18.0%                  | 17.3%                 |
+| Comeback win+tie, 2:00 w/ TOs | 23.1%        | 25.3%                  | 25.3%                 |
+
+(Round 1's 1,000-replay B looked better -- 17.8% / 18.8% -- partly noise.) **B is now the source default.** E overshoots the 60-63 plays target, so the dead-time means stay at the plan's 32 / 24 / 24 / 16; a 1s step (not run) would likely land near the NFL's 63. Dead time doesn't touch comebacks (hurry-up snaps skip it), as expected.
+
+**Tuning round 3 -- measuring open question #1** (penalties stop the clock outright inside the late windows; `LATE_WINDOW_RULES.penaltyDeadTime` is `true` by default = the approved 16s rule, flipped only via `SIM_TUNE` here):
+
+| Measure                               | Baseline v3  | B (default)  | F: no late penalty time, hurry-up OOB 60/20 | G: no late penalty time, hurry-up OOB 45/15 |
+| ------------------------------------- | ------------ | ------------ | ------------------------------------------- | ------------------------------------------- |
+| Plays per team-game                   | 63.4         | 61.5         | 62.8                                        | 62.3                                        |
+| Points per team-game / per drive      | 23.5 / 2.03  | 22.8 / 2.03  | 23.4 / 2.03                                 | 23.2 / 2.06                                 |
+| Points, last 2:00 of 1st / 2nd half   | 5.56 / 4.48  | 4.42 / 3.81  | 5.05 / 4.19                                 | 5.08 / 4.14                                 |
+| Comeback TD, tight / 2:00 w/ TOs      | 20.2 / 31.8% | 16.8 / 30.7% | 21.5 / 34.8%                                | 16.9 / 30.0%                                |
+| Comeback win+tie, tight / 2:00 w/ TOs | 19.1 / 23.1% | 18.0 / 25.3% | 21.3 / 26.2%                                | 18.2 / 23.8%                                |
+
+Taking penalty time out of the late windows closes most of the late-half scoring gap (to ~-0.4 from ~-1). With it, 60/20 hurry-up out of bounds overshoots the comeback baseline a little and 45/15 undershoots the TD rate; H (52/17) splits the difference:
+
+| Measure                               | Baseline v3  | H: no late penalty time, hurry-up OOB 52/17 |
+| ------------------------------------- | ------------ | ------------------------------------------- |
+| Plays per team-game                   | 63.4         | 62.2                                        |
+| Gaps 0-10s / 11-40s / 41s+            | 60 / 2 / 38% | 36 / 54 / 10%                               |
+| Points per team-game / per drive      | 23.5 / 2.03  | 23.5 / 2.10                                 |
+| Points, last 2:00 of 1st / 2nd half   | 5.56 / 4.48  | 5.26 / 4.22                                 |
+| Comeback TD, tight / 2:00 w/ TOs      | 20.2 / 31.8% | 19.0 / 33.2%                                |
+| Comeback win+tie, tight / 2:00 w/ TOs | 19.1 / 23.1% | 19.7 / 25.3%                                |
+
+**H is the recommended final configuration:** every guardrail within ~1-2 points of the baseline, late-half scoring within 0.3, plays per team-game 62.2 (target 60-63), and the 11-40s middle band holding 54% of gaps. Adopting it = decision #1 below (`LATE_WINDOW_RULES.penaltyDeadTime = false`) plus `HURRY_UP_OUT_OF_BOUNDS_RATE` 0.52 / 0.17 -- two constant changes in `playClock.ts`.
+
+### Roster-lottery finding, 2026-09-11
+
+**Every harness comparison above (baseline v3, pieces 1-4, tuning rounds 1-3) carries a roster lottery.** Depth charts sort on scouting-fuzzed ratings, and the real-roster loader re-rolled each player's fuzz on every load -- so the starters changed from run to run, even the QB (LAC: Jordan Allen or Jacob Tiller; BUF: Gaston Harris or Justin Matthews), and most OL/DL/LB slots. That's why the final config's comeback rates fell 1.5-4 points below H in nearly every cell even though a 1s dead-time change can't touch comeback drives. Fixed: real rosters load with fuzz 0 (depth sorted on true ratings, identical every load; guarded by a test). The before-baseline was re-measured from a git worktree at the last commit (old clock code + the same fix) as **baseline v4**, and the final config re-run on the same depth charts -- see "Final comparison" below. Treat the earlier tables as directional only.
+
+### Final comparison, 2026-09-11 -- same starters, before vs after
+
+Baseline v4 (old clock code, from a git worktree at the last commit, `C:\claude_projects\zengm-baseline`) against the final config (all four pieces, the 2026-09-11 decisions), both with fuzz-free real rosters, so the only difference is the clock. 1,000 games each; comebacks 2,000 replays per cell.
+
+| Measure                               | Before (old clock) | After (new clock)      |
+| ------------------------------------- | ------------------ | ---------------------- |
+| Offensive plays per team-game         | 63.1               | **63.7**               |
+| Gaps 0-10s / 11-40s / 41s+            | 59.7 / 2.2 / 38.0% | 36.0 / **57.0** / 7.0% |
+| Points per team-game / per drive      | 23.84 / 2.08       | 23.79 / 2.05           |
+| Hurry-up snaps per game               | 4.96               | 3.22                   |
+| Points, last 2:00 of 1st half         | 5.98               | 5.00                   |
+| Points, last 2:00 of 2nd half         | 4.34               | 4.12                   |
+| Comeback TD, tight / 2:00 w/ TOs      | 21.7 / 33.7%       | 20.0 / 32.9%           |
+| Comeback win+tie, tight / 2:00 w/ TOs | 20.5 / 24.3%       | 20.6 / 25.8%           |
+
+**Verdict: the clock shape is fixed and the game's volume, scoring and comebacks survive.** Plays and points are unchanged; the empty 11-40s band now holds 57% of gaps; comeback win+tie is level or better in every group.
+
+Remaining soft spots:
+
+- **1:00 left with 3 timeouts, down 7-8:** the one place comebacks lost ground -- TD rate down 3-6 points (LAC down 8: 25.7% -> 19.4%; BUF down 8: 23.1% -> 17.3%), win+tie down 2-3. Timeouts now cost 0-2s instead of 0, and 6s plays fit fewer snaps into a minute. Candidate knob: timeout dead time back to 0.
+- **Last 2:00 of the first half: -1.0 points.** First-half hurry-up only starts at midfield (`hurryUp()` needs `scrimmage >= 50` before halftime), so a first-half drive from deep pays full dead time. Not tuned.
+
+### Hurry-up play length and the timeout fix, 2026-09-11
+
+Two changes, both approved: hurry-up snaps (normal plays only) use `HURRY_UP_PLAY_LENGTH` -- center 4.5s, floor 3s, same 10s cap -- and timeouts are only called while the clock is running (a timeout after an already-stopped clock wasted the timeout and 0-2s). Same starters as the final comparison above:
+
+| Measure                               | Before (old clock) | Final (above) | + these two changes |
+| ------------------------------------- | ------------------ | ------------- | ------------------- |
+| Offensive plays per team-game         | 63.1               | 63.7          | 64.8                |
+| Plays under 4s per game (both teams)  | --                 | --            | **4.1**             |
+| Points per team-game / per drive      | 23.84 / 2.08       | 23.79 / 2.05  | 24.72 / 2.10        |
+| Points, last 2:00 of 1st / 2nd half   | 5.98 / 4.34        | 5.00 / 4.12   | 5.45 / 4.82         |
+| Comeback TD, tight / 2:00 w/ TOs      | 21.7 / 33.7%       | 20.0 / 32.9%  | 22.9 / 35.2%        |
+| Comeback win+tie, tight / 2:00 w/ TOs | 20.5 / 24.3%       | 20.6 / 25.8%  | 21.5 / 25.4%        |
+
+The 1:00-with-3-timeouts corner is fixed: LAC down 8 TD rate 25.7% (old clock) -> 19.4% (final) -> 25.4%; BUF down 8 23.1% -> 17.3% -> 23.4%. Comebacks now sit ~1 point above the old clock overall. The 4.1 short plays per game are all two-minute-drill snaps. Plays per team-game (64.8) run ~1.8 over the 63 target; the plan's +1s dead time (32 / 24 / 24 / 16) is the knob if that matters.
+
+### Config K -- production, 2026-09-11
+
+**K = J + 0.5s dead time**, adopted as the production clock (user's call, then season sims in TEST_LEAGUE_1). J is the hurry-up-length + timeout-fix config above; K moves every dead-time mean up 0.5s to 31.5 / 23.5 / 23.5 / 15.5 (no rounding anywhere -- the draws and the game clock are continuous, so half-second steps are real). Same starters:
+
+| Measure                              | Original clock | J     | K (production) |
+| ------------------------------------ | -------------- | ----- | -------------- |
+| Offensive plays per team-game        | 63.1           | 64.7  | **63.8**       |
+| Gaps 0-10s                           | 59.7%          | 36.8% | 36.6%          |
+| Gaps 11-40s                          | 2.2%           | 56.3% | 54.9%          |
+| Gaps 41s+                            | 38.0%          | 6.9%  | 8.5%           |
+| Points per team-game                 | 23.84          | 24.23 | **23.82**      |
+| Points per drive                     | 2.08           | 2.04  | 2.04           |
+| Hurry-up snaps per game              | 4.96           | 3.66  | 3.51           |
+| Plays under 4s per game              | --             | 4.09  | 4.08           |
+| Points, last 2:00 of 1st half        | 5.98           | 5.41  | 5.20           |
+| Points, last 2:00 of 2nd half        | 4.34           | 4.86  | 4.46           |
+| Comeback TD, tight clock             | 21.7%          | 22.9% | 23.0%          |
+| Comeback TD, 2:00 with timeouts      | 33.7%          | 35.2% | 34.2%          |
+| Comeback win+tie, tight clock        | 20.5%          | 21.5% | 21.5%          |
+| Comeback win+tie, 2:00 with timeouts | 24.3%          | 25.4% | 25.1%          |
+
+**Versus the NFL** (Football Commentary's two-minute-drill model, and ESPN): both the original clock and K are ~1.3-1.5x too generous to a trailing team in the final two minutes -- e.g. down 7-8 at ~2:00 from the own 25, the sim scores a TD ~33-35% of the time vs ~20-27% in the NFL. That predates the clock work; the lever is late-game offensive efficiency (see "Desperation Mode Tuning" in `FUTURE_PLANS.md`), not the clock. Not addressed here.
+
+### League validation, TEST_LEAGUE_1 season 2030 -- shipped 2026-09-11
+
+The user simmed season 2030: weeks 1-2 on the old clock, weeks 3+ on K. The early 1st-down pass tweak in `coachDecision.ts` (25% pass on 1st and 6-10 before the 5-and-5 ratio threshold, always run on 1st and 5 or less) went live at week 5 -- the Q1 1st-down pass share jumps from ~12% to 21-37%. Per team-game, regular season:
+
+| Measure                               | Old clock, 2026-29 (1,088 games) | New clock, 2030 wk 3+ (240 games) |
+| ------------------------------------- | -------------------------------- | --------------------------------- |
+| Offensive plays                       | 61.24                            | 61.81                             |
+| Points / drives / points per drive    | 23.16 / 11.00 / 2.11             | 24.57 / 11.28 / 2.18              |
+| Points, last 2:00 Q2 / last 5:00 Q4   | 5.45 / 6.90                      | 5.22 / 7.79                       |
+| FG attempts in the last 0:10 per game | 0.465                            | 0.446                             |
+| Average margin / OT rate              | 11.5 / 4.6%                      | 11.3 / 5.0%                       |
+| TD play length, mean / under 4s       | 5.0s / 38%                       | 7.2s / 4%                         |
+
+Plays match the harness (+0.6). The points rise is within season-to-season drift (22.4-24.0) plus a small coach-tweak effect; game shape (margins, close games, OT, turnovers) is unchanged. The user accepted K and the coach tweak as production; the play-by-play also gained a "went out of bounds" line (`Play.outOfBoundsPlayer`).
+
+### Decisions, 2026-09-11
+
+1. **Penalties inside the late windows: approved** -- they stop the clock outright (`LATE_WINDOW_RULES.penaltyDeadTime = false`), with hurry-up out of bounds at H's 52% / 17%.
+2. **Row 8 (change of possession) at 0s inside the late windows: confirmed.**
+3. **Dead time 1s lower: approved** -- 31 / 23 / 23 / 15s, clip ranges moved with them. Retest results below.
+4. Answered: the H numbers were at 52% hurry-up out of bounds, not 60%; 60% with late penalties free overshoots the comeback baseline.
+
+### State at the end of 2026-09-10, and decisions for the user
+
+All four pieces are built and tested; **nothing is committed** (the user's rule: no commits until the end). Current defaults: play length 5.8 / 1 / 4-10s, big plays 20+ carry or 30+ return yards; out of bounds 6.5% runs / 20% completions, hurry-up 20% / 60%; dead time 32 / 24 / 24 / 16s, timeouts 0-2s; row 8 (change of possession) is 0s inside the late windows.
+
+Open for the user:
+
+1. **Penalties inside the late windows.** Currently 16s (as approved). Making them 0 inside the windows, like out of bounds, is worth ~3 points of comeback TD rate and closes most of the late-half scoring gap. Measured above (round 3): with hurry-up out of bounds at 52/17 ("H") it's the closest match to the baseline on every guardrail. **Recommended.**
+2. **Row 8 inside the late windows** was set to 0s (the recommended option) while the user was away -- confirm or flip.
+3. **Plays per game:** 61.5 with the plan's dead-time means. Keep, or take a 1s step toward the NFL's ~63.
+4. **Late-half points** are ~1 below the baseline in both halves even with comebacks restored; likely because the baseline's 2-6s stopped-clock plays packed extra snaps into the final minutes. Accept, or investigate.
+5. **Hurry-up out of bounds at 60% of completions** is high; it's what it took to restore comebacks without touching the penalty rule. If #1 is adopted, it could come back down (e.g. 45%).
+
+**Piece 4 rethought (2026-09-10):** the plan's hurry-up dead time (~10-15s, replacing 5-13s) would cost comebacks _more_ time, the opposite of the guardrail. Instead: keep the 5-13s band as a tuning knob, and add hurry-up out-of-bounds rates -- a two-minute offense works the sideline, and inside the late windows out of bounds stops the clock outright. Start one small step above normal (completions 20% -> 30%, runs 6.5% -> 10%) and step up while tuning, per the go-ahead to raise stopped-clock frequency in small increments.
+
 ### Future considerations (not in this plan)
 
 - Delay of game running the full 40s play clock off.

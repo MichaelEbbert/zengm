@@ -235,6 +235,13 @@ export type PlayByPlayEventInput =
 			clock: number;
 	  }
 	| {
+			// The ball carrier went out of bounds, stopping the clock
+			type: "outOfBounds";
+			clock: number;
+			names: string[];
+			t: TeamNum;
+	  }
+	| {
 			type: "kneel";
 			clock: number;
 			names: string[];

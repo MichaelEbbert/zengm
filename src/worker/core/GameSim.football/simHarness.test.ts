@@ -3,15 +3,27 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { idb } from "../../db/index.ts";
 import { team } from "../index.ts";
 import {
+	BIG_PLAY_YARDS,
+	DEAD_TIME,
+	HURRY_UP_OUT_OF_BOUNDS_RATE,
+	HURRY_UP_PLAY_LENGTH,
+	LATE_WINDOW_MINUTES,
+	LATE_WINDOW_RULES,
+	OUT_OF_BOUNDS_RATE,
+	PLAY_LENGTH,
+} from "./playClock.ts";
+import {
 	ROSTER_TEMPLATE,
 	STOP_CAUSES,
 	clockReport,
 	formatClockReport,
 	formatGameReport,
+	formatOffenseReport,
 	formatStateResults,
 	formatSummaries,
 	gameReport,
 	genHarnessTeams,
+	offenseReport,
 	setPosition,
 	simFromState,
 	simGames,
@@ -142,6 +154,23 @@ describe("sim harness", () => {
 			assert.deepStrictEqual(loaded, expected, roster.abbrev);
 			assert.strictEqual(await teamOvr(tid), roster.teamOvr, roster.abbrev);
 			await assertStartersPlayTheirPosition(tid);
+		}
+	});
+
+	test("real rosters get the same depth chart on every load", async () => {
+		// Depth charts sort on fuzzed ratings; a fresh fuzz roll per load would
+		// change the starters -- even the QB -- between before/after runs
+		const { LAC, BUF } = goinFast1921();
+		const depths = async () => {
+			await genHarnessTeams({ rosters: [LAC, BUF] });
+			return [
+				(await idb.cache.teams.get(0))!.depth,
+				(await idb.cache.teams.get(1))!.depth,
+			];
+		};
+		const first = await depths();
+		for (let i = 0; i < 3; i++) {
+			assert.deepStrictEqual(await depths(), first, `load ${i + 2}`);
 		}
 	});
 
@@ -643,45 +672,208 @@ describe("clock", () => {
 		}
 	}, 60_000);
 
-	test("a snap's stop cause agrees with the time the engine charged", async () => {
-		await genHarnessTeams();
-		const records = await simGames({ n: 10, coach: false });
-		const snaps = records
-			.flatMap((r) => r.snaps)
-			.filter((s) => s.gap !== undefined && !s.hurryUp);
+	test("each snap's dead time follows its case, and the gap is play plus dead time", async () => {
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+		const records = await simGames({ n: 20, coach: true });
+		const snaps = records.flatMap((r) => r.snaps);
 
-		// The two-minute warning can cut the dead time anywhere, and a kneel's
-		// dead time is inside its own play time whatever stopped the clock after
-		// it (a timeout, say)
-		const running = snaps.filter((s) => s.stop === undefined);
-		const stopped = snaps.filter(
-			(s) =>
-				s.stop !== undefined &&
-				s.kind !== "kneel" &&
-				s.stop !== "twoMinuteWarning",
-		);
-		assert.ok(
-			running.length > 100 && stopped.length > 100,
-			`${running.length} running, ${stopped.length} stopped`,
-		);
+		// The hurry-up floor is 0 because of the "leave time for a field goal" rule
+		const range = (c: string): [number, number] => {
+			if (c === "none") return [0, 0];
+			if (c === "timeout") return [0, 2];
+			if (c === "hurryUp") return [0, 13];
+			const spec = DEAD_TIME[c as keyof typeof DEAD_TIME] as {
+				min: number;
+				max: number;
+			};
+			return [spec.min, spec.max];
+		};
 
-		// Running: 37-62s of dead time on top of the play
-		for (const s of running) {
+		const seen = new Set<string>();
+		for (const s of snaps) {
 			assert.ok(
-				s.gap! >= 37,
-				`running clock after a ${s.kind}, only ${s.gap}s`,
+				s.deadTimeCase !== undefined && s.deadTime !== undefined,
+				`${s.kind}: no dead time recorded`,
+			);
+			seen.add(s.deadTimeCase);
+
+			const [lo, hi] = range(s.deadTimeCase);
+			assert.ok(
+				s.deadTime <= hi + 1e-9,
+				`${s.deadTimeCase} after a ${s.kind}: ${s.deadTime}s`,
+			);
+			// The two-minute warning and the end of a period can cut it short
+			if (s.gap !== undefined && s.stop !== "twoMinuteWarning") {
+				assert.ok(
+					s.deadTime >= lo - 1e-9,
+					`${s.deadTimeCase} after a ${s.kind}: ${s.deadTime}s`,
+				);
+			}
+
+			// The gap to the next snap is the play plus the dead time, unless the
+			// period's clock ran out first
+			if (s.gap !== undefined) {
+				const charged = s.playTime! + s.deadTime;
+				if (s.clock * 60 - s.gap > 0.01) {
+					assert.ok(
+						Math.abs(s.gap - charged) < 0.01,
+						`gap ${s.gap}s vs ${s.playTime}s play + ${s.deadTime}s dead`,
+					);
+				} else {
+					assert.ok(s.gap <= charged + 0.01, `gap ${s.gap}s > ${charged}s`);
+				}
+			}
+
+			// Out of bounds and changes of possession stop the clock outright in
+			// the last 2:00 of the first half and the last 5:00 of the game
+			if (
+				s.deadTimeCase === "outOfBounds" ||
+				s.deadTimeCase === "possessionChange"
+			) {
+				const clockAfterPlay = s.clock - s.playTime! / 60;
+				const late =
+					(s.quarter === 2 && clockAfterPlay <= 2) ||
+					(s.quarter >= 4 && clockAfterPlay <= 5);
+				assert.ok(
+					!late,
+					`${s.deadTimeCase} dead time at ${clockAfterPlay.toFixed(2)} in Q${s.quarter}`,
+				);
+			}
+		}
+
+		for (const c of [
+			"inBounds",
+			"outOfBounds",
+			"possessionChange",
+			"penalty",
+			"none",
+		]) {
+			assert.ok(seen.has(c), `no ${c} snaps in 20 games`);
+		}
+	}, 60_000);
+
+	test("each snap's play time follows the play-length plan", async () => {
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+		const records = await simGames({ n: 20, coach: true });
+		const snaps = records.flatMap((r) => r.snaps);
+
+		const scrimmage = snaps.filter((s) =>
+			["run", "completion", "incompletion", "interception", "sack"].includes(
+				s.kind,
+			),
+		);
+		assert.ok(scrimmage.length > 1000, `${scrimmage.length} scrimmage plays`);
+		// Hurry-up snaps have their own, shorter play length (floor 3s)
+		for (const s of scrimmage) {
+			const floor = s.hurriedSnap ? 3 : 4;
+			assert.ok(
+				s.playTime !== undefined && s.playTime >= floor && s.playTime <= 12,
+				`${s.kind} took ${s.playTime}s`,
 			);
 		}
-		// Stopped: only the play's own seconds
-		for (const s of stopped) {
-			assert.ok(s.gap! < 37, `${s.stop} after a ${s.kind}, but ${s.gap}s`);
-		}
+
+		// A few big plays a game, and a mean near 6s
+		const times = scrimmage.map((s) => s.playTime!);
+		const big = times.filter((t) => t >= 10).length / times.length;
+		assert.ok(
+			big >= 0.01 && big <= 0.06,
+			`${(100 * big).toFixed(1)}% big plays`,
+		);
+		const avg = times.reduce((a, b) => a + b, 0) / times.length;
+		assert.ok(avg >= 5.7 && avg <= 6.5, `mean play ${avg.toFixed(2)}s`);
+
 		for (const s of snaps) {
-			if (s.kind === "incompletion") {
-				assert.ok(s.stop !== undefined, "clock running after an incompletion");
+			if (s.kind === "extraPoint" || s.kind === "twoPoint") {
+				assert.strictEqual(s.playTime, 0, `${s.kind} took ${s.playTime}s`);
+			}
+			if (s.kind !== "kneel") {
+				assert.ok(
+					s.playTime !== undefined && s.playTime <= 12,
+					`${s.kind} took ${s.playTime}s`,
+				);
 			}
 		}
 	}, 60_000);
+
+	test("no timeout is called after a play that already stopped the clock", async () => {
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+		const records = await simGames({ n: 50, coach: true });
+		const timeouts = records
+			.flatMap((r) => r.snaps)
+			.filter((s) => s.deadTimeCase === "timeout");
+		assert.ok(timeouts.length > 0, "no timeouts in 50 games");
+		for (const s of timeouts) {
+			assert.ok(
+				s.kind !== "incompletion" &&
+					s.kind !== "extraPoint" &&
+					s.kind !== "twoPoint" &&
+					s.ptsScored[0] + s.ptsScored[1] === 0,
+				`timeout after a ${s.kind} (${s.ptsScored.join("-")} scored)`,
+			);
+		}
+	}, 120_000);
+
+	test("hurry-up snaps get the shorter hurry-up play length", async () => {
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+		const records = await simGames({ n: 50, coach: true });
+		const scrimmage = records
+			.flatMap((r) => r.snaps)
+			.filter((s) =>
+				["run", "completion", "incompletion", "interception", "sack"].includes(
+					s.kind,
+				),
+			);
+		const hurried = scrimmage.filter((s) => s.hurriedSnap);
+		const normal = scrimmage.filter((s) => !s.hurriedSnap);
+		assert.ok(hurried.length > 100, `${hurried.length} hurried snaps`);
+
+		for (const s of normal) {
+			assert.ok(s.playTime! >= 4, `normal ${s.kind} took ${s.playTime}s`);
+		}
+		for (const s of hurried) {
+			assert.ok(s.playTime! >= 3, `hurried ${s.kind} took ${s.playTime}s`);
+		}
+		const short =
+			hurried.filter((s) => s.playTime! < 4).length / hurried.length;
+		assert.ok(
+			short > 0.15 && short < 0.35,
+			`${(100 * short).toFixed(1)}% of hurried plays under 4s`,
+		);
+	}, 120_000);
+
+	test("gameReport counts plays shorter than 4 seconds per game", () => {
+		const snap = (playTime: number) => ({
+			quarter: 1,
+			clock: 10,
+			offense: 0,
+			kind: "run" as SnapKind,
+			returned: false,
+			hurryUp: false,
+			ptsScored: [0, 0] as [number, number],
+			newDrive: false,
+			playTime,
+		});
+		const records: GameRecord[] = [
+			{
+				pts: [0, 0],
+				overtimes: 0,
+				coachPlayCalling: [true, true],
+				// A 0s snap (touchback, extra point, pre-snap foul) isn't a short play
+				snaps: [snap(3.2), snap(3.9), snap(4), snap(6), snap(0)],
+			},
+			{
+				pts: [0, 0],
+				overtimes: 0,
+				coachPlayCalling: [true, true],
+				snaps: [snap(5)],
+			},
+		];
+		assert.strictEqual(gameReport(records).shortPlaysPerGame, 1);
+	});
 
 	test("gameReport counts drives, late-half points and clock stops per game", () => {
 		const snap = (
@@ -762,9 +954,181 @@ describe("clock", () => {
 	});
 });
 
+describe("offense report", () => {
+	test("snaps record the down, distance and the offense's stat line for the play", async () => {
+		await genHarnessTeams();
+		const records = await simGames({ n: 3, coach: true });
+		for (const r of records) {
+			for (const s of r.snaps) {
+				if (
+					s.newDrive &&
+					["run", "completion", "incompletion"].includes(s.kind)
+				) {
+					assert.strictEqual(s.down, 1, "a drive starts on 1st down");
+				}
+				if (s.kind === "run" || s.kind === "completion") {
+					assert.ok(s.toGo! >= 1 && s.down! >= 1 && s.down! <= 4);
+				}
+				// Rushing stats only come from runs (scrambles included), passing
+				// stats only from throws -- a flag can wipe either out
+				if (s.stat!.rus > 0) {
+					assert.ok(["run", "kneel"].includes(s.kind), `rush on a ${s.kind}`);
+				}
+				if (s.stat!.pss > 0) {
+					assert.ok(
+						["completion", "incompletion", "interception"].includes(s.kind),
+						`pass attempt on a ${s.kind}`,
+					);
+				}
+				if (s.stat!.pssSk > 0) {
+					assert.strictEqual(s.kind, "sack");
+				}
+			}
+			for (const t of [0, 1]) {
+				const plays = r.snaps
+					.filter((s) => s.offense === t)
+					.reduce(
+						(sum, s) => sum + s.stat!.rus + s.stat!.pss + s.stat!.pssSk,
+						0,
+					);
+				assert.ok(plays >= 35 && plays <= 95, `${plays} plays`);
+			}
+		}
+	}, 60_000);
+
+	test("offenseReport gives each team's efficiency and its 1st-down calls through the game", () => {
+		const stat = (fields: Partial<Record<string, number>>) => ({
+			rus: 0,
+			rusYds: 0,
+			pss: 0,
+			pssYds: 0,
+			pssSk: 0,
+			pssSkYds: 0,
+			...fields,
+		});
+		const snap = (
+			offense: number,
+			kind: SnapKind,
+			down: number,
+			fields: Partial<Record<string, number>>,
+			{ quarter = 1, toGo = 10, newDrive = false, ptsScored = [0, 0] } = {},
+		) => ({
+			quarter,
+			clock: 10,
+			offense,
+			kind,
+			returned: false,
+			hurryUp: false,
+			ptsScored: ptsScored as [number, number],
+			newDrive,
+			down,
+			toGo,
+			stat: stat(fields),
+		});
+		const run = (offense: number, yds: number, down = 1, opts = {}) =>
+			snap(offense, "run", down, { rus: 1, rusYds: yds }, opts);
+		const pass = (offense: number, yds: number, down = 1, opts = {}) =>
+			snap(offense, "completion", down, { pss: 1, pssYds: yds }, opts);
+
+		const records: GameRecord[] = [
+			{
+				pts: [7, 0],
+				overtimes: 0,
+				coachPlayCalling: [true, true],
+				snaps: [
+					// Team 0: 5 runs and 5 passes on 1st down in Q1, before the ratio
+					// kicks in (the 5th of each is taken with fewer than 5 banked)
+					run(0, 2, 1, { newDrive: true }),
+					run(0, 2),
+					run(0, 2),
+					run(0, 2),
+					run(0, 2),
+					pass(0, 10),
+					pass(0, 10),
+					pass(0, 10),
+					pass(0, 10),
+					pass(0, 10),
+					// A sack counts as a dropback: 5 dropbacks + 1 sack for -6
+					snap(0, "sack", 2, { pssSk: 1, pssSkYds: 6 }),
+					// After the threshold, in Q2: 1 run and 3 passes on 1st down
+					run(0, 2, 1, { quarter: 2 }),
+					pass(0, 10, 1, { quarter: 2 }),
+					pass(0, 10, 1, { quarter: 2 }),
+					pass(0, 10, 1, { quarter: 2, ptsScored: [6, 0] }),
+					// 1st and 15 and 4th-quarter snaps aren't ratio calls
+					pass(0, 10, 1, { quarter: 1, toGo: 15 }),
+					run(0, 2, 1, { quarter: 4 }),
+					// Team 1: one run
+					run(1, 4, 1, { newDrive: true }),
+				],
+			},
+		];
+
+		const report = offenseReport(records);
+		const t0 = report.teams[0]!;
+		assert.strictEqual(report.games, 1);
+		assert.strictEqual(t0.ptsPerTeamGame, 7);
+		assert.strictEqual(t0.drivesPerTeamGame, 1);
+		assert.strictEqual(t0.playsPerTeamGame, 17);
+		// 7 runs for 14 yards; 9 attempts for 90 yards and a sack for 6, per
+		// dropback -- the same YPA the coach compares against
+		assert.strictEqual(t0.ypc, 2);
+		assert.strictEqual(t0.ypa, 84 / 10);
+		assert.strictEqual(t0.passRate, 10 / 17);
+		// 14 ratio calls: 10 before the threshold (5 passes), 4 after (3 passes)
+		assert.strictEqual(t0.firstDown.callsPerTeamGame, 14);
+		assert.strictEqual(t0.firstDown.beforeThresholdShare, 10 / 14);
+		assert.strictEqual(t0.firstDown.passRateBeforeThreshold, 5 / 10);
+		assert.strictEqual(t0.firstDown.passRateAfterThreshold, 3 / 4);
+		assert.deepStrictEqual(t0.firstDown.passRateByQuarter, [0.5, 0.75, NaN]);
+
+		const t1 = report.teams[1]!;
+		assert.strictEqual(t1.ypc, 4);
+		assert.ok(Number.isNaN(t1.ypa));
+		assert.ok(formatOffenseReport(report, ["AAA", "BBB"]).includes("YPA"));
+	});
+});
+
 // The clock experiments play real teams, the same two every run, so a
 // before/after comparison isn't also a roster comparison: Goin Fast's LAC
 // (team ovr 63) against BUF (44).
+
+// SIM_TUNE='{"DEAD_TIME":{"penalty":{"mean":14,"min":6,"max":21}}}' overrides
+// the clock tables in playClock.ts for one run, so tuning rounds can run side
+// by side without editing the source. Merged two levels deep.
+const applyTuning = () => {
+	if (!process.env.SIM_TUNE) {
+		return;
+	}
+	const tables: Record<string, Record<string, unknown>> = {
+		BIG_PLAY_YARDS,
+		DEAD_TIME,
+		HURRY_UP_OUT_OF_BOUNDS_RATE,
+		HURRY_UP_PLAY_LENGTH,
+		LATE_WINDOW_MINUTES,
+		LATE_WINDOW_RULES,
+		OUT_OF_BOUNDS_RATE,
+		PLAY_LENGTH,
+	};
+	const tune = JSON.parse(process.env.SIM_TUNE) as Record<
+		string,
+		Record<string, unknown>
+	>;
+	for (const [name, changes] of Object.entries(tune)) {
+		const table = tables[name];
+		if (!table) {
+			throw new Error(`SIM_TUNE: unknown table ${name}`);
+		}
+		for (const [key, value] of Object.entries(changes)) {
+			if (typeof value === "object" && value !== null) {
+				Object.assign(table[key] as object, value);
+			} else {
+				table[key] = value;
+			}
+		}
+	}
+	process.stdout.write(`\nSIM_TUNE applied: ${process.env.SIM_TUNE}\n`);
+};
 
 // Experiment runner, skipped unless SIM_HARNESS is set:
 //   SIM_HARNESS=1 SIM_GAMES=1000 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "clock distribution"
@@ -772,6 +1136,7 @@ test.skipIf(!process.env.SIM_HARNESS)(
 	"experiment: clock distribution, coach play-calling",
 	async () => {
 		const n = Number(process.env.SIM_GAMES ?? 1000);
+		applyTuning();
 
 		const { LAC, BUF } = goinFast1921();
 		await genHarnessTeams({ rosters: [LAC, BUF] });
@@ -801,6 +1166,7 @@ test.skipIf(!process.env.SIM_HARNESS)(
 	"experiment: comeback drives, coach play-calling",
 	async () => {
 		const n = Number(process.env.SIM_TRIALS ?? 2000);
+		applyTuning();
 		const { LAC, BUF } = goinFast1921();
 
 		const results: Record<string, StateResult> = {};
@@ -834,6 +1200,36 @@ test.skipIf(!process.env.SIM_HARNESS)(
 		process.stdout.write(`\n${formatStateResults(results)}\n\n`);
 		if (process.env.SIM_OUT) {
 			writeFileSync(process.env.SIM_OUT, JSON.stringify(results, null, 2));
+		}
+	},
+	60 * 60 * 1000,
+);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_GAMES=2000 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "offense by team"
+// Each team's offense under coach play-calling, LAC vs BUF -- how fast the
+// YPC vs YPA ratio steers 1st-down calls toward the better way to move the ball
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: offense by team, coach play-calling",
+	async () => {
+		const n = Number(process.env.SIM_GAMES ?? 1000);
+		applyTuning();
+
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+
+		const records = await simGames({ n, coach: true });
+		const offense = offenseReport(records);
+		const game = gameReport(records);
+
+		process.stdout.write(
+			`\n${formatOffenseReport(offense, ["LAC", "BUF"])}\n\n${formatGameReport(game)}\n\n`,
+		);
+		if (process.env.SIM_OUT) {
+			writeFileSync(
+				process.env.SIM_OUT,
+				JSON.stringify({ offense, game }, null, 2),
+			);
 		}
 	},
 	60 * 60 * 1000,

@@ -1,6 +1,11 @@
 import type GameSim from "./index.ts";
 import { g } from "../../util/index.ts";
 import getBestPenaltyResult from "./getBestPenaltyResult.ts";
+import {
+	HURRY_UP_OUT_OF_BOUNDS_RATE,
+	OUT_OF_BOUNDS_RATE,
+	playOutcome,
+} from "./playClock.ts";
 import type { PlayerGameSim } from "./types.ts";
 import type { TeamNum } from "../../../common/types.ts";
 
@@ -267,6 +272,9 @@ export class State {
 	pts: [number, number];
 	twoPointConversionTeam: TeamNum | undefined;
 	turnoverOnDowns: boolean;
+	// The clock stopped because the play went out of bounds (the random roll),
+	// rather than for some other reason
+	outOfBounds: boolean;
 
 	constructor(
 		gameSim: PlayState,
@@ -279,6 +287,7 @@ export class State {
 			pts,
 			twoPointConversionTeam,
 			turnoverOnDowns,
+			outOfBounds,
 		}: {
 			downIncremented: boolean;
 			firstDownLine: number | undefined;
@@ -288,6 +297,7 @@ export class State {
 			pts: [number, number];
 			twoPointConversionTeam: TeamNum | undefined;
 			turnoverOnDowns: boolean;
+			outOfBounds: boolean;
 		},
 	) {
 		this.down = gameSim.down;
@@ -312,6 +322,7 @@ export class State {
 		this.pts = pts;
 		this.twoPointConversionTeam = twoPointConversionTeam;
 		this.turnoverOnDowns = turnoverOnDowns;
+		this.outOfBounds = outOfBounds;
 	}
 
 	clone() {
@@ -324,6 +335,7 @@ export class State {
 			pts: [...this.pts],
 			twoPointConversionTeam: this.twoPointConversionTeam,
 			turnoverOnDowns: this.turnoverOnDowns,
+			outOfBounds: this.outOfBounds,
 		});
 	}
 
@@ -403,6 +415,10 @@ class Play {
 	}[];
 	cleanHandsChangeOfPossessionIndexes: number[];
 	spotOfEnforcementIndexes: number[];
+	// A penalty was accepted, or offsetting penalties were called
+	penaltyEnforced: boolean;
+	// The offense was in hurry-up at the snap (set by GameSim)
+	hurryUp: boolean;
 
 	constructor(gameSim: GameSim) {
 		this.g = gameSim;
@@ -417,6 +433,7 @@ class Play {
 			pts: [gameSim.team[0].stat.pts, gameSim.team[1].stat.pts],
 			twoPointConversionTeam: undefined,
 			turnoverOnDowns: false,
+			outOfBounds: false,
 		});
 		this.state = {
 			initial: initialState,
@@ -425,6 +442,8 @@ class Play {
 		this.penaltyRollbacks = [];
 		this.cleanHandsChangeOfPossessionIndexes = [];
 		this.spotOfEnforcementIndexes = [];
+		this.penaltyEnforced = false;
+		this.hurryUp = false;
 	}
 
 	// If there is going to be a possession change related to this yds quantity, do possession change before calling boundedYds
@@ -769,7 +788,10 @@ class Play {
 		} else if (event.type === "rus") {
 			state.incrementDown();
 			state.scrimmage += event.yds;
-			state.isClockRunning = Math.random() < 0.85;
+			state.isClockRunning =
+				Math.random() >=
+				(this.hurryUp ? HURRY_UP_OUT_OF_BOUNDS_RATE : OUT_OF_BOUNDS_RATE).run;
+			state.outOfBounds = !state.isClockRunning;
 		} else if (event.type === "kneel") {
 			state.incrementDown();
 			state.scrimmage += event.yds;
@@ -778,12 +800,17 @@ class Play {
 			state.isClockRunning = false;
 		} else if (event.type === "sk") {
 			state.scrimmage += event.yds;
-			state.isClockRunning = Math.random() < 0.98;
+			state.isClockRunning = Math.random() >= OUT_OF_BOUNDS_RATE.sack;
+			state.outOfBounds = !state.isClockRunning;
 		} else if (event.type === "dropback") {
 			state.incrementDown();
 		} else if (event.type === "pssCmp") {
 			state.scrimmage += event.yds;
-			state.isClockRunning = Math.random() < 0.75;
+			state.isClockRunning =
+				Math.random() >=
+				(this.hurryUp ? HURRY_UP_OUT_OF_BOUNDS_RATE : OUT_OF_BOUNDS_RATE)
+					.completion;
+			state.outOfBounds = !state.isClockRunning;
 		} else if (event.type === "pssInc") {
 			state.isClockRunning = false;
 		} else if (event.type === "int") {
@@ -830,7 +857,9 @@ class Play {
 				state.isClockRunning = false;
 			} else {
 				// Stops if fumbled out of bounds
-				state.isClockRunning = Math.random() > 0.05;
+				state.isClockRunning =
+					Math.random() >= OUT_OF_BOUNDS_RATE.recoveredFumble;
+				state.outOfBounds = !state.isClockRunning;
 			}
 		} else if (event.type === "newDrive") {
 			state.currentDrive = state.o;
@@ -1339,6 +1368,8 @@ class Play {
 
 			// Actually apply result of accepted penalty - ASSUMES JUST ONE IS ACCEPTED
 			this.state.current = result.state;
+			this.penaltyEnforced =
+				result.indexAccept >= 0 || offsetStatus === "offset";
 
 			if (result.indexAccept >= 0 || offsetStatus === "offset") {
 				const statChanges = [
@@ -1380,6 +1411,42 @@ class Play {
 				) {
 					this.g.playByPlay.removeLastScore();
 				}
+			}
+		}
+	}
+
+	/**
+	 * Who took the ball out of bounds, when that's what stopped the clock --
+	 * not when a score, turnover, enforced penalty or try did, for the
+	 * play-by-play.
+	 */
+	outOfBoundsPlayer(): PlayerGameSim | undefined {
+		const { initial, current } = this.state;
+		if (
+			!current.outOfBounds ||
+			this.penaltyEnforced ||
+			current.turnoverOnDowns ||
+			current.o !== initial.o ||
+			current.pts[0] !== initial.pts[0] ||
+			current.pts[1] !== initial.pts[1] ||
+			playOutcome(this.events.map(({ event }) => event)).type !== "play"
+		) {
+			return;
+		}
+
+		// The last event that rolled for out of bounds
+		for (const { event } of this.events.toReversed()) {
+			if (event.type === "rus") {
+				return event.p;
+			}
+			if (event.type === "pssCmp") {
+				return event.target;
+			}
+			if (event.type === "sk") {
+				return event.qb;
+			}
+			if (event.type === "fmbRec" && !event.lost) {
+				return event.pRecovered;
 			}
 		}
 	}

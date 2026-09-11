@@ -35,9 +35,9 @@ ZenGM (TypeScript, browser web worker, Electron runtime)
 
 ---
 
-## Resume Checkpoint (2026-09-10)
+## Resume Checkpoint (2026-09-11)
 
-**Working on `docs/clock_play_pacing.md`: the "new clock" dev plan, still in the stats-theory discussion** -- nothing in the engine's clock code has been changed yet.
+**The "new clock" (`docs/clock_play_pacing.md`) shipped 2026-09-11, tagged `pre-2002-daily-league-season`.** Production config **K** in `playClock.ts`: penalties stop the clock inside the late windows, hurry-up out of bounds 52% / 17%, dead time 31.5 / 23.5 / 23.5 / 15.5s, hurry-up play length 4.5s center / 3s floor (normal plays in hurry-up only), and timeouts only while the clock runs. The doc's "Config K -- production" section is the harness before/after (plays 63.1 -> 63.8, points 23.84 -> 23.82, 11-40s gaps 2% -> 55%, comebacks ~1 point up); "League validation" is the TEST_LEAGUE_1 season 2030 check. Shipped with it: the early 1st-down pass tweak in `coachDecision.ts` (`EARLY_FIRST_DOWN_PASS_RATE` 0.25 before the 5-and-5 ratio threshold), the harness `offenseReport`, and a "went out of bounds" play-by-play line. Offered, not started: change-of-possession dead time vs the NFL's snap restart, trailing-team tempo before 2:00, and the `formatClock` 1:59 display quirk. The before-baseline worktree `C:\claude_projects\zengm-baseline` can be deleted -- `node_modules` there is a junction to this repo's, so `rmdir` the junction first or it takes this repo's `node_modules` with it.
 
 Where things stand:
 
@@ -45,7 +45,8 @@ Where things stand:
 - **Leading plan:** the "Leading plan" section of `docs/clock_play_pacing.md`, three parts: (1) a new live-action play-length distribution (floor 4s, max 12s, mean 6s; 97% Gaussian 5.8/1 redrawn below 4, 3% big plays uniform 10-12s tied to the play's result); (2) lower out-of-bounds rates, runs 15% -> ~6-7%, completions 25% -> ~20%; (3) a dead-time table by how the play ended -- in bounds ~32s clipped 24-39s, out of bounds ~24s except 0s inside the late windows (last 2:00 of the first half, last 5:00 of the game), changes of possession as out of bounds. Hurry-up joins the model gently, with before/after harness tests so comebacks survive. All earlier candidate fixes were dropped in its favor.
 - **Baseline measured:** the "Harness baseline v3" section of the same doc -- 1,000 games of Goin Fast's LAC (team ovr 63) vs BUF (44), real rosters (plays per team-game, the gap histogram, points/drives, late-half points, clock stops by cause), plus 12 comeback scenarios x 2,000 replays with each team trailing. Scoring matches the real league (23.5 pts per team-game, 2.0 per drive). Re-measure any change with `-t "clock distribution"` and `-t "comeback"` (see "Sim harness" below) and compare against it.
 - **Earlier harness numbers are void.** Until 2026-09-10 every harness depth chart was empty (ratings dated 2016 vs the harness season 2013), so the sim fielded players in roster order -- cornerbacks at QB. The coach vs stock, head-to-head and 4th-and-2 results, and the v1/v2 baselines, all came from that; rerun before relying on any of them.
-- **No unit tests cover `isClockRunning` today.** Any clock change gets red-then-green tests first, in `Play.test.ts` (build the play by hand) and/or the harness.
+- **Built:** `GameSim.football/playClock.ts` holds every clock table -- `PLAY_LENGTH`, `BIG_PLAY_YARDS`, `OUT_OF_BOUNDS_RATE`, `HURRY_UP_OUT_OF_BOUNDS_RATE`, `DEAD_TIME`, `LATE_WINDOW_MINUTES` -- plus `playOutcome`/`playLength` and `deadTimeCase`/`deadTime`. `simPlay` (`index.ts`) draws one play length per play and one dead time per play from them; `Play.ts` gained `State.outOfBounds`, `Play.penaltyEnforced` and `Play.hurryUp`. Tests: `playClock.test.ts`, the "out-of-bounds clock stops" block in `Play.test.ts`, and the harness play-time / dead-time tests.
+- **Tuning runs without editing source:** `SIM_TUNE='{"DEAD_TIME":{"penalty":{"mean":14,"min":6,"max":21}}}'` on the "clock distribution" / "comeback" experiments overrides the tables for that run, so configs run side by side. A comparison script lives in the session scratchpad (`compare.js`) -- rewrite it if the scratchpad is gone.
 
 ---
 

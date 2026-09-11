@@ -417,3 +417,50 @@ test("coachPlayCalling routes play calls through coachPlayCall", async () => {
 		"team 1 has the ball, coach off: stock play-calling",
 	);
 });
+
+test("the play-by-play says who went out of bounds, right after their play", async () => {
+	const teams = await loadTeams([0, 1], {});
+	for (const t of [teams[0], teams[1]]) {
+		if (t.depth !== undefined) {
+			t.depth = team.getDepthPlayers(t.depth, t.player);
+		}
+	}
+
+	let found = 0;
+	for (let i = 0; i < 3; i++) {
+		const game = new GameSim({
+			gid: i,
+			teams: [structuredClone(teams[0]), structuredClone(teams[1])] as any,
+			baseInjuryRate: g.get("injuryRate"),
+			doPlayByPlay: true,
+			homeCourtFactor: 1,
+			allStarGame: false,
+			neutralSite: false,
+		});
+		const result = await game.run();
+		const events = result.playByPlay as any[];
+
+		for (const [j, e] of events.entries()) {
+			if (e.type !== "outOfBounds") {
+				continue;
+			}
+			found += 1;
+
+			// The carrier is on the play since the last snap, and no score or
+			// turnover came with it
+			const play: any[] = [];
+			for (let k = j - 1; k >= 0 && events[k].type !== "clock"; k--) {
+				play.unshift(events[k]);
+			}
+			const carrier = play.findLast((x) =>
+				["run", "passComplete", "sack", "fumbleRecovery"].includes(x.type),
+			);
+			assert.ok(carrier, `no ball carrier before: ${JSON.stringify(play)}`);
+			const name =
+				carrier.type === "passComplete" ? carrier.names[1] : carrier.names[0];
+			assert.deepStrictEqual(e.names, [name]);
+			assert.ok(!play.some((x) => x.td || x.safety || x.lost));
+		}
+	}
+	assert.ok(found > 0, "nobody went out of bounds in 3 games");
+}, 60_000);

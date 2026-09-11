@@ -31,6 +31,15 @@ import {
 	playDecision,
 	fourthDownDecision,
 } from "./coachDecision.ts";
+import {
+	LATE_WINDOW_MINUTES,
+	LATE_WINDOW_RULES,
+	deadTime,
+	deadTimeCase,
+	playLength,
+	playOutcome,
+	type DeadTimeCase,
+} from "./playClock.ts";
 const teamNums: [TeamNum, TeamNum] = [0, 1];
 
 // Disable coach play-calling in tests so they don't depend on Math.random() from this module.
@@ -94,6 +103,15 @@ class GameSim extends GameSimBase {
 	numPeriods: number;
 
 	isClockRunning = false;
+
+	// Seconds of live action charged for the last play, before dead time
+	lastPlayLength = 0;
+
+	// Seconds of dead time charged after the last play, and the rule that
+	// charged it (playClock.ts)
+	lastDeadTime = 0;
+
+	lastDeadTimeCase: DeadTimeCase = "none";
 
 	o: TeamNum;
 
@@ -1019,6 +1037,7 @@ class GameSim extends GameSimBase {
 			: undefined;
 
 		this.currentPlay = new Play(this);
+		this.currentPlay.hurryUp = this.hurryUp();
 
 		this.playByPlay.logClock({
 			awaitingKickoff: this.awaitingKickoff,
@@ -1085,6 +1104,17 @@ class GameSim extends GameSimBase {
 			throw new Error(`Unknown playType "${playType}"`);
 		}
 
+		// Live-action time is one draw per play from how it turned out
+		// (playClock.ts), replacing the per-segment times the do* functions
+		// return. Kneels keep theirs, which includes the dead time after them.
+		if (playType !== "kneel") {
+			dt = playLength(
+				playOutcome(this.currentPlay.events.map(({ event }) => event)),
+				this.currentPlay.hurryUp,
+			);
+		}
+		this.lastPlayLength = dt;
+
 		dt /= 60;
 		const quarter = this.team[0].stat.ptsQtrs.length;
 
@@ -1094,6 +1124,16 @@ class GameSim extends GameSimBase {
 			clockAtEndOfPlay <= 0 && this.kickoffAfterEndOfPeriod(quarter);
 
 		this.currentPlay.commit(timeExpiredAtEndOfHalf);
+
+		const outOfBoundsPlayer = this.currentPlay.outOfBoundsPlayer();
+		if (outOfBoundsPlayer) {
+			this.playByPlay.logEvent({
+				type: "outOfBounds",
+				clock: this.clock,
+				names: [outOfBoundsPlayer.name],
+				t: this.o,
+			});
+		}
 
 		// Custom stat: STARTINGPOS -- offense changed as a result of this play,
 		// so this.o/this.scrimmage (just updated by commit() above) reflect the
@@ -1193,7 +1233,15 @@ class GameSim extends GameSimBase {
 			twoMinuteWarningHappening = true;
 		}
 
-		if (clockAtEndOfPlay > 0 && !twoMinuteWarningHappening) {
+		const timeoutsBefore = this.timeouts[0] + this.timeouts[1];
+
+		// No timeout when the clock is already stopped: it would waste the
+		// timeout (and charge its 0-2s of runoff) for nothing
+		if (
+			clockAtEndOfPlay > 0 &&
+			!twoMinuteWarningHappening &&
+			this.isClockRunning
+		) {
 			// Timeouts - small chance at any time
 			if (Math.random() < 0.01) {
 				this.doTimeout(this.o, false);
@@ -1230,23 +1278,48 @@ class GameSim extends GameSimBase {
 			}
 		}
 
-		// Time between plays (can be more than 40 seconds because there is time before the play clock starts)
-		let dtClockRunning = 0;
+		// Time between plays: how the play ended decides it (playClock.ts)
+		const events = this.currentPlay.events.map(({ event }) => event);
+		const eventTypes = new Set(events.map((e) => e.type));
+		const { initial, current } = this.currentPlay.state;
+		const deadCase = deadTimeCase({
+			kneel: playType === "kneel",
+			twoMinuteWarning: twoMinuteWarningHappening,
+			timeout: this.timeouts[0] + this.timeouts[1] < timeoutsBefore,
+			scoredOrTry:
+				playOutcome(events).type === "untimed" ||
+				current.pts[0] + current.pts[1] !== initial.pts[0] + initial.pts[1],
+			penalty: this.currentPlay.penaltyEnforced,
+			touchback:
+				eventTypes.has("touchbackKick") ||
+				eventTypes.has("touchbackPunt") ||
+				eventTypes.has("touchbackInt"),
+			possessionChange: this.o !== offenseBefore,
+			onsideRecovered: events.some(
+				(e) => e.type === "onsideKickRecovery" && e.success,
+			),
+			incompletion: eventTypes.has("pssInc"),
+			outOfBounds: current.outOfBounds,
+			clockRunning: this.isClockRunning,
+			lateWindow:
+				this.kickoffAfterEndOfPeriod(quarter) &&
+				clockAtEndOfPlay <=
+					(quarter >= this.numPeriods
+						? LATE_WINDOW_MINUTES.final
+						: LATE_WINDOW_MINUTES.firstHalf),
+			penaltyDeadTimeInLateWindows: LATE_WINDOW_RULES.penaltyDeadTime,
+			hurryUp: () => this.hurryUp(),
+		});
+		this.lastDeadTimeCase = deadCase;
 
-		if (this.isClockRunning) {
-			if (this.hurryUp()) {
-				dtClockRunning = random.randInt(5, 13) / 60;
+		let dtClockRunning = deadTime(deadCase) / 60;
 
-				// Leave some time for a FG attempt!
-				if (this.clock - dt - dtClockRunning < 0) {
-					dtClockRunning = random.randInt(0, 4) / 60;
-				}
-			} else {
-				dtClockRunning = random.randInt(37, 62) / 60;
-			}
-
-			dtClockRunning /= g.get("pace");
+		// Leave some time for a FG attempt!
+		if (deadCase === "hurryUp" && this.clock - dt - dtClockRunning < 0) {
+			dtClockRunning = random.randInt(0, 4) / 60;
 		}
+
+		dtClockRunning /= g.get("pace");
 
 		// Check two minute warning again
 		if (
@@ -1264,6 +1337,8 @@ class GameSim extends GameSimBase {
 			// Clock only runs until it hits 2 minutes exactly
 			dtClockRunning = helpers.bound(clockAtEndOfPlay - 2, 0, Infinity);
 		}
+
+		this.lastDeadTime = dtClockRunning * 60;
 
 		// Clock
 		dt += dtClockRunning;

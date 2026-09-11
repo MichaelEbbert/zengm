@@ -2,6 +2,11 @@ import { assert, beforeAll, describe, test } from "vitest";
 import Play from "./Play.ts";
 import { genTwoTeams, initGameSim } from "./index.test.ts";
 import { g } from "../../util/index.ts";
+import type { PlayerGameSim } from "./types.ts";
+import {
+	HURRY_UP_OUT_OF_BOUNDS_RATE,
+	OUT_OF_BOUNDS_RATE,
+} from "./playClock.ts";
 
 beforeAll(async () => {
 	await genTwoTeams();
@@ -814,6 +819,253 @@ describe("penalty situations", () => {
 		play.adjudicatePenalties(false);
 
 		assert.strictEqual(play.state.current.currentDrive, 0);
+	});
+});
+
+describe("out-of-bounds clock stops", () => {
+	// Share of plays after which the clock is stopped, over many identical plays
+	const N = 20_000;
+	const stopRate = async (addPlay: (play: Play, p: PlayerGameSim) => void) => {
+		const game = await initGameSim();
+		game.o = 0;
+		game.d = 1;
+		game.down = 1;
+		game.toGo = 10;
+		game.scrimmage = 30;
+		game.updatePlayersOnField("pass");
+		const p = game.pickPlayer(game.o);
+
+		let stopped = 0;
+		for (let i = 0; i < N; i++) {
+			game.currentPlay = new Play(game);
+			addPlay(game.currentPlay, p);
+			if (!game.currentPlay.state.current.isClockRunning) {
+				stopped += 1;
+			}
+		}
+		return stopped / N;
+	};
+
+	const near = (actual: number, expected: number, tolerance: number) =>
+		assert.ok(
+			Math.abs(actual - expected) <= tolerance,
+			`expected ${expected} +/- ${tolerance}, got ${actual}`,
+		);
+
+	// Targets come from OUT_OF_BOUNDS_RATE (plan: 6.5% of runs, 20% of
+	// completions), so tuning rounds don't touch these tests
+	test("runs end out of bounds at the planned rate", async () => {
+		const rate = await stopRate((play, p) => {
+			play.addEvent({ type: "rus", p, yds: 3 });
+		});
+		near(rate, OUT_OF_BOUNDS_RATE.run, 0.006);
+	});
+
+	test("completions end out of bounds at the planned rate", async () => {
+		const rate = await stopRate((play, p) => {
+			play.addEvent({ type: "dropback", pbw: new Map() });
+			play.addEvent({ type: "pss", qb: p, target: p });
+			play.addEvent({ type: "pssCmp", qb: p, target: p, yds: 8 });
+		});
+		near(rate, OUT_OF_BOUNDS_RATE.completion, 0.01);
+	});
+
+	test("the out-of-bounds flag marks exactly the plays the roll stopped", async () => {
+		const game = await initGameSim();
+		game.o = 0;
+		game.d = 1;
+		game.down = 1;
+		game.toGo = 10;
+		game.scrimmage = 30;
+		game.updatePlayersOnField("pass");
+		const p = game.pickPlayer(game.o);
+
+		let flagged = 0;
+		for (let i = 0; i < 2000; i++) {
+			game.currentPlay = new Play(game);
+			game.currentPlay.addEvent({ type: "rus", p, yds: 3 });
+			const state = game.currentPlay.state.current;
+			assert.strictEqual(state.outOfBounds, !state.isClockRunning);
+			if (state.outOfBounds) {
+				flagged += 1;
+			}
+		}
+		assert.ok(flagged > 0, "no run went out of bounds");
+
+		// Stopped for another reason: not out of bounds
+		game.currentPlay = new Play(game);
+		game.currentPlay.addEvent({ type: "dropback", pbw: new Map() });
+		game.currentPlay.addEvent({ type: "pss", qb: p, target: p });
+		game.currentPlay.addEvent({ type: "pssInc", defender: undefined });
+		assert.strictEqual(game.currentPlay.state.current.isClockRunning, false);
+		assert.strictEqual(game.currentPlay.state.current.outOfBounds, false);
+	});
+
+	test("outOfBoundsPlayer names who took the ball out, only when that stopped the clock", async () => {
+		const game = await initGameSim();
+		game.o = 0;
+		game.d = 1;
+		game.down = 1;
+		game.toGo = 10;
+		game.scrimmage = 30;
+		game.updatePlayersOnField("pass");
+		const qb = game.pickPlayer(game.o);
+		const target = game.team[0].player.find((x) => x !== qb)!;
+
+		// Repeat a play until its out-of-bounds roll hits
+		const untilOutOfBounds = (addPlay: (play: Play) => void) => {
+			for (let i = 0; i < 5000; i++) {
+				game.currentPlay = new Play(game);
+				addPlay(game.currentPlay);
+				if (game.currentPlay.state.current.outOfBounds) {
+					return game.currentPlay;
+				}
+			}
+			throw new Error("never went out of bounds");
+		};
+
+		const run = untilOutOfBounds((play) => {
+			play.addEvent({ type: "rus", p: target, yds: 3 });
+		});
+		assert.strictEqual(run.outOfBoundsPlayer(), target);
+
+		const catchOob = untilOutOfBounds((play) => {
+			play.addEvent({ type: "dropback", pbw: new Map() });
+			play.addEvent({ type: "pss", qb, target });
+			play.addEvent({ type: "pssCmp", qb, target, yds: 8 });
+		});
+		assert.strictEqual(catchOob.outOfBoundsPlayer(), target);
+
+		// A touchdown stops the clock, not the sideline
+		const td = untilOutOfBounds((play) => {
+			play.addEvent({ type: "rus", p: target, yds: 70 });
+			play.addEvent({ type: "rusTD", p: target });
+		});
+		assert.notDeepEqual(td.state.current.pts, td.state.initial.pts);
+		assert.strictEqual(td.outOfBoundsPlayer(), undefined);
+
+		// In bounds, and incomplete
+		for (let i = 0; i < 200; i++) {
+			game.currentPlay = new Play(game);
+			game.currentPlay.addEvent({ type: "rus", p: target, yds: 3 });
+			if (!game.currentPlay.state.current.outOfBounds) {
+				assert.strictEqual(game.currentPlay.outOfBoundsPlayer(), undefined);
+			}
+		}
+		game.currentPlay = new Play(game);
+		game.currentPlay.addEvent({ type: "dropback", pbw: new Map() });
+		game.currentPlay.addEvent({ type: "pss", qb, target });
+		game.currentPlay.addEvent({ type: "pssInc", defender: undefined });
+		assert.strictEqual(game.currentPlay.outOfBoundsPlayer(), undefined);
+	});
+
+	test("a play records whether a penalty was enforced", async () => {
+		const game = await initGameSim();
+		const setUp = () => {
+			game.o = 0;
+			game.d = 1;
+			game.down = 1;
+			game.toGo = 10;
+			game.scrimmage = 30;
+			game.currentPlay = new Play(game);
+		};
+		setUp();
+		game.updatePlayersOnField("run");
+		const p = game.pickPlayer(game.o);
+		const offside = {
+			type: "penalty" as const,
+			p: game.pickPlayer(game.d),
+			automaticFirstDown: false,
+			name: "Offside",
+			penYds: 5,
+			spotYds: undefined,
+			t: game.d,
+			tackOn: false,
+		};
+
+		// No flag
+		game.currentPlay.addEvent({ type: "rus", p, yds: 3 });
+		game.currentPlay.adjudicatePenalties(false);
+		assert.strictEqual(game.currentPlay.penaltyEnforced, false, "no flag");
+
+		// 5 free yards beat a 3-yard run: accepted
+		setUp();
+		game.currentPlay.addEvent(offside);
+		game.currentPlay.addEvent({ type: "rus", p, yds: 3 });
+		game.currentPlay.adjudicatePenalties(false);
+		assert.strictEqual(game.currentPlay.penaltyEnforced, true, "accepted");
+
+		// A 30-yard run beats 5 yards: declined
+		setUp();
+		game.currentPlay.addEvent(offside);
+		game.currentPlay.addEvent({ type: "rus", p, yds: 30 });
+		game.currentPlay.adjudicatePenalties(false);
+		assert.strictEqual(game.currentPlay.penaltyEnforced, false, "declined");
+	});
+
+	test("a hurry-up offense works the sideline: runs and completions go out of bounds more", async () => {
+		const hurriedRate = async (
+			addPlay: (play: Play, p: PlayerGameSim) => void,
+		) => {
+			const game = await initGameSim();
+			game.o = 0;
+			game.d = 1;
+			game.down = 1;
+			game.toGo = 10;
+			game.scrimmage = 30;
+			game.updatePlayersOnField("pass");
+			const p = game.pickPlayer(game.o);
+
+			let stopped = 0;
+			for (let i = 0; i < N; i++) {
+				game.currentPlay = new Play(game);
+				game.currentPlay.hurryUp = true;
+				addPlay(game.currentPlay, p);
+				if (game.currentPlay.state.current.outOfBounds) {
+					stopped += 1;
+				}
+			}
+			return stopped / N;
+		};
+
+		const run = await hurriedRate((play, p) => {
+			play.addEvent({ type: "rus", p, yds: 3 });
+		});
+		near(run, HURRY_UP_OUT_OF_BOUNDS_RATE.run, 0.008);
+
+		const completion = await hurriedRate((play, p) => {
+			play.addEvent({ type: "dropback", pbw: new Map() });
+			play.addEvent({ type: "pss", qb: p, target: p });
+			play.addEvent({ type: "pssCmp", qb: p, target: p, yds: 8 });
+		});
+		near(completion, HURRY_UP_OUT_OF_BOUNDS_RATE.completion, 0.012);
+
+		// More than a normal-tempo offense
+		assert.ok(HURRY_UP_OUT_OF_BOUNDS_RATE.run > OUT_OF_BOUNDS_RATE.run);
+		assert.ok(
+			HURRY_UP_OUT_OF_BOUNDS_RATE.completion > OUT_OF_BOUNDS_RATE.completion,
+		);
+	});
+
+	test("sacks (2%) and recovered fumbles (5%) are unchanged", async () => {
+		const sack = await stopRate((play, p) => {
+			play.addEvent({ type: "dropback", pbw: new Map() });
+			play.addEvent({ type: "sk", qb: p, p, ol: undefined, yds: -5 });
+		});
+		near(sack, 0.02, 0.005);
+
+		const fumble = await stopRate((play, p) => {
+			play.addEvent({ type: "rus", p, yds: 3 });
+			play.addEvent({ type: "fmb", pFumbled: p, pForced: p, yds: 0 });
+			play.addEvent({
+				type: "fmbRec",
+				pFumbled: p,
+				pRecovered: p,
+				lost: false,
+				yds: 0,
+			});
+		});
+		near(fumble, 0.05, 0.007);
 	});
 });
 
