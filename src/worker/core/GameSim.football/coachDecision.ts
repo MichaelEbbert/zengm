@@ -4,6 +4,12 @@ const RUN_CONVERSION_4YD = 0.655;
 const FG_THRESHOLD = 0.45;
 const FG_MIN_PROBABILITY = 0.4;
 
+// 1st down in normal mode, before the offense has 5 rushes and 5 dropbacks to
+// compare: pass this often on 1st and 6-10, always run on 1st and 5 or less.
+// Added 2026-09-11; 0 restores the old always-run behavior.
+const EARLY_FIRST_DOWN_PASS_RATE = 0.25;
+const EARLY_FIRST_DOWN_ALWAYS_RUN_TO_GO = 5;
+
 export function determineMode(
 	scoreDiff: number,
 	quarter: number,
@@ -72,7 +78,10 @@ export function playDecision(
 		if (toGo > 10) return "pass";
 		const ra = rushAttempts || 0;
 		const pa = passAttempts || 0;
-		if (ra < 5 || pa < 5) return "run";
+		if (ra < 5 || pa < 5) {
+			if (toGo <= EARLY_FIRST_DOWN_ALWAYS_RUN_TO_GO) return "run";
+			return Math.random() < EARLY_FIRST_DOWN_PASS_RATE ? "pass" : "run";
+		}
 		const ypc = (rushYards || 0) / ra;
 		const ypa = (passYards || 0) / pa;
 		const denom = ypc + ypa;
