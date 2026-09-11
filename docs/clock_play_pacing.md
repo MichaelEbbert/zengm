@@ -1,7 +1,8 @@
 # Clock and play pacing
 
-**Status: leading plan chosen (below), nothing implemented.** The earlier
-candidate fixes were dropped 2026-09-10 in favor of it. Moved here 2026-09-10
+**Status: shipped 2026-09-11 as config K** (see "Config K -- production" and
+"League validation"). The earlier candidate fixes were dropped 2026-09-10 in
+favor of the leading plan below. Moved here 2026-09-10
 from `zengm-press`, where it was written as read-only research on the Daily
 League's 2001 season. The findings sections are kept as written, including the
 line numbers of the time; use the table for current locations. Transcript
