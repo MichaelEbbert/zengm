@@ -1,21 +1,62 @@
 import { assert, describe, expect, test } from "vitest";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { idb } from "../../db/index.ts";
+import { team } from "../index.ts";
 import {
 	ROSTER_TEMPLATE,
+	STOP_CAUSES,
 	clockReport,
 	formatClockReport,
+	formatGameReport,
 	formatStateResults,
 	formatSummaries,
+	gameReport,
 	genHarnessTeams,
 	setPosition,
 	simFromState,
 	simGames,
 	summarize,
+	teamOvr,
 	type GameRecord,
+	type HarnessRoster,
 	type SnapKind,
 	type StateResult,
 } from "./simHarness.ts";
+
+// Two real teams exported from the Goin Fast league: LAC (team ovr 63) and BUF
+// (team ovr 44)
+const goinFast1921 = (): Record<"LAC" | "BUF", HarnessRoster> =>
+	JSON.parse(
+		readFileSync(
+			new URL("./harnessRosters/goinFast1921.json", import.meta.url),
+			"utf8",
+		),
+	);
+
+// Every depth chart lists the whole roster, and the positions nobody else can
+// play are topped by a player from that position. An empty depth chart makes
+// the game sim fall back to roster order -- a cornerback at QB. (Other
+// positions can legitimately start someone listed elsewhere: auto-sort uses
+// fuzzed ratings and a WR who's a better TE starts at TE.)
+const assertStartersPlayTheirPosition = async (tid: number) => {
+	const t = (await idb.cache.teams.get(tid))!;
+	const players = await idb.cache.players.indexGetAll("playersByTid", tid);
+	for (const [pos, pids] of Object.entries(
+		t.depth as Record<string, number[]>,
+	)) {
+		assert.strictEqual(pids.length, players.length, `tid ${tid} ${pos} depth`);
+	}
+
+	const depth = team.getDepthPlayers(t.depth!, players);
+	for (const pos of ["QB", "K", "P"]) {
+		const starter = depth[pos]![0]!;
+		assert.strictEqual(
+			starter.ratings.at(-1)!.pos,
+			pos,
+			`tid ${tid} ${pos}1 is pid ${starter.pid}`,
+		);
+	}
+};
 
 const posCounts = async (tid: number) => {
 	const players = await idb.cache.players.indexGetAll("playersByTid", tid);
@@ -39,7 +80,7 @@ describe("sim harness", () => {
 		}
 	});
 
-	test("generated players have real ovrs, and depth is sorted by them", async () => {
+	test("generated players have real ovrs, and depth charts are built", async () => {
 		await genHarnessTeams();
 		const players = await idb.cache.players.indexGetAll("playersByTid", 0);
 		for (const p of players) {
@@ -48,17 +89,60 @@ describe("sim harness", () => {
 			assert.strictEqual(r.ovr, r.ovrs[r.pos], `pid ${p.pid} ovr vs ovrs`);
 		}
 
-		const t = await idb.cache.teams.get(0);
-		const qbOvrs = (t!.depth as Record<string, number[]>)
-			.QB!.slice(0, ROSTER_TEMPLATE.QB!)
-			.map(
-				(pid) => players.find((p) => p.pid === pid)!.ratings.at(-1)!.ovrs.QB,
-			);
-		assert.deepStrictEqual(
-			qbOvrs,
-			[...qbOvrs].sort((a, b) => b - a),
-			"QB depth is sorted by QB ovr",
-		);
+		for (const tid of [0, 1]) {
+			await assertStartersPlayTheirPosition(tid);
+		}
+	});
+
+	test("genHarnessTeams with a seed builds the same rosters every time", async () => {
+		const snapshot = async () => {
+			const players = [
+				...(await idb.cache.players.indexGetAll("playersByTid", 0)),
+				...(await idb.cache.players.indexGetAll("playersByTid", 1)),
+			];
+			return players
+				.sort((a, b) => a.pid - b.pid)
+				.map((p) => ({
+					tid: p.tid,
+					name: `${p.firstName} ${p.lastName}`,
+					ratings: p.ratings.at(-1),
+				}));
+		};
+
+		const random = Math.random;
+		await genHarnessTeams({ seed: 7 });
+		const first = await snapshot();
+		assert.strictEqual(Math.random, random, "Math.random is restored");
+
+		await genHarnessTeams({ seed: 7 });
+		assert.deepStrictEqual(await snapshot(), first);
+
+		await genHarnessTeams({ seed: 8 });
+		assert.notDeepEqual(await snapshot(), first);
+	});
+
+	test("genHarnessTeams loads real rosters with their ratings and team ovr", async () => {
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+
+		for (const [tid, roster] of [
+			[0, LAC],
+			[1, BUF],
+		] as const) {
+			const players = await idb.cache.players.indexGetAll("playersByTid", tid);
+			const loaded = players
+				.map((p) => {
+					const r = p.ratings.at(-1)!;
+					return `${p.firstName} ${p.lastName} ${r.pos} ${r.ovr}`;
+				})
+				.sort();
+			const expected = roster.players
+				.map((p) => `${p.firstName} ${p.lastName} ${p.pos} ${p.ovr}`)
+				.sort();
+			assert.deepStrictEqual(loaded, expected, roster.abbrev);
+			assert.strictEqual(await teamOvr(tid), roster.teamOvr, roster.abbrev);
+			await assertStartersPlayTheirPosition(tid);
+		}
 	});
 
 	test("setPosition pins exact ovrs in depth order", async () => {
@@ -232,6 +316,27 @@ describe("simFromState", () => {
 		);
 	});
 
+	test("reports how the opening drive ended", async () => {
+		// Down 2 with one snap left: the late field goal wins exactly when it's good
+		await genHarnessTeams();
+		const result = await simFromState({
+			n: 40,
+			coach: false,
+			state: {
+				down: 1,
+				toGo: 10,
+				scrimmage: 80,
+				clock: 0.01,
+				quarter: 4,
+				diff: -2,
+			},
+		});
+		const { td, fg, none } = result.openingDrive;
+		assert.strictEqual(td, 0);
+		assert.strictEqual(fg, result.win);
+		assert.ok(Math.abs(fg + none - 1) < 1e-9, `fg ${fg} + none ${none}`);
+	}, 60_000);
+
 	test("rejects a state the engine can't represent", async () => {
 		await genHarnessTeams();
 		await expect(
@@ -337,6 +442,8 @@ describe("head-to-head", () => {
 			kind,
 			returned: false,
 			hurryUp: false,
+			ptsScored: [0, 0] as [number, number],
+			newDrive: false,
 		});
 		const records: GameRecord[] = [
 			{
@@ -460,6 +567,8 @@ describe("clock", () => {
 			kind: "run" as SnapKind,
 			returned: false,
 			hurryUp,
+			ptsScored: [0, 0] as [number, number],
+			newDrive: false,
 			gap,
 		});
 		const records: GameRecord[] = [
@@ -502,21 +611,229 @@ describe("clock", () => {
 		assert.strictEqual(report.offensivePlays.min, 1);
 		assert.strictEqual(report.offensivePlays.max, 6);
 	});
+
+	test("every snap records the points it scored", async () => {
+		await genHarnessTeams();
+		const records = await simGames({ n: 3, coach: false });
+		for (const r of records) {
+			const scored = [0, 0];
+			for (const s of r.snaps) {
+				scored[0]! += s.ptsScored[0];
+				scored[1]! += s.ptsScored[1];
+			}
+			assert.deepStrictEqual(scored, r.pts);
+		}
+	}, 60_000);
+
+	test("the first snap of each drive is marked", async () => {
+		await genHarnessTeams();
+		const records = await simGames({ n: 3, coach: false });
+		for (const r of records) {
+			const drives = r.snaps.filter((s) => s.newDrive);
+			assert.ok(
+				drives.length >= 10 && drives.length <= 40,
+				`${drives.length} drives`,
+			);
+			for (const s of drives) {
+				assert.ok(
+					!["kickoff", "extraPoint", "twoPoint"].includes(s.kind),
+					`a drive starts with a ${s.kind}`,
+				);
+			}
+		}
+	}, 60_000);
+
+	test("a snap's stop cause agrees with the time the engine charged", async () => {
+		await genHarnessTeams();
+		const records = await simGames({ n: 10, coach: false });
+		const snaps = records
+			.flatMap((r) => r.snaps)
+			.filter((s) => s.gap !== undefined && !s.hurryUp);
+
+		// The two-minute warning can cut the dead time anywhere, and a kneel's
+		// dead time is inside its own play time whatever stopped the clock after
+		// it (a timeout, say)
+		const running = snaps.filter((s) => s.stop === undefined);
+		const stopped = snaps.filter(
+			(s) =>
+				s.stop !== undefined &&
+				s.kind !== "kneel" &&
+				s.stop !== "twoMinuteWarning",
+		);
+		assert.ok(
+			running.length > 100 && stopped.length > 100,
+			`${running.length} running, ${stopped.length} stopped`,
+		);
+
+		// Running: 37-62s of dead time on top of the play
+		for (const s of running) {
+			assert.ok(
+				s.gap! >= 37,
+				`running clock after a ${s.kind}, only ${s.gap}s`,
+			);
+		}
+		// Stopped: only the play's own seconds
+		for (const s of stopped) {
+			assert.ok(s.gap! < 37, `${s.stop} after a ${s.kind}, but ${s.gap}s`);
+		}
+		for (const s of snaps) {
+			if (s.kind === "incompletion") {
+				assert.ok(s.stop !== undefined, "clock running after an incompletion");
+			}
+		}
+	}, 60_000);
+
+	test("gameReport counts drives, late-half points and clock stops per game", () => {
+		const snap = (
+			quarter: number,
+			clock: number,
+			offense: number,
+			kind: SnapKind,
+			{
+				ptsScored = [0, 0],
+				newDrive = false,
+				hurryUp = false,
+				stop,
+			}: {
+				ptsScored?: [number, number];
+				newDrive?: boolean;
+				hurryUp?: boolean;
+				stop?: (typeof STOP_CAUSES)[number];
+			},
+		) => ({
+			quarter,
+			clock,
+			offense,
+			kind,
+			returned: false,
+			hurryUp,
+			ptsScored,
+			newDrive,
+			stop,
+		});
+
+		const records: GameRecord[] = [
+			{
+				pts: [10, 3],
+				overtimes: 0,
+				coachPlayCalling: [true, true],
+				snaps: [
+					snap(1, 15, 1, "kickoff", { stop: "possessionChange" }),
+					snap(1, 14.9, 0, "run", { newDrive: true }),
+					snap(1, 14, 0, "completion", { ptsScored: [6, 0], stop: "score" }),
+					snap(1, 13.9, 0, "extraPoint", { ptsScored: [1, 0], stop: "score" }),
+					// Last 2:00 of the first half
+					snap(2, 1.5, 1, "completion", {
+						newDrive: true,
+						hurryUp: true,
+						stop: "outOfBounds",
+					}),
+					snap(2, 1, 1, "fieldGoal", { ptsScored: [0, 3], stop: "score" }),
+					// 4th quarter, but not yet the last 2:00
+					snap(4, 2.5, 0, "run", { newDrive: true, stop: "timeout" }),
+					snap(4, 1.9, 0, "incompletion", { stop: "incompletion" }),
+					snap(4, 1.8, 0, "fieldGoal", { ptsScored: [3, 0], stop: "score" }),
+				],
+			},
+		];
+
+		const report = gameReport(records);
+		assert.strictEqual(report.games, 1);
+		assert.strictEqual(report.ptsPerTeamGame, 6.5);
+		assert.strictEqual(report.drivesPerTeamGame, 1.5);
+		assert.strictEqual(report.ptsPerDrive, 13 / 3);
+		assert.strictEqual(report.hurryUpSnapsPerGame, 1);
+		assert.deepStrictEqual(report.lateHalfPtsPerGame, {
+			firstHalf: 3,
+			secondHalf: 3,
+		});
+		assert.deepStrictEqual(report.stopsPerGame, {
+			twoMinuteWarning: 0,
+			timeout: 1,
+			score: 4,
+			possessionChange: 1,
+			incompletion: 1,
+			penalty: 0,
+			kneel: 0,
+			outOfBounds: 1,
+			other: 0,
+		});
+		assert.ok(formatGameReport(report).includes("drives / team-game"));
+	});
 });
 
+// The clock experiments play real teams, the same two every run, so a
+// before/after comparison isn't also a roster comparison: Goin Fast's LAC
+// (team ovr 63) against BUF (44).
+
 // Experiment runner, skipped unless SIM_HARNESS is set:
-//   SIM_HARNESS=1 SIM_GAMES=500 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "clock distribution"
+//   SIM_HARNESS=1 SIM_GAMES=1000 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "clock distribution"
 test.skipIf(!process.env.SIM_HARNESS)(
 	"experiment: clock distribution, coach play-calling",
 	async () => {
-		const n = Number(process.env.SIM_GAMES ?? 500);
+		const n = Number(process.env.SIM_GAMES ?? 1000);
 
-		await genHarnessTeams();
-		const report = clockReport(await simGames({ n, coach: true }));
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+		const records = await simGames({ n, coach: true });
+		const clock = clockReport(records);
+		const game = gameReport(records);
 
-		process.stdout.write(`\n${formatClockReport(report)}\n\n`);
+		process.stdout.write(
+			`\n${formatClockReport(clock)}\n\n${formatGameReport(game)}\n\n`,
+		);
 		if (process.env.SIM_OUT) {
-			writeFileSync(process.env.SIM_OUT, JSON.stringify(report, null, 2));
+			writeFileSync(
+				process.env.SIM_OUT,
+				JSON.stringify({ clock, game }, null, 2),
+			);
+		}
+	},
+	60 * 60 * 1000,
+);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_TRIALS=2000 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "comeback"
+// The hurry-up guardrail: late-game situations replayed from a fixed state,
+// coach play-calling on both sides. Run with each team trailing -- simFromState
+// always gives the ball to tid 0.
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: comeback drives, coach play-calling",
+	async () => {
+		const n = Number(process.env.SIM_TRIALS ?? 2000);
+		const { LAC, BUF } = goinFast1921();
+
+		const results: Record<string, StateResult> = {};
+		for (const [offense, defense] of [
+			[LAC, BUF],
+			[BUF, LAC],
+		] as const) {
+			await genHarnessTeams({ rosters: [offense, defense] });
+			for (const clock of [2, 1]) {
+				for (const timeouts of [3, 0]) {
+					for (const diff of [-3, -7, -8]) {
+						const label = `${offense.abbrev} ${clock}:00 left, ${timeouts} TO, down ${-diff}`;
+						results[label] = await simFromState({
+							n,
+							coach: true,
+							state: {
+								down: 1,
+								toGo: 10,
+								scrimmage: 25,
+								clock,
+								quarter: 4,
+								diff,
+								timeouts: [timeouts, 3],
+							},
+						});
+					}
+				}
+			}
+		}
+
+		process.stdout.write(`\n${formatStateResults(results)}\n\n`);
+		if (process.env.SIM_OUT) {
+			writeFileSync(process.env.SIM_OUT, JSON.stringify(results, null, 2));
 		}
 	},
 	60 * 60 * 1000,

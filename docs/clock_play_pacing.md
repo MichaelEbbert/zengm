@@ -1,11 +1,95 @@
 # Clock and play pacing
 
-**Status: findings only, nothing implemented.** Summary and ranked fixes are in
-`FUTURE_PLANS.md`. Moved here 2026-09-10 from `zengm-press`, where it was
-written as read-only research on the Daily League's 2001 season. The sections
-below are kept as written, including the line numbers of the time; use the
-table for current locations. Transcript paths (`game-notes/...`) are relative
-to `zengm-press`.
+**Status: leading plan chosen (below), nothing implemented.** The earlier
+candidate fixes were dropped 2026-09-10 in favor of it. Moved here 2026-09-10
+from `zengm-press`, where it was written as read-only research on the Daily
+League's 2001 season. The findings sections are kept as written, including the
+line numbers of the time; use the table for current locations. Transcript
+paths (`game-notes/...`) are relative to `zengm-press`.
+
+## Leading plan: new clock model (2026-09-10)
+
+The "new clock" dev plan. Theory stage -- not yet mapped onto the sim code. Every snap-to-snap gap is built from two parts: **live-action time** (snap to whistle, part 1) and **dead time** after the whistle (part 3), which depends on how the play ended and when. Part 2 sets how often plays end out of bounds.
+
+### 1. Play length (live action)
+
+**Targets:** hard floor 4s, realistic max 12s, mean 6s, and 10-12s plays rare -- a few per game.
+
+**Why not one bell curve:** the mean sits 2s above the floor but 6s below the max. A symmetric curve wide enough to reach 10-12s piles thousands of draws against the floor, and a triangle can't hit a mean of 6 without its peak falling below 4. Real play lengths are right-skewed: a hard floor and a long tail.
+
+**Shape: two kinds of plays.**
+
+1. **Normal plays (97%):** Gaussian, mean 5.8, standard deviation 1. A draw under 4 is redrawn; capped at 10.
+2. **Big plays (3%):** uniform between 10 and 12.
+
+Mean = 0.97 x 5.88 + 0.03 x 11 = **6.0** (redrawing below 4 lifts the normal-play mean from 5.8 to 5.88).
+
+| Length | Share | Plays per 130 |
+| ------ | ----- | ------------- |
+| 4-5s   | 17.8% | 23            |
+| 5-6s   | 37.0% | 48            |
+| 6-7s   | 30.7% | 40            |
+| 7-8s   | 10.2% | 13            |
+| 8-9s   | 1.3%  | 2             |
+| 9-10s  | 0.1%  | ~0            |
+| 10-12s | 3.0%  | **4**         |
+
+**Knobs, one per requirement:** the floor is the redraw below 4; the max is the top of the big-play range; the mean is set by 5.8 and the big-play share together; "a few per game" is the big-play share (2% gives ~2.6 per game -- then raise 5.8 to 5.9 to hold the mean at 6).
+
+The near-empty 9-10s row is intended: long plays aren't slow ordinary plays, they're a different event (breakaway, scramble, deep ball). **In the sim, the big-play branch should come from the play's result** -- a long gain or a return -- rather than a random 3% roll, so the 11-second plays are the 50-yard ones.
+
+### 2. Out-of-bounds rates
+
+After the play, the engine rolls whether it ended out of bounds and stopped the clock (`Play.ts`). The run and completion rates are too high against real-football estimates (5-8% of runs and 12-15% of pass plays go out of bounds):
+
+| Outcome        | Engine now | Plan  |
+| -------------- | ---------- | ----- |
+| Run            | 15%        | ~6-7% |
+| Completed pass | 25%        | ~20%  |
+
+The completion target assumes the 12-15% is measured over all pass plays; with ~65% of passes caught, that's ~18-23% per completion, and the engine rolls only on completions. Sacks (2%) and own-team fumble recoveries (5%) are unchanged. Exact values get set when tuning against the harness.
+
+### 3. Dead time after the play
+
+Taken off the game clock after the play's own seconds (part 1). The play clock is 40s from the whistle; a normal-tempo offense snaps with ~8s left on it.
+
+**Late windows** = the last 2:00 of the first half and the last 5:00 of the game, and the last 5:00 of every overtime period (the engine's `kickoffAfterEndOfPeriod` already treats overtime as a final period). Inside them an out-of-bounds play stops the clock until the snap, as the engine does now all game; outside them the clock restarts once the ball is spotted (NFL rule).
+
+| #   | How the play ended                                             | Dead time                                                                                          |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | Timeout called after the play                                  | 0-2s                                                                                               |
+| 2   | In bounds, normal tempo                                        | Gaussian, mean 32s (40 - 8), sd ~3.5, clipped to 24-39s                                            |
+| 3   | Out of bounds, outside the late windows                        | Mean 24s: as #2, but the clock is stopped the ~8s it takes officials to spot the ball (clip 16-31) |
+| 4   | Out of bounds, inside a late window                            | 0s                                                                                                 |
+| 5   | Incomplete pass (and spike, whose play takes ~1s)              | 0s, all game                                                                                       |
+| 6   | Score (TD, FG, safety)                                         | 0s; the extra point or two-point try is untimed                                                    |
+| 7   | Kickoff                                                        | Touchback: no time at all. Return: clock starts on the returner's touch; play length per part 1    |
+| 7a  | Punt or interception touchback; fair catch                     | Play length 4-6s (hang time only), then 0s -- clock stopped until the snap                         |
+| 7b  | Onside kick recovered by the kicking team                      | As #2                                                                                              |
+| 8   | Change of possession -- punt, turnover, and so kickoff returns | As #3: clock stops, restarts once the ball is spotted                                              |
+| 9   | Penalty (accepted or offsetting, before or after the snap)     | Gaussian, mean 16s, clipped 8-23s (as #2/#3 with a lower mean) -- see below                        |
+| 10  | Two-minute warning, end of the 1st or 3rd quarter              | 0s beyond the play itself (the engine already handles the two-minute warning)                      |
+| --  | Kneel                                                          | Leave to the engine's existing kneel handling                                                      |
+| --  | First down                                                     | Nothing -- NFL chain moves don't stop the clock                                                    |
+
+**One play-length draw per play, capped at 12s.** Returns and kicks use the part 1 distribution like any other play, with the 10-12s big-play branch for long returns. Compound plays -- a pass with an interception return and a fumble, a punt with a return -- still get a single draw; we aren't tracking where players are on the field, so the pieces aren't added together.
+
+**Penalties (#9):** if a play ran, its play length was already charged; if it didn't (a pre-snap foul), none was. Either way the 16s dead time is charged before the next snap -- players hearing the call, the referee walking off the spot, then the huddle. The 8-23s clip is derived (the same -8/+7 around the mean as #2); the sd matches #2.
+
+**Fair catches don't exist in the sim today**; #7a applies if they're added.
+
+**The 24-39s clip is a starting value.** If plays per game come out too low, lower either or both endpoints.
+
+**The `pace` league setting** divides the dead time today (`index.ts:1248`). Keep applying it to the new dead-time draw, after the clip; at `pace` 1 that's a no-op. How other `pace` values should interact with the new model needs more discussion.
+
+### Hurry-up
+
+Hurry-up gets the same play + dead-time model, with a shorter dead time than #2 (snapping with ~25s on the play clock, ~10-15s of dead time, as a starting guess) in place of today's 5-13s band. **Keep the existing "leave time for a field goal" rule** (`index.ts:1241`): if the hurry-up dead time would run out the half, charge only 0-4s -- a stand-in for a spike or quick snap so the trailing team keeps its last kick. **Change it gently: the engine's comeback ability must survive.** Measure hurry-up before and after with the harness -- late-game comeback win rate, points in the final two minutes, hurry-up plays per game -- and keep the after close to the before.
+
+### Future considerations (not in this plan)
+
+- Delay of game running the full 40s play clock off.
+- The NFL's 10-second runoff for some offensive fouls inside the last 2:00 of a half.
 
 ## Current code locations (re-verified 2026-09-10)
 
@@ -19,49 +103,112 @@ to `zengm-press`.
 | Per-outcome `isClockRunning` rolls              | `Play.ts:728-841`                                 |
 | `kr` / `pr` handlers -- no `isClockRunning`     | `Play.ts:754`, `:767`                             |
 
-## Harness baseline, 2026-09-10 -- the "before" numbers for clock changes
+## Harness baseline v3, 2026-09-10 -- real rosters, the "before" numbers for clock changes
 
-Measured with the sim harness (`src/worker/core/GameSim.football/simHarness.ts`) rather than real games, so any clock change can be re-measured the same way in a minute. 500 games, coach play-calling for both teams, two generated 50-man rosters with real ovrs, neutral site. Re-run with:
+The numbers to compare clock changes against. 1,000 games of Goin Fast's LAC (team ovr 63) vs BUF (44), rosters exported from the league DB into `src/worker/core/GameSim.football/harnessRosters/goinFast1921.json`. Coach play-calling on both sides, neutral site, everyone healthy at kickoff. Re-run with:
 
 ```bash
-SIM_HARNESS=1 SIM_GAMES=500 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "clock distribution"
+SIM_HARNESS=1 SIM_GAMES=1000 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "clock distribution"
+SIM_HARNESS=1 SIM_TRIALS=2000 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "comeback"
 ```
 
-**The harness matches real games.** Its gap by play type reproduces the 1,458-play real-game sample below almost exactly (medians, harness vs real: run 46s / 46s, completion 42s / 41s, incompletion 4.5s / 5s, kickoff 2.4s / 2s, punt 8s / 8s, sack 51s / 48s, kneel 41s / 42s). Absolute play counts run about 5 per team-game higher than a real league, so compare before/after deltas, not absolute levels.
+**Earlier baselines are void.** v1 (500 games, random generated rosters) and v2 (1,000 games, seeded generated rosters) ran with empty depth charts: generated ratings were dated 2016 while the harness season is 2013, and depth charts read only the current season's ratings, so the sim fielded players in roster order -- cornerbacks at QB, 26% completions, ~11 pts per team-game. Fixed in `simHarness.ts` (`toHarnessSeason`) and guarded by a test. The time-between-snaps shape came out the same, since that's clock code; everything else moved.
 
-### Offensive plays per team-game
+**The harness now matches the real league:**
 
-Runs, passes, sacks and kneels; 1,000 team-games.
+| Per team-game    | Harness | Goin Fast 1919-21 |
+| ---------------- | ------- | ----------------- |
+| Points           | 23.5    | 23.4-25.4         |
+| Drives           | 11.5    | 9.0-11.2          |
+| Points per drive | 2.03    | 2.09-2.81         |
+| Offensive plays  | 63.4    | 59.1-60.7         |
+
+### Offensive plays per team-game (2,000 team-games)
 
 | Mean | Min | 10th pct | Median | 90th pct | Max |
 | ---- | --- | -------- | ------ | -------- | --- |
-| 67.0 | 40  | 56       | 67     | 78       | 100 |
+| 63.4 | 35  | 52       | 63     | 74       | 96  |
 
 ### Time between snaps, hurry-up excluded
 
-A snap is "hurry-up" when its gap came from the 5-13s huddle branch rather than the normal 37-62s one -- `hurryUp()` has a single caller, in that branch, so the flag is exact. Coach desperation mode is **not** excluded; only hurry-up clock timing is. 78,562 gaps, with 1,984 hurry-up gaps (2.5%) left out. Gaps are rounded to whole seconds (5.4s counts in 0-5s, 5.6s in 6-10s).
+A snap is "hurry-up" when its gap came from the 5-13s huddle branch rather than the normal 37-62s one (`hurryUp()` has a single caller, in that branch, so the flag is exact). Coach desperation mode is not excluded. 149,945 gaps, with 4,684 hurry-up gaps (3.0%) left out. Gaps are rounded to whole seconds (5.4s counts in 0-5s, 5.6s in 6-10s).
 
 | Gap    | Count  | Share |
 | ------ | ------ | ----- |
-| 0-5s   | 34,818 | 44.3% |
-| 6-10s  | 14,149 | 18.0% |
-| 11-15s | 653    | 0.8%  |
-| 16-20s | 81     | 0.1%  |
-| 21-25s | 61     | 0.1%  |
-| 26-30s | 73     | 0.1%  |
-| 31-35s | 79     | 0.1%  |
-| 36-40s | 706    | 0.9%  |
-| 41-45s | 5,481  | 7.0%  |
-| 46-50s | 5,340  | 6.8%  |
-| 51-55s | 5,547  | 7.1%  |
-| 56-60s | 5,321  | 6.8%  |
-| 61-65s | 5,116  | 6.5%  |
-| 66-70s | 1,137  | 1.4%  |
+| 0-5s   | 68,315 | 45.6% |
+| 6-10s  | 21,704 | 14.5% |
+| 11-15s | 1,264  | 0.8%  |
+| 16-20s | 252    | 0.2%  |
+| 21-25s | 146    | 0.1%  |
+| 26-30s | 161    | 0.1%  |
+| 31-35s | 161    | 0.1%  |
+| 36-40s | 1,389  | 0.9%  |
+| 41-45s | 10,456 | 7.0%  |
+| 46-50s | 11,160 | 7.4%  |
+| 51-55s | 11,073 | 7.4%  |
+| 56-60s | 10,864 | 7.2%  |
+| 61-65s | 10,560 | 7.0%  |
+| 66-70s | 2,440  | 1.6%  |
 
-**Hurry-up isn't what empties the middle.** With it excluded, only 2.1% of gaps fall between 11 and 40 seconds. The split is stopped-clock vs running-clock plays:
+**Hurry-up isn't what empties the middle.** 60% of gaps are 0-10s, 2.2% are 11-40s, 38% are 41-70s. The split is stopped-clock vs running-clock plays:
 
-- **0-10s (62%):** plays after which the clock is stopped -- incompletions, kicks, penalties, extra points -- charge only the play's own few seconds.
-- **41-70s (36%):** the flat ~7%-per-bin block is `randInt(37, 62)` seconds of dead time, uniform across its range, plus 2-4s for the play itself.
+- **0-10s:** plays after which the clock is stopped -- incompletions, kicks, penalties, extra points -- charge only the play's own few seconds.
+- **41-70s:** the flat ~7%-per-bin block is `randInt(37, 62)` seconds of dead time, uniform across its range, plus 2-4s for the play itself.
+
+### Game level
+
+| Measure                                        | Value |
+| ---------------------------------------------- | ----- |
+| Points per team-game                           | 23.46 |
+| Drives per team-game                           | 11.53 |
+| Points per drive                               | 2.03  |
+| Hurry-up snaps per game                        | 4.81  |
+| Points in the last 2:00 of the 1st half / game | 5.56  |
+| Points in the last 2:00 of the 2nd half / game | 4.48  |
+
+Late-half points are both teams' points on snaps taken with 2:00 or less left in the 2nd or 4th quarter. Drives are counted from the engine's own `newDrive` event.
+
+### Clock stops per game, by cause
+
+After a snap, the first matching cause wins; snaps where the clock kept running have none. A declined flag on a play that went out of bounds counts as "penalty". A test (`simHarness.test.ts`, "a snap's stop cause agrees...") checks every cause against the time the engine actually charged.
+
+| Cause                                                                          | Per game |
+| ------------------------------------------------------------------------------ | -------- |
+| Incompletion                                                                   | 23.42    |
+| Change of possession (kickoffs, punts, turnovers, missed FGs, downs)           | 21.63    |
+| Out of bounds (the random roll on runs, completions, sacks, recovered fumbles) | 16.10    |
+| Score (TDs, FGs, safeties, extra points, two-point tries)                      | 13.75    |
+| Penalty                                                                        | 8.46     |
+| Timeout                                                                        | 7.96     |
+| Two-minute warning                                                             | 2.01     |
+| Kneel                                                                          | 1.55     |
+| Other                                                                          | 0.02     |
+
+### Comeback drives -- the hurry-up guardrail
+
+1st and 10 at the trailing team's own 25 in the 4th quarter, 2,000 replays per cell, coach play-calling on both sides, each team's real kicker. Timeouts are the trailing team's; the leader has 3. A tie at the end of regulation is left as a tie (no overtime), so "down 7, tie" is a TD and extra point. "Drive TD / FG" is how the trailing team's possession ended.
+
+| Situation          | LAC trailing: win / tie | Drive TD / FG | BUF trailing: win / tie | Drive TD / FG |
+| ------------------ | ----------------------- | ------------- | ----------------------- | ------------- |
+| 2:00, 3 TO, down 3 | 28.9% / 5.3%            | 32.6% / 1.8%  | 24.3% / 5.7%            | 30.5% / 2.3%  |
+| 2:00, 3 TO, down 7 | 4.7% / 18.4%            | 33.2% / 0.0%  | 3.5% / 15.6%            | 29.5% / 0.0%  |
+| 2:00, 3 TO, down 8 | 5.2% / 12.6%            | 34.6% / 0.0%  | 2.5% / 12.2%            | 30.2% / 0.0%  |
+| 2:00, 0 TO, down 3 | 22.3% / 7.7%            | 27.6% / 7.1%  | 20.7% / 9.4%            | 26.4% / 8.4%  |
+| 2:00, 0 TO, down 7 | 2.4% / 17.1%            | 30.3% / 0.0%  | 2.5% / 15.8%            | 27.9% / 0.0%  |
+| 2:00, 0 TO, down 8 | 2.4% / 12.6%            | 31.1% / 0.0%  | 2.0% / 12.0%            | 29.8% / 0.0%  |
+| 1:00, 3 TO, down 3 | 16.3% / 19.1%           | 17.9% / 18.7% | 12.3% / 20.0%           | 14.3% / 19.7% |
+| 1:00, 3 TO, down 7 | 1.7% / 15.6%            | 23.4% / 0.0%  | 1.1% / 14.9%            | 21.0% / 0.0%  |
+| 1:00, 3 TO, down 8 | 1.1% / 11.7%            | 22.9% / 0.0%  | 0.8% / 10.2%            | 19.5% / 0.0%  |
+| 1:00, 0 TO, down 3 | 8.2% / 19.1%            | 9.3% / 19.0%  | 6.7% / 23.8%            | 7.7% / 23.8%  |
+| 1:00, 0 TO, down 7 | 0.6% / 10.0%            | 14.2% / 0.0%  | 0.5% / 9.4%             | 12.7% / 0.0%  |
+| 1:00, 0 TO, down 8 | 0.3% / 7.1%             | 14.0% / 0.0%  | 0.4% / 6.8%             | 13.1% / 0.0%  |
+
+What these say:
+
+- **Clock and timeouts drive the result far more than roster strength.** A 19-point team ovr gap moves the TD rate only 2-4 points; going from 2:00 to 1:00 with no timeouts cuts it from ~29% to ~13%. That's the lever a clock change pulls, which makes this a sensitive guardrail.
+- **Timeouts matter most with 1:00 left:** 3 timeouts vs none raises the TD rate from ~13% to ~22%.
+- The coach passes on the first snap every time, and never settles for a field goal when down 7 or 8.
+- **Precision:** at 2,000 replays the standard error is about 1 point on a 30% rate and 0.5 on a 5% rate, so a clock change that moves a rate 3 points or more is a real effect.
 
 ## The observation
 
@@ -179,20 +326,6 @@ stopped-clock outcome.
   64.5 in 2023, 62.65 in 2024). The average isn't far off; the spread and
   the _shape_ of what produces that average are the parts that look off.
 
-## Candidate directions (not vetted, not being implemented)
-
-- Smooth `dtClockRunning`'s hurry-up/normal split into something closer to a
-  continuous distribution instead of two hard-coded ranges with an empty gap
-  between them.
-- Raise the floor on live-action `dt` for stopped-clock outcomes (incomplete
-  passes in particular, since those are unconditionally clock-stopping and
-  currently contribute almost no time at all — 2-6s base, barely modified by
-  yardage).
-- Reconsider whether 15%/25%/2% of runs/completions/sacks going out of
-  bounds (vs. staying in bounds) is a realistic rate, since that's a second,
-  independent lever on how often the dead-time formula gets skipped
-  entirely.
-
 ## Source files referenced
 
 - `src/worker/core/GameSim.football/index.ts` — `hurryUp()` (~620),
@@ -228,14 +361,10 @@ specific code path:
   the ~2-6s constant itself, not a missing term.
 
 This doesn't change the diagnosis above, it's independent confirmation from
-a real transcript rather than the aggregated 5-game stats. It does sharpen
-one candidate direction: the felt "too fast" problem in hurry-up specifically
-is the **combination** of the already-small base `dt` (2-6s pass, 2-4s+dist/10
-run) stacking with the already-small 5-13s huddle band, not either term being
-literally zero. Whoever picks this up should decide, as a first cut, whether
-to widen the hurry-up huddle band (5-13s → wider), raise the base `dt` floor
-(affects all plays, not just hurry-up), or both — no decision made yet, this
-is still evidence-only per the ground rules above.
+a real transcript rather than the aggregated 5-game stats. It also shows the
+felt "too fast" problem in hurry-up specifically is the **combination** of the
+already-small base `dt` (2-6s pass, 2-4s+dist/10 run) stacking with the
+already-small 5-13s huddle band, not either term being literally zero.
 
 ## Re-run, 2026-09-08 (post-season): pattern confirmed, three new mechanisms
 
@@ -354,27 +483,6 @@ gap. Delay of game is the glaring case: by definition the play clock just
 expired, which in real football burns up to 40 seconds of game clock when
 the clock was running. Charging zero is wrong on its own terms, independent
 of the huddle-time question.
-
-### Updated candidate directions (still not vetted, still not implemented)
-
-Ordered roughly by impact-to-risk, based on the new data:
-
-1. **Set `isClockRunning` on `kr`/`pr` return events** the way `rus` does —
-   probably `true` for a return tackled in bounds, with an out-of-bounds
-   roll comparable to the run/pass ones. Biggest single win: 11.3% of plays,
-   and it's an outright omission rather than a tuning question.
-2. **Charge dead time on pre-snap penalties**, especially delay of game.
-   Small population (2.5%) but unambiguously wrong at 0s.
-3. **Raise the kickoff return `dt` divisor** from `/8` to something nearer
-   `/5`, and consider a small fixed catch/setup term.
-4. **Raise the base live-action `dt` floor** for stopped-clock outcomes,
-   incompletions above all (2-6s currently, 15.6% of all plays) — this is
-   the original recommendation and still stands, but note it affects every
-   play type, so it's the highest-blast-radius option of the four.
-5. Smoothing the binary 5-13s / 37-62s `dtClockRunning` split into a
-   continuous distribution remains worthwhile for the empty 10-40s band, but
-   the new data suggests it's a _smaller_ contributor than items 1-4: runs
-   and completions already median 41-46s, which is in a believable range.
 
 Analysis scripts for this re-run live in a session scratchpad
 (`play_gap_analysis.py`, `play_gap_refine.py`; as of 2026-09-10 still at

@@ -32,11 +32,96 @@ export const ROSTER_TEMPLATE: Record<string, number> = {
 
 type Ratings = Record<string, any>;
 
+// mulberry32 -- small, fast, and good enough to make roster generation repeatable
+const seededRandom = (seed: number) => {
+	let a = seed >>> 0;
+	return () => {
+		a = (a + 0x6d2b79f5) >>> 0;
+		let t = a;
+		t = Math.imul(t ^ (t >>> 15), t | 1);
+		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+};
+
 /**
  * Two teams (tids 0 and 1) built from ROSTER_TEMPLATE with random 25-year-olds,
- * depth charts auto-sorted. Replaces whatever was in the cache.
+ * depth charts auto-sorted. Replaces whatever was in the cache. With a seed the
+ * rosters are identical every run, so a before/after comparison isn't also a
+ * roster comparison; the games themselves stay random either way.
  */
-export const genHarnessTeams = async () => {
+export const genHarnessTeams = async ({
+	seed,
+	rosters,
+}: {
+	seed?: number;
+	// Real rosters for [tid 0, tid 1] instead of generated ones
+	rosters?: [HarnessRoster, HarnessRoster];
+} = {}) => {
+	const random = Math.random;
+	if (seed !== undefined) {
+		Math.random = seededRandom(seed);
+	}
+	try {
+		await genTeams(rosters);
+	} finally {
+		Math.random = random;
+	}
+};
+
+/** One player of a real roster: his raw ratings, as exported from a league. */
+export type RosterPlayer = {
+	firstName: string;
+	lastName: string;
+	age: number;
+	pos: Position;
+	// The league's ovr at pos, to check the ratings carried over intact
+	ovr: number;
+} & Record<(typeof RATINGS)[number], number>;
+
+export type HarnessRoster = {
+	abbrev: string;
+	// The league's team ovr with every player healthy
+	teamOvr: number;
+	players: RosterPlayer[];
+};
+
+const fromRoster = (tid: number, spec: RosterPlayer) => {
+	const p = player.generate(tid, spec.age, 2010, true, DEFAULT_LEVEL);
+	p.firstName = spec.firstName;
+	p.lastName = spec.lastName;
+	const ratings: Ratings = p.ratings.at(-1)!;
+	for (const key of RATINGS) {
+		ratings[key] = spec[key];
+	}
+	ratings.pos = spec.pos;
+	recomputeOvrs(ratings);
+	toHarnessSeason(p);
+	return p;
+};
+
+// player.generate dates the ratings row a few seasons past g.season (2016 vs
+// 2013). Depth charts are built from ratings for g.season only, so without
+// this every depth chart comes out empty and the game sim fields players in
+// roster order -- a cornerback at QB.
+const toHarnessSeason = (p: { ratings: { season: number }[] }) => {
+	p.ratings.at(-1)!.season = g.get("season");
+};
+
+/** A team's ovr as the game computes it, everyone healthy. */
+export const teamOvr = async (tid: number) => {
+	const players = await idb.cache.players.indexGetAll("playersByTid", tid);
+	return team.ovr(
+		players.map((p) => ({
+			pid: p.pid,
+			injury: p.injury,
+			value: p.value,
+			ratings: p.ratings.at(-1)! as any,
+		})),
+	);
+};
+
+const genTeams = async (rosters?: [HarnessRoster, HarnessRoster]) => {
 	resetG();
 	g.setWithoutSavingToDB("season", 2013);
 	const teamsDefault = helpers.getTeamsDefault().slice(0, 2);
@@ -44,6 +129,13 @@ export const genHarnessTeams = async () => {
 	// player.generate can't force a position, so draw until every quota is met
 	const players = [];
 	for (const tid of [0, 1]) {
+		if (rosters) {
+			for (const spec of rosters[tid]!.players) {
+				players.push(fromRoster(tid, spec));
+			}
+			continue;
+		}
+
 		const need = { ...ROSTER_TEMPLATE };
 		for (let i = 0; Object.values(need).some((n) => n > 0); i++) {
 			if (i > 20000) {
@@ -58,6 +150,7 @@ export const genHarnessTeams = async () => {
 				// here -- without develop, which would also age the player and could
 				// move him off the position we drew him for.
 				recomputeOvrs(p.ratings.at(-1)!);
+				toHarnessSeason(p);
 				players.push(p);
 			}
 		}
@@ -215,6 +308,27 @@ const PASS_KINDS = new Set<SnapKind>([
 	"sack",
 ]);
 
+/**
+ * Why the clock was stopped after a snap, first match wins. "score" includes
+ * extra points and two-point tries, made or not. "penalty" is any flag on a
+ * play that nothing above explains -- a declined flag on a play that went out
+ * of bounds lands here too. "outOfBounds" is the random stop roll on a run,
+ * completion, sack or recovered fumble.
+ */
+export const STOP_CAUSES = [
+	"twoMinuteWarning",
+	"timeout",
+	"score",
+	"possessionChange",
+	"incompletion",
+	"penalty",
+	"kneel",
+	"outOfBounds",
+	"other",
+] as const;
+
+export type StopCause = (typeof STOP_CAUSES)[number];
+
 export type Snap = {
 	quarter: number;
 	// Game clock at the snap, in minutes
@@ -226,6 +340,13 @@ export type Snap = {
 	// The time to the next snap used hurry-up pacing (5-13s huddle) rather than
 	// the normal 37-62s one. hurryUp() has a single caller, in that branch.
 	hurryUp: boolean;
+	// Points each team scored on this snap
+	ptsScored: [number, number];
+	// First snap of a drive, as the engine's drive stats count it
+	newDrive: boolean;
+	// Set when the clock was stopped going into the next snap; undefined means
+	// it kept running
+	stop?: StopCause;
 	// Seconds of game clock until the next snap in the same period
 	gap?: number;
 };
@@ -253,6 +374,48 @@ const classify = (types: Set<string>): SnapKind => {
 	if (types.has("pssInc")) return "incompletion";
 	if (types.has("rus")) return "run";
 	if (types.has("penalty")) return "penalty";
+	return "other";
+};
+
+const stopCause = ({
+	kind,
+	types,
+	ptsScored,
+	warned,
+	timeoutUsed,
+	offenseChanged,
+}: {
+	kind: SnapKind;
+	types: Set<string>;
+	ptsScored: [number, number];
+	warned: boolean;
+	timeoutUsed: boolean;
+	offenseChanged: boolean;
+}): StopCause => {
+	if (warned) return "twoMinuteWarning";
+	if (timeoutUsed) return "timeout";
+	if (
+		ptsScored[0] > 0 ||
+		ptsScored[1] > 0 ||
+		kind === "extraPoint" ||
+		kind === "twoPoint"
+	) {
+		return "score";
+	}
+	if (types.has("possessionChange") || offenseChanged) {
+		return "possessionChange";
+	}
+	if (kind === "incompletion") return "incompletion";
+	if (types.has("penalty")) return "penalty";
+	if (kind === "kneel") return "kneel";
+	if (
+		kind === "run" ||
+		kind === "completion" ||
+		kind === "sack" ||
+		types.has("fmbRec")
+	) {
+		return "outOfBounds";
+	}
 	return "other";
 };
 
@@ -319,6 +482,9 @@ export const simGames = async ({
 			const quarter = game.team[0].stat.ptsQtrs.length;
 			const clock = game.clock;
 			const offense = game.o;
+			const ptsBefore = [game.team[0].stat.pts, game.team[1].stat.pts];
+			const timeoutsBefore = game.timeouts[0] + game.timeouts[1];
+			const warnedBefore = game.twoMinuteWarningHappened;
 
 			hurried = false;
 			const out = await simPlay();
@@ -326,13 +492,30 @@ export const simGames = async ({
 			const types = new Set(
 				game.currentPlay.events.map(({ event }) => event.type as string),
 			);
+			const kind = classify(types);
+			const ptsScored: [number, number] = [
+				game.team[0].stat.pts - ptsBefore[0]!,
+				game.team[1].stat.pts - ptsBefore[1]!,
+			];
 			snaps.push({
 				quarter,
 				clock,
 				offense,
-				kind: classify(types),
+				kind,
 				returned: types.has("kr") || types.has("pr"),
 				hurryUp: hurried,
+				ptsScored,
+				newDrive: types.has("newDrive"),
+				stop: game.isClockRunning
+					? undefined
+					: stopCause({
+							kind,
+							types,
+							ptsScored,
+							warned: !warnedBefore && game.twoMinuteWarningHappened,
+							timeoutUsed: game.timeouts[0] + game.timeouts[1] < timeoutsBefore,
+							offenseChanged: game.o !== offense,
+						}),
 			});
 
 			return out;
@@ -629,6 +812,9 @@ export type StateResult = {
 	// Mean points each side scored from the snap to the end of the period
 	ptsFor: number;
 	ptsAgainst: number;
+	// How the offense's possession from the given state ended: touchdown, field
+	// goal, or neither (turnover, punt, missed kick, clock ran out)
+	openingDrive: { td: number; fg: number; none: number };
 	// The state as the engine saw it on the first snap of the first trial
 	firstSnap: GameState;
 };
@@ -694,6 +880,7 @@ export const simFromState = async ({
 	let loss = 0;
 	let ptsFor = 0;
 	let ptsAgainst = 0;
+	const openingDrive = { td: 0, fg: 0, none: 0 };
 	let firstSnap: GameState | undefined;
 
 	for (let i = 0; i < n; i++) {
@@ -747,13 +934,26 @@ export const simFromState = async ({
 		};
 
 		// Same loop the engine uses to finish a period
+		let drive: keyof typeof openingDrive | undefined;
 		while (
 			game.clock > 0 ||
 			game.awaitingAfterTouchdown ||
 			game.playUntimedPossession
 		) {
 			await game.simPlay();
+
+			if (drive === undefined) {
+				const scored = game.team[0].stat.pts - startPts[0];
+				if (scored >= 6) {
+					drive = "td";
+				} else if (scored >= 3) {
+					drive = "fg";
+				} else if (game.o !== 0) {
+					drive = "none";
+				}
+			}
 		}
+		openingDrive[drive ?? "none"] += 1;
 
 		calls[firstCall!] = (calls[firstCall!] ?? 0) + 1;
 
@@ -777,6 +977,11 @@ export const simFromState = async ({
 		loss: loss / n,
 		ptsFor: ptsFor / n,
 		ptsAgainst: ptsAgainst / n,
+		openingDrive: {
+			td: openingDrive.td / n,
+			fg: openingDrive.fg / n,
+			none: openingDrive.none / n,
+		},
 		firstSnap: firstSnap!,
 	};
 };
@@ -784,7 +989,17 @@ export const simFromState = async ({
 /** One row per named simFromState result, for console output. */
 export const formatStateResults = (results: Record<string, StateResult>) => {
 	const pct = (x: number) => `${(100 * x).toFixed(1)}%`;
-	const header = ["", "n", "win", "tie", "loss", "pts for", "first-snap call"];
+	const header = [
+		"",
+		"n",
+		"win",
+		"tie",
+		"loss",
+		"pts for",
+		"drive TD",
+		"drive FG",
+		"first-snap call",
+	];
 	const rows = Object.entries(results).map(([label, r]) => [
 		label,
 		String(r.n),
@@ -792,6 +1007,8 @@ export const formatStateResults = (results: Record<string, StateResult>) => {
 		pct(r.tie),
 		pct(r.loss),
 		r.ptsFor.toFixed(2),
+		pct(r.openingDrive.td),
+		pct(r.openingDrive.fg),
 		Object.entries(r.calls)
 			.sort((a, b) => b[1] - a[1])
 			.map(([call, count]) => `${call} ${pct(count / r.n)}`)
@@ -870,6 +1087,67 @@ export const clockReport = (records: GameRecord[]) => {
 			share: count / gaps.length,
 		})),
 	};
+};
+
+export type GameReport = ReturnType<typeof gameReport>;
+
+/**
+ * Game-level numbers for a clock change to be checked against: scoring and
+ * drives, late-half volume (the comeback window), and how often each cause
+ * stopped the clock. Late-half points are both teams' points on snaps taken
+ * with 2:00 or less left in the 2nd or 4th quarter.
+ */
+export const gameReport = (records: GameRecord[]) => {
+	const snaps = records.flatMap((r) => r.snaps);
+	const games = records.length;
+	const teamGames = games * 2;
+
+	const pts = records.reduce((sum, r) => sum + r.pts[0] + r.pts[1], 0);
+	const drives = snaps.filter((s) => s.newDrive).length;
+	const lateHalfPts = (quarter: number) =>
+		snaps
+			.filter((s) => s.quarter === quarter && s.clock <= 2)
+			.reduce((sum, s) => sum + s.ptsScored[0] + s.ptsScored[1], 0);
+
+	const stopsPerGame = Object.fromEntries(
+		STOP_CAUSES.map((cause) => [
+			cause,
+			snaps.filter((s) => s.stop === cause).length / games,
+		]),
+	) as Record<StopCause, number>;
+
+	return {
+		games,
+		ptsPerTeamGame: pts / teamGames,
+		drivesPerTeamGame: drives / teamGames,
+		ptsPerDrive: pts / drives,
+		hurryUpSnapsPerGame: snaps.filter((s) => s.hurryUp).length / games,
+		lateHalfPtsPerGame: {
+			firstHalf: lateHalfPts(2) / games,
+			secondHalf: lateHalfPts(4) / games,
+		},
+		stopsPerGame,
+	};
+};
+
+/** Text table of a gameReport, for console output. */
+export const formatGameReport = (report: GameReport) => {
+	const num = (x: number) => x.toFixed(2);
+	const lines = [
+		`${report.games} games`,
+		`pts / team-game: ${num(report.ptsPerTeamGame)}`,
+		`drives / team-game: ${num(report.drivesPerTeamGame)}`,
+		`pts / drive: ${num(report.ptsPerDrive)}`,
+		`hurry-up snaps / game: ${num(report.hurryUpSnapsPerGame)}`,
+		`pts in the last 2:00 of the 1st half / game: ${num(report.lateHalfPtsPerGame.firstHalf)}`,
+		`pts in the last 2:00 of the 2nd half / game: ${num(report.lateHalfPtsPerGame.secondHalf)}`,
+		"",
+		"clock stops / game, by cause:",
+	];
+	for (const cause of STOP_CAUSES) {
+		lines.push(`${cause.padStart(18)}  ${num(report.stopsPerGame[cause])}`);
+	}
+	return lines.join("\n");
 };
 
 /** Text histogram of a clockReport, for console output. */

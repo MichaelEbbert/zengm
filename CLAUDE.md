@@ -37,14 +37,14 @@ ZenGM (TypeScript, browser web worker, Electron runtime)
 
 ## Resume Checkpoint (2026-09-10)
 
-**Working on `docs/clock_play_pacing.md`. Currently deciding whether or not to make clock changes at all** -- nothing in the engine's clock code has been changed yet.
+**Working on `docs/clock_play_pacing.md`: the "new clock" dev plan, still in the stats-theory discussion** -- nothing in the engine's clock code has been changed yet.
 
 Where things stand:
 
-- **The problem:** time between snaps is bimodal -- 62% of non-hurry-up gaps are 0-10s, 36% are 41-70s, and only ~2% fall in the realistic 11-40s band. The five candidate fixes, ranked, are in `FUTURE_PLANS.md` under "Clock / Play Pacing".
-- **Baseline measured:** the "Harness baseline, 2026-09-10" section of `docs/clock_play_pacing.md` has plays per team-game and the 5-second gap histogram from 500 harness games. Re-measure any change with `-t "clock distribution"` (see "Sim harness" below) and compare against it.
-- **Decided if fix #1 goes ahead:** after a kick or punt return the clock keeps running (with an out-of-bounds roll, rate still to be chosen -- the sim has no fair catches, so punts may want a higher stop rate), and the existing late-game timeout logic must be able to respond. It already can: the timeout block runs after `commit()` with possession and the clock flag updated, so no timeout code is needed.
-- **The catch that makes this a real decision:** fix #1 alone burns ~10 minutes of game clock per game (13.8 returns/game x 85% x ~50s), roughly 10 fewer offensive plays per team. It likely needs pairing with fix #5 (narrowing the 37-62s dead-time band) to keep plays per game realistic. Measure both together before deciding.
+- **The problem:** time between snaps is bimodal -- 62% of non-hurry-up gaps are 0-10s, 36% are 41-70s, and only ~2% fall in the realistic 11-40s band.
+- **Leading plan:** the "Leading plan" section of `docs/clock_play_pacing.md`, three parts: (1) a new live-action play-length distribution (floor 4s, max 12s, mean 6s; 97% Gaussian 5.8/1 redrawn below 4, 3% big plays uniform 10-12s tied to the play's result); (2) lower out-of-bounds rates, runs 15% -> ~6-7%, completions 25% -> ~20%; (3) a dead-time table by how the play ended -- in bounds ~32s clipped 24-39s, out of bounds ~24s except 0s inside the late windows (last 2:00 of the first half, last 5:00 of the game), changes of possession as out of bounds. Hurry-up joins the model gently, with before/after harness tests so comebacks survive. All earlier candidate fixes were dropped in its favor.
+- **Baseline measured:** the "Harness baseline v3" section of the same doc -- 1,000 games of Goin Fast's LAC (team ovr 63) vs BUF (44), real rosters (plays per team-game, the gap histogram, points/drives, late-half points, clock stops by cause), plus 12 comeback scenarios x 2,000 replays with each team trailing. Scoring matches the real league (23.5 pts per team-game, 2.0 per drive). Re-measure any change with `-t "clock distribution"` and `-t "comeback"` (see "Sim harness" below) and compare against it.
+- **Earlier harness numbers are void.** Until 2026-09-10 every harness depth chart was empty (ratings dated 2016 vs the harness season 2013), so the sim fielded players in roster order -- cornerbacks at QB. The coach vs stock, head-to-head and 4th-and-2 results, and the v1/v2 baselines, all came from that; rerun before relying on any of them.
 - **No unit tests cover `isClockRunning` today.** Any clock change gets red-then-green tests first, in `Play.test.ts` (build the play by hand) and/or the harness.
 
 ---
@@ -126,9 +126,11 @@ Set up the scenario in the experiment test in `simHarness.test.ts`, then:
 SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t experiment
 ```
 
-`-t "coach vs stock"`, `-t "head-to-head,"`, `-t "4th and 2"` or `-t "clock distribution"` runs one experiment; `-t experiment` runs all of them. `summarize()` also splits points, win/tie/loss, pass rate and INT rate by each side's play-calling.
+`genHarnessTeams({ seed })` builds the same two generated rosters every run (the games stay random); `genHarnessTeams({ rosters })` loads real rosters instead -- `harnessRosters/goinFast1921.json` holds Goin Fast's LAC (team ovr 63) and BUF (44), exported from the league DB with raw ratings, and the clock experiments play them so before/after runs use the same teams. `teamOvr(tid)` gives the game's team ovr. Each snap also records points scored, whether it started a drive, and why the clock stopped (`stop`, one of `STOP_CAUSES`); `gameReport()` turns that into points/drives per team-game, hurry-up snaps and late-half points per game, and clock stops per game by cause. `simFromState` also reports how the opening drive ended (TD / FG / neither).
 
-`SIM_OUT=<path>` also writes the summaries as JSON. Use it for before/after deltas, not absolute levels -- generated teams run ~5 more offensive plays per team-game than a real league.
+`-t "coach vs stock"`, `-t "head-to-head,"`, `-t "4th and 2"`, `-t "clock distribution"` or `-t "comeback"` (`SIM_TRIALS` replays per situation) runs one experiment; `-t experiment` runs all of them. `summarize()` also splits points, win/tie/loss, pass rate and INT rate by each side's play-calling.
+
+`SIM_OUT=<path>` also writes the summaries as JSON. With the LAC vs BUF rosters the harness matches the real league (23.5 pts and 63 offensive plays per team-game vs 23-25 and ~60); still, lean on before/after deltas rather than absolute levels.
 
 ---
 

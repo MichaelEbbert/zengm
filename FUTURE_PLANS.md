@@ -34,21 +34,17 @@ Found 2026-09-04 while investigating LAR's 2001-season defensive injury rate (Da
 
 **Root cause not yet located** -- likely in `GameSim.football/index.ts`'s injury/stat-recording sequencing (the `injuries()` check vs. whatever writes the box-score row), or in how `game_players` rows get persisted for players who never accrued a stat. Needs a fresh code read before attempting a fix.
 
-### Clock / Play Pacing -- findings only, not started
+### Clock / Play Pacing -- leading plan chosen, not started
 
-Full findings: `docs/clock_play_pacing.md` (moved from `zengm-press` 2026-09-10).
+Full findings and the plan: `docs/clock_play_pacing.md` (moved from `zengm-press` 2026-09-10).
 
-Time between plays is bimodal. Across 1,458 plays from 10 late-2001 games the median gap is 7s: 55.9% are under 10s, 39.1% over 40s, and only 5.0% land in the realistic 10-40s band. Runs and completions are fine (41-46s medians); the problem is the third of all plays that never charge any huddle time. Candidate fixes, in the doc's impact-to-risk order:
+Time between plays is bimodal. Across 1,458 plays from 10 late-2001 games the median gap is 7s: 55.9% are under 10s, 39.1% over 40s, and only 5.0% land in the realistic 10-40s band. Runs and completions are fine (41-46s medians); the problem is the third of all plays that never charge any huddle time.
 
-1. **Kick and punt returns never set `isClockRunning`** (`Play.ts:754`, `:767`), unlike the `rus` handler right below them, so the next snap comes ~2s after every return. 11.3% of plays, and an outright omission rather than a tuning question.
-2. **Pre-snap penalties charge 0s of game clock**, delay of game included.
-3. **Kickoff returns run at 8 yd/s** (`index.ts:1691`, `returnLength / 8`) -- near a sprinter's top speed. ~5 yd/s plus a small catch term is closer.
-4. **Incompletions add only 2-6s** (`doPass()` base `dt`, `index.ts:2464`), and are 15.6% of plays. Raising the floor touches every play type, so it has the largest blast radius.
-5. **Huddle time is binary** -- 5-13s under hurry-up or 37-62s otherwise (`index.ts:1231-1239`), nothing in between. A smaller contributor than 1-4.
+**Leading "new clock" plan (2026-09-10; replaces all earlier candidate fixes):** a new distribution for live-action time per play -- hard floor 4s, max 12s, mean 6s, 10-12s plays a few per game. Two kinds of plays: 97% normal (Gaussian mean 5.8, sd 1, redrawn below 4, capped at 10) and 3% big plays (uniform 10-12s), with the big-play branch driven by the play's result (long gain, return) rather than a random roll. Also lower the out-of-bounds clock-stop rates to real-football levels: runs 15% -> ~6-7%, completions 25% -> ~20%. Dead time after the play depends on how it ended: in bounds ~32s (clipped 24-39s); out of bounds ~24s outside the late windows (last 2:00 of the first half, last 5:00 of the game) and 0s inside them; changes of possession as out of bounds; penalties ~16s (clipped 8-23s); punt/interception touchbacks and fair catches 4-6s of hang time then 0s; incompletions and scores 0s; timeouts 0-2s. One play-length draw per play, capped at 12s, even for compound plays. Hurry-up moves to the same model but gently, verified before/after so comebacks survive. Future considerations: delay of game running off 40s, the 10-second runoff. Details and the per-game table are in the doc's "Leading plan" section.
 
 Closed: the 15%/25% out-of-bounds clock stops on runs and completions fire exactly as coded (measured 14.8% / 25.1%), and the "gets out of bounds 90% of the time on late drives" complaint traced entirely to incompletions, penalties, the two-minute warning and labeled timeouts.
 
-Overlaps Desperation Mode Tuning below: `hurryUp()` feeds both, so the late-game play volume measured there depends on item 5 here. Fix pacing first, then measure desperation.
+Overlaps Desperation Mode Tuning below: `hurryUp()` feeds both, so the late-game play volume measured there depends on the clock here. Fix pacing first, then measure desperation.
 
 ### Desperation Mode Tuning -- come back to between seasons, not started
 
