@@ -129,6 +129,20 @@ type PlayByPlayEntryInfo = {
 	textOnly: boolean;
 	time: string;
 	injury: boolean;
+	// Football only: a penalty call, outlined yellow if accepted, gray if not
+	penalty: "accept" | "decline" | undefined;
+};
+
+const entryOutlineColor = (entry: PlayByPlayEntryInfo) => {
+	if (entry.injury) {
+		return "var(--bs-danger)";
+	}
+	if (entry.penalty === "accept") {
+		return "var(--bs-warning)";
+	}
+	if (entry.penalty === "decline") {
+		return "var(--bs-secondary)";
+	}
 };
 
 const PlayByPlayEntry = memo(
@@ -169,12 +183,14 @@ const PlayByPlayEntry = memo(
 			}
 		}
 
+		const outlineColor = entryOutlineColor(entry);
+
 		return (
 			<div
 				className="d-flex"
 				style={
-					entry.injury
-						? { border: "2px solid var(--bs-danger)", borderRadius: 4 }
+					outlineColor
+						? { border: `2px solid ${outlineColor}`, borderRadius: 4 }
 						: undefined
 				}
 			>
@@ -440,6 +456,7 @@ export const LiveGame = (props: View<"liveGame">) => {
 					t,
 					time,
 					injury: !!output.injury,
+					penalty: "penalty" in output ? output.penalty : undefined,
 				});
 			}
 

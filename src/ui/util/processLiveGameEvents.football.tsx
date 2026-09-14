@@ -595,6 +595,8 @@ const processLiveGameEvents = ({
 	let textOnly = false;
 	let possessionChange: boolean = false;
 	let injury = false;
+	// Set when this entry is a penalty call, so the play-by-play can outline it
+	let penalty: "accept" | "decline" | undefined;
 
 	while (!stop && events.length > 0) {
 		const e = events.shift();
@@ -894,6 +896,12 @@ const processLiveGameEvents = ({
 						type: "Injured",
 						gamesRemaining: -1,
 					};
+				} else if (e.type === "penalty") {
+					// Offsetting penalties aren't enforced, so they read as declined
+					penalty =
+						e.decision === "accept" && e.offsetStatus !== "offset"
+							? "accept"
+							: "decline";
 				}
 
 				text = initialText;
@@ -1131,6 +1139,7 @@ const processLiveGameEvents = ({
 	return {
 		injury,
 		overtimes,
+		penalty,
 		possessionChange,
 		quarters,
 		sportState,

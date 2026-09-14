@@ -45,7 +45,7 @@ describe("processLiveGameEvents penalty yards", () => {
 		({ abbrev, players: [], ptsQtrs: [], timeouts: 3 }) as any;
 
 	// Feed every event through, the way the live game view does
-	const run = (events: any[]) => {
+	const simulate = (events: any[]) => {
 		const sportState: SportState = structuredClone(DEFAULT_SPORT_STATE);
 		const quarters: string[] = [];
 		const boxScore = {
@@ -59,17 +59,21 @@ describe("processLiveGameEvents penalty yards", () => {
 			scoringSummary: [],
 		};
 		const queue = [...events];
+		const outputs = [];
 		while (queue.length > 0) {
-			processLiveGameEvents({
-				events: queue,
-				boxScore,
-				overtimes: 0,
-				quarters,
-				sportState,
-			});
+			outputs.push(
+				processLiveGameEvents({
+					events: queue,
+					boxScore,
+					overtimes: 0,
+					quarters,
+					sportState,
+				}),
+			);
 		}
-		return sportState;
+		return { outputs, sportState };
 	};
+	const run = (events: any[]) => simulate(events).sportState;
 
 	const clock = (scrimmage: number) => ({
 		type: "clock",
@@ -188,5 +192,52 @@ describe("processLiveGameEvents penalty yards", () => {
 		const play = state.plays.at(-1)!;
 		assert.strictEqual(play.yards, -5);
 		assert.strictEqual(play.penaltyYards, -5);
+	});
+
+	// The play-by-play entry for each penalty is outlined by its decision, like injuries
+	const penaltyOutlines = (fields: Record<string, unknown>) =>
+		simulate([
+			clock(30),
+			...handoffAndRun(12),
+			{ type: "flag", clock: 10 },
+			penalty({
+				scrimmageAfter: 35,
+				penaltyName: "Offside",
+				t: 1,
+				yds: 5,
+				...fields,
+			}),
+		]).outputs.map((output) => output.penalty);
+
+	test("an accepted penalty's entry is marked accepted, and nothing else is", () => {
+		assert.deepStrictEqual(penaltyOutlines({ decision: "accept" }), [
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			"accept",
+		]);
+	});
+
+	test("declined, overruled and offsetting penalties are marked declined", () => {
+		assert.strictEqual(
+			penaltyOutlines({ decision: "decline" }).at(-1),
+			"decline",
+		);
+		assert.strictEqual(
+			penaltyOutlines({ decision: "decline", offsetStatus: "overrule" }).at(-1),
+			"decline",
+		);
+		assert.strictEqual(
+			penaltyOutlines({ decision: "accept", offsetStatus: "offset" }).at(-1),
+			"decline",
+		);
+	});
+
+	test("an enforced penalty that overrules another is marked accepted", () => {
+		assert.strictEqual(
+			penaltyOutlines({ decision: "accept", offsetStatus: "overrule" }).at(-1),
+			"accept",
+		);
 	});
 });
