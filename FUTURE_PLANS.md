@@ -24,16 +24,6 @@ Supersedes the earlier league-wide plan in `docs/preseason_games.md`, which is k
 Process and research checklist: `UPSTREAM_CHANGE_HANDLING.md`. Per-sync record: `docs/upstream_sync_log.md`.
 Upstream diverges increasingly as we add Electron + SQLite. Manual per-commit review.
 
-### Injury Tracking Bug -- instant injuries lost, not started
-
-Found 2026-09-04 while investigating LAR's 2001-season defensive injury rate (Daily League). A player hurt on the very first play of a game -- before recording any stat -- never gets an injury record: `game_players` shows `gs=1, min=0.0, injury_type=Healthy, injury_new_this_game` blank/0, even though the play-by-play log clearly shows the injury event.
-
-**Confirmed instance:** Troy Brunson (LB), LAR, 2001 season, playoffs day 21 (Bears @ Rams, gid 280) -- injured on the opening kickoff, first line of the play-by-play. His `game_players` row has zero minutes but reads "Healthy."
-
-**Scope:** checked every LAR defensive player-game this season for the same signature (`gs=1` with near-zero minutes but still "Healthy") -- this was the only occurrence in 19 games. Rare edge case (injury lands before the stat-recording path ever touches that player), not a systemic undercount, but worth fixing since it silently drops a real injury from the record.
-
-**Root cause not yet located** -- likely in `GameSim.football/index.ts`'s injury/stat-recording sequencing (the `injuries()` check vs. whatever writes the box-score row), or in how `game_players` rows get persisted for players who never accrued a stat. Needs a fresh code read before attempting a fix.
-
 ### Clock / Play Pacing -- leading plan chosen, not started
 
 Full findings and the plan: `docs/clock_play_pacing.md` (moved from `zengm-press` 2026-09-10).

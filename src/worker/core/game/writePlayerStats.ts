@@ -343,11 +343,14 @@ const writePlayerStats = async (
 					ps = p2.stats.at(-1);
 				}
 
-				// Only need to write stats if player got minutes, except for minAvailable in BBGM
+				// Only need to write stats if player got minutes, except for minAvailable in BBGM.
+				// Football uses gp rather than min: a player hurt on their very first play (e.g.
+				// an untimed down where the clock was already at 0) can end the game with min
+				// still at exactly 0, and gating on min would silently skip their injury record.
 				const updatePlayer = bySport({
 					baseball: p.stat.gp > 0,
 					basketball: true,
-					football: p.stat.min > 0,
+					football: p.stat.gp > 0,
 					hockey: p.pos === "G" || p.stat.min > 0,
 				});
 				if (!updatePlayer) {
