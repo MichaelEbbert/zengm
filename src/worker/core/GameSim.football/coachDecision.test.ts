@@ -1,5 +1,9 @@
 import { afterEach, assert, describe, test, vi } from "vitest";
-import { playDecision } from "./coachDecision.ts";
+import {
+	determineMode,
+	fourthDownDecision,
+	playDecision,
+} from "./coachDecision.ts";
 
 // playDecision in normal mode on 1st down, Q1 with 10:00 left
 const firstDown = (
@@ -72,5 +76,49 @@ describe("playDecision, 1st down before the 5 + 5 threshold", () => {
 			playDecision(1, 10, 25, 0, 0, 0, 0, 0, 4, 5, "protection"),
 			"run",
 		);
+	});
+});
+
+describe("fourthDownDecision, desperation mode", () => {
+	// 4th and 4 at the opponent's 29 (scrimmage 71), Q4
+	const fourthAndFour = (
+		scoreDiff: number,
+		clock: number,
+		{ canKickFieldGoal = true, fgProbability = 0.6 } = {},
+	) =>
+		fourthDownDecision(
+			4,
+			71,
+			true,
+			canKickFieldGoal,
+			fgProbability,
+			4,
+			scoreDiff,
+			clock,
+			determineMode(scoreDiff, 4, clock),
+			0,
+			0,
+		);
+
+	test("down 1-3 late and in range: kick the field goal", () => {
+		for (const diff of [-1, -2, -3]) {
+			assert.strictEqual(
+				fourthAndFour(diff, 1.3),
+				"fieldGoal",
+				`down ${-diff}`,
+			);
+		}
+	});
+
+	test("down 1-3 late but out of range: still goes for it", () => {
+		assert.strictEqual(
+			fourthAndFour(-1, 1.3, { canKickFieldGoal: false }),
+			"run",
+		);
+		assert.strictEqual(fourthAndFour(-1, 1.3, { fgProbability: 0.2 }), "run");
+	});
+
+	test("down 4+ late: a field goal doesn't tie, so go for it", () => {
+		assert.strictEqual(fourthAndFour(-4, 1.3), "run");
 	});
 });

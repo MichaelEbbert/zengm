@@ -119,6 +119,9 @@ export function fourthDownDecision(
 	if (mode === "protection") return fgOrPunt();
 
 	if (mode === "desperation") {
+		// A field goal ties or wins when down 3 or less, so take it when in range
+		if (margin <= 3 && canKickFieldGoal && fgProbability >= FG_MIN_PROBABILITY)
+			return "fieldGoal";
 		if (margin >= 8) return go();
 		if (clock <= 4) return go();
 		return normalDecision(
