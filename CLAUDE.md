@@ -50,6 +50,12 @@ Where things stand:
 
 ---
 
+## Resume Checkpoint -- Fantasy Scoring (2026-09-22)
+
+Player fantasy points now use our own scoring schedule (pass yds 1 per 10, pass TD 6, missed FG -1, ...), set in `FANTASY_POINTS` in `src/common/fantasyPoints.football.ts`. **Remaining tasks are tracked in `docs/fantasy_scoring.md`** -- read it before picking this up.
+
+---
+
 ## Future Plans
 
 See `FUTURE_PLANS.md` for planned and in-progress work items (DB conversion history, preseason games, upstream sync, desperation mode tuning, etc.). Read it if the user starts talking about between-season changes, upcoming features, or "what's next."
@@ -159,7 +165,8 @@ SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src
 
 - **To change a fantasy scoring weight, edit `FANTASY_POINTS` in `src/common/fantasyPoints.football.ts`** -- never the formula itself. Each constant notes its default (upstream) value.
 - Each line of the `"fp"` formula in `processPlayerStats.football.ts` is one call to a scoring function in that file (`FP.passingYardsPoints(ps)`, `FP.fieldGoalPoints(ps, "40")`, ...), line-for-line with upstream so merges stay easy. New scoring rules go inside those functions, never as new lines in the formula. The only other change there is the import line.
-- Scoring beyond upstream, all at no-op defaults: `passCmp` (per completion), `returnTD` (split from `nonPassTD`), `fgMiss` (subtracted per missed FG).
+- Scoring beyond upstream: `passCmp` (per completion), `returnTD` (split from `nonPassTD`), `fgMiss` (subtracted per missed FG). Upstream doesn't score these, so their defaults are no-ops.
+- Every constant keeps a `// default: N` comment with its upstream value, including after it's changed. Values are set to our schedule; remaining work is in `docs/fantasy_scoring.md`.
 - `turnover` is a positive number that `turnoverPoints` negates. The Standard / PPR / Half PPR choice is still the league's UI setting; `pprRec` / `halfPprRec` set what a reception is worth under it.
 - `fantasyPoints.football.test.ts` loads upstream's weights and checks the functions reproduce the upstream formula, so it keeps passing after you change `FANTASY_POINTS`. Add any new constant to its `UPSTREAM_WEIGHTS`.
 

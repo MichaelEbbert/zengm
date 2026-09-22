@@ -8,28 +8,28 @@ import type { PlayerStats } from "./types.ts";
 
 export const FANTASY_POINTS = {
 	// Yards needed for 1 point
-	passYdsPerPoint: 25, // default: 25
+	passYdsPerPoint: 10, // default: 25
 	rushRecYdsPerPoint: 10, // default: 10
 
 	// Points per completion
-	passCmp: 0, // default: 0 (not scored upstream)
+	passCmp: 0.01, // default: 0 (not scored upstream)
 
 	// Points per touchdown
-	passTD: 4, // default: 4
+	passTD: 6, // default: 4
 	nonPassTD: 6, // default: 6 -- rushing, receiving
-	returnTD: 6, // default: 6 -- punt return, kick return
+	returnTD: 0, // default: 6 -- punt return, kick return (DST in our schedule)
 
 	// Points subtracted per interception thrown or fumble lost
 	turnover: 2, // default: 2
 
 	// Kicking
 	xp: 1, // default: 1
-	fg0: 3, // default: 3 -- 0-19 yds
-	fg20: 3, // default: 3 -- 20-29 yds
-	fg30: 3, // default: 3 -- 30-39 yds
+	fg0: 4, // default: 3 -- 0-19 yds
+	fg20: 4, // default: 3 -- 20-29 yds
+	fg30: 4, // default: 3 -- 30-39 yds
 	fg40: 4, // default: 4 -- 40-49 yds
-	fg50: 5, // default: 5 -- 50+ yds
-	fgMiss: 0, // default: 0 (not scored upstream) -- subtracted per missed FG
+	fg50: 4, // default: 5 -- 50+ yds
+	fgMiss: 1, // default: 0 (not scored upstream) -- subtracted per missed FG
 
 	// Points per reception, by the league's Fantasy Points setting
 	pprRec: 1, // default: 1
