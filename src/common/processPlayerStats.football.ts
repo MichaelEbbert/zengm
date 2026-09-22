@@ -1,3 +1,4 @@
+import * as FP from "./fantasyPoints.football.ts";
 import { helpers } from "./helpers.ts";
 import type { GameAttributesLeague, PlayerStats } from "./types.ts";
 
@@ -121,23 +122,23 @@ const processStats = (
 				ps.rusTD + ps.recTD + ps.prTD + ps.krTD + ps.defIntTD + ps.defFmbTD;
 		} else if (stat === "fp") {
 			row[stat] =
-				ps.pssYds / 25 +
-				4 * ps.pssTD +
-				(ps.rusYds + ps.recYds) / 10 +
-				6 * (ps.rusTD + ps.recTD + ps.prTD + ps.krTD) -
-				2 * (ps.pssInt + ps.fmbLost) +
-				ps.xp +
-				3 * ps.fg0 +
-				3 * ps.fg20 +
-				3 * ps.fg30 +
-				4 * ps.fg40 +
-				5 * ps.fg50;
+				FP.passingYardsPoints(ps) +
+				FP.passingTDPoints(ps) +
+				FP.rushRecYardsPoints(ps) +
+				FP.nonPassTDPoints(ps) +
+				FP.turnoverPoints(ps) +
+				FP.extraPointPoints(ps) +
+				FP.fieldGoalPoints(ps, "0") +
+				FP.fieldGoalPoints(ps, "20") +
+				FP.fieldGoalPoints(ps, "30") +
+				FP.fieldGoalPoints(ps, "40") +
+				FP.fieldGoalPoints(ps, "50");
 
 			const fantasyPoints = getFantasyPoints();
 			if (fantasyPoints === "ppr") {
-				row[stat] += ps.rec;
+				row[stat] += FP.pprReceptionPoints(ps);
 			} else if (fantasyPoints === "halfPpr") {
-				row[stat] += 0.5 * ps.rec;
+				row[stat] += FP.halfPprReceptionPoints(ps);
 			}
 		} else if (stat === "pbwr") {
 			row[stat] = helpers.percentage(ps.pbw, ps.pba);

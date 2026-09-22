@@ -155,6 +155,14 @@ SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src
 
 - Minor async change (retained from sidecar era)
 
+### `src/common/processPlayerStats.football.ts` + `src/common/fantasyPoints.football.ts` (new)
+
+- **To change a fantasy scoring weight, edit `FANTASY_POINTS` in `src/common/fantasyPoints.football.ts`** -- never the formula itself. Each constant notes its default (upstream) value.
+- Each line of the `"fp"` formula in `processPlayerStats.football.ts` is one call to a scoring function in that file (`FP.passingYardsPoints(ps)`, `FP.fieldGoalPoints(ps, "40")`, ...), line-for-line with upstream so merges stay easy. New scoring rules go inside those functions, never as new lines in the formula. The only other change there is the import line.
+- Scoring beyond upstream, all at no-op defaults: `passCmp` (per completion), `returnTD` (split from `nonPassTD`), `fgMiss` (subtracted per missed FG).
+- `turnover` is a positive number that `turnoverPoints` negates. The Standard / PPR / Half PPR choice is still the league's UI setting; `pprRec` / `halfPprRec` set what a reception is worth under it.
+- `fantasyPoints.football.test.ts` loads upstream's weights and checks the functions reproduce the upstream formula, so it keeps passing after you change `FANTASY_POINTS`. Add any new constant to its `UPSTREAM_WEIGHTS`.
+
 ---
 
 ## Pass Defense Rating Priorities (from `GameSim.football/index.ts` analysis)
