@@ -259,7 +259,7 @@ export type TradeEventTeams = [
 export type DiscriminateUnion<T, K extends keyof T, V extends T[K]> =
 	T extends Record<K, V> ? T : never;
 
-export type EventBBGMWithoutKey =
+export type EventBBGMWithoutKeyOrTiming =
 	| {
 			type: Exclude<
 				LogEventType,
@@ -317,8 +317,18 @@ export type EventBBGMWithoutKey =
 			dpids?: number[];
 	  };
 
+export type EventBBGMWithoutKey = EventBBGMWithoutKeyOrTiming & EventTiming;
+
 export type EventBBGM = EventBBGMWithoutKey & {
 	eid: number;
+};
+
+// Stamped on every event when it's saved (see logEvent), so the Transactions page can show when it happened. Undefined in events saved before this was added.
+export type EventTiming = {
+	phase?: Phase;
+
+	// Schedule day of the next unplayed game, only during the regular season. In football, one day is one week.
+	week?: number;
 };
 
 type GameTeam = {

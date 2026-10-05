@@ -3,6 +3,27 @@ import useTitleBar from "../hooks/useTitleBar.tsx";
 import { helpers } from "../util/helpers.ts";
 import type { View } from "../../common/types.ts";
 import { SafeHtml } from "../components/SafeHtml.tsx";
+import { PHASE_TEXT } from "../../common/constants.ts";
+import type { Phase } from "../../common/types.ts";
+
+// "2002 Week 5" in the regular season, "2002 Free agency" otherwise. Events saved before phase was recorded only have the season.
+const whenText = ({
+	phase,
+	season,
+	week,
+}: {
+	phase?: Phase;
+	season: number;
+	week?: number;
+}) => {
+	if (week !== undefined) {
+		return `${season} Week ${week}`;
+	}
+	if (phase !== undefined) {
+		return `${season} ${helpers.upperCaseFirstLetter(PHASE_TEXT[phase])}`;
+	}
+	return String(season);
+};
 
 const Transactions = ({
 	abbrev,
@@ -43,6 +64,7 @@ const Transactions = ({
 			<ul className="list-group">
 				{events.map((e) => (
 					<li key={e.eid} className="list-group-item">
+						<span className="text-body-secondary me-2">{whenText(e)}</span>
 						<SafeHtml dirty={e.text} />
 					</li>
 				))}

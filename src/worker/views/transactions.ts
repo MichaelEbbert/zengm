@@ -56,6 +56,8 @@ const updateEventLog = async (
 				pids: event.pids,
 				tids: event.tids,
 				season: event.season,
+				phase: event.phase,
+				week: event.week,
 				score: event.score,
 			});
 		}
