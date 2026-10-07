@@ -302,6 +302,7 @@ export const menuItems: (MenuItemLink | MenuItemHeader)[] = [
 				commandPalette: true,
 				path: ["roster"],
 				text: "Roster",
+				newWindow: true,
 			},
 			...(bySport({
 				baseball: true,

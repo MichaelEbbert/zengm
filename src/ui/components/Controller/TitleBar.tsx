@@ -9,7 +9,7 @@ type Props = {
 	parts?: (number | string)[];
 };
 
-const NewWindowLink = ({ parts }: Props) => {
+export const NewWindowLink = ({ parts }: Props) => {
 	const handleClick = useCallback(() => {
 		const url = parts ? helpers.leagueUrl(parts) : document.URL;
 

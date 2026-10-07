@@ -915,6 +915,7 @@ export type MenuItemLink = {
 	nonLeague?: true;
 	commandPalette?: true;
 	commandPaletteOnly?: true;
+	newWindow?: true; // Sidebar shows an "Open in new window" icon next to the link, for path
 	onClick?: () => undefined | void | false | Promise<undefined | void | false>; // Return false to leave sidebar open
 	path?: string | (number | string)[];
 	prefix?: ReactNode;

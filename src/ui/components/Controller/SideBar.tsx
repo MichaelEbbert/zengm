@@ -12,6 +12,7 @@ import { AnimatePresence, m } from "framer-motion";
 import { VIDEO_ADS, VIDEO_AD_PADDING } from "../../../common/constants.ts";
 import { menuItems } from "../../util/menuItems.tsx";
 import { safeLocalStorage } from "../../util/safeLocalStorage.ts";
+import { NewWindowLink } from "./TitleBar.tsx";
 
 export const getText = (
 	text: MenuItemLink["text"],
@@ -162,7 +163,11 @@ const MenuItem = ({
 		const anchorProps = makeAnchorProps(menuItem, onMenuItemClick);
 
 		const item = (
-			<li className="nav-item">
+			<li
+				className={clsx("nav-item", {
+					"d-flex align-items-center": menuItem.newWindow,
+				})}
+			>
 				<a
 					className={clsx("nav-link", {
 						active: menuItem.active ? menuItem.active(pageID, pathname) : false,
@@ -172,6 +177,9 @@ const MenuItem = ({
 				>
 					{getText(menuItem.text)}
 				</a>
+				{menuItem.newWindow && Array.isArray(menuItem.path) ? (
+					<NewWindowLink parts={menuItem.path} />
+				) : null}
 			</li>
 		);
 		return root ? <MenuGroup>{item}</MenuGroup> : item;
