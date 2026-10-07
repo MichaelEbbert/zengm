@@ -19,6 +19,7 @@ const getCopies = async (
 		pids,
 		retiredYear,
 		activeAndRetired,
+		hasAwards,
 		activeSeason,
 		draftYear,
 		hof,
@@ -32,6 +33,7 @@ const getCopies = async (
 		pids?: number[];
 		retiredYear?: number;
 		activeAndRetired?: boolean;
+		hasAwards?: boolean;
 		activeSeason?: number;
 		draftYear?: number;
 		hof?: boolean;
@@ -140,12 +142,17 @@ const getCopies = async (
 		return type === "noCopyCache" ? fromDB : helpers.deepCopy(fromDB);
 	}
 
-	if (activeAndRetired === true) {
+	if (activeAndRetired === true || hasAwards === true) {
+		// hasAwards only narrows what comes from the DB. Cached players may have newer
+		// awards, so they all get merged in, and the caller's filter checks awards
 		const lid = getLid();
 		if (lid !== undefined) {
-			const sqlitePlayers = await readPlayersFilter(lid, {
-				activeAndRetired: true,
-			});
+			const sqlitePlayers = await readPlayersFilter(
+				lid,
+				activeAndRetired === true
+					? { activeAndRetired: true }
+					: { hasAwards: true },
+			);
 			if (sqlitePlayers !== null) {
 				return mergeByPk(
 					sqlitePlayers,

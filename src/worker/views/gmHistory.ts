@@ -77,10 +77,20 @@ const updateGmHistory = async (inputs: unknown, updateEvents: UpdateEvents) => {
 			players.push(p);
 		};
 
-		const allPlayersRaw =
-			(typeof lid === "number"
-				? await readPlayersFilter(lid, { activeAndRetired: true })
-				: null) ?? (await idb.cache.players.getAll());
+		// Only players who were ever on one of these teams, one query per team
+		let allPlayersRaw: Player[] | null = null;
+		if (typeof lid === "number") {
+			allPlayersRaw = [];
+			for (const tid of tids) {
+				const rows = await readPlayersFilter(lid, { statsTid: tid });
+				if (!rows) {
+					allPlayersRaw = null;
+					break;
+				}
+				allPlayersRaw.push(...rows);
+			}
+		}
+		allPlayersRaw ??= await idb.cache.players.getAll();
 		const pids = new Set<number>();
 		for (const p of allPlayersRaw) {
 			if (pids.has(p.pid)) continue;

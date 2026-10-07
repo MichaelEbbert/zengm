@@ -19,7 +19,7 @@ const newPhaseDraft = async (conditions: Conditions): Promise<PhaseReturn> => {
 	const currentSeason = g.get("season");
 	const lid = g.get("lid");
 	const retiredPlayers =
-		(await readPlayersFilter(lid, { activeAndRetired: true }))?.filter(
+		(await readPlayersFilter(lid, { retiredAlive: true }))?.filter(
 			(p: any) => p.tid === PLAYER.RETIRED && typeof p.diedYear !== "number",
 		) ?? [];
 

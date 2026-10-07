@@ -430,7 +430,7 @@ const updateAwardsRecords = async (
 	) {
 		const playersAll = await idb.getCopies.players(
 			{
-				activeAndRetired: true,
+				hasAwards: true,
 				filter: (p) => p.awards.length > 0,
 			},
 			"noCopyCache",

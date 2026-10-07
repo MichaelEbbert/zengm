@@ -58,6 +58,7 @@ import {
 	readHeadToHeads,
 	readMessages,
 	readPlayersFilter,
+	readPlayerNames,
 	readScheduledEvents,
 	readSeasonLeaders,
 	readTeamSeasons,
@@ -2934,21 +2935,26 @@ const loadRetiredPlayers = async () => {
 	const playersByPid = groupByUnique(cachedPlayers, "pid");
 
 	const lid = g.get("lid");
-	const allPlayers =
-		(await readPlayersFilter(lid, { activeAndRetired: true })) ?? cachedPlayers;
+	const dbNames = await readPlayerNames(lid);
+	if (!dbNames) {
+		return finalizePlayersRelativesList(
+			cachedPlayers.map((p) => formatPlayerRelativesList(p)),
+		);
+	}
 
-	const playerNames: {
-		pid: number;
-		firstName: string;
-		lastName: string;
-		firstSeason: number;
-		lastSeason: number;
-	}[] = [];
-
-	for (const pTemp of allPlayers) {
-		// Make sure we have latest version of this player (cache may be newer)
-		const p = playersByPid[pTemp.pid] ?? pTemp;
-		playerNames.push(formatPlayerRelativesList(p));
+	// Names only from the DB, so this doesn't load every player's stats and ratings.
+	// Cached players may be newer, so they win
+	const playerNames: ReturnType<typeof formatPlayerRelativesList>[] = [];
+	const seen = new Set<number>();
+	for (const row of dbNames) {
+		const p = playersByPid[row.pid];
+		playerNames.push(p ? formatPlayerRelativesList(p) : row);
+		seen.add(row.pid);
+	}
+	for (const p of cachedPlayers) {
+		if (!seen.has(p.pid)) {
+			playerNames.push(formatPlayerRelativesList(p));
+		}
 	}
 
 	return finalizePlayersRelativesList(playerNames);

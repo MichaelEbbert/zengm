@@ -42,9 +42,11 @@ const remove = async (pids: number[]) => {
 	// Also remove any relatives from retired players in SQLite
 	const lid = g.get("lid");
 	const retiredPlayers =
-		(await readPlayersFilter(lid, { activeAndRetired: true }))?.filter(
-			(p: any) => p.tid === PLAYER.RETIRED,
-		) ?? [];
+		pids.length > 0
+			? ((await readPlayersFilter(lid, { retiredRelativesOf: pids }))?.filter(
+					(p: any) => p.tid === PLAYER.RETIRED,
+				) ?? [])
+			: [];
 
 	const toFlush: any[] = [];
 	for (const p of retiredPlayers) {

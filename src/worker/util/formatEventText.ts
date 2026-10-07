@@ -37,18 +37,22 @@ export const getPlayerFromPick = async (dp: PickAsset) => {
 		(dp.season < g.get("season") ||
 			(dp.season === g.get("season") && g.get("phase") >= PHASE.DRAFT))
 	) {
-		let lid: number | undefined;
-		try {
-			lid = g.get("lid");
-		} catch {}
-		const allPlayers =
-			typeof lid === "number"
-				? ((await readPlayersFilter(lid, { activeAndRetired: true })) ??
-					(await idb.cache.players.getAll()))
-				: await idb.cache.players.getAll();
-		p = allPlayers.find(
-			(p2: any) => p2.draft.year === dp.season && p2.draft.dpid === dp.dpid,
-		);
+		const matches = (p2: Player) =>
+			p2.draft.year === dp.season && p2.draft.dpid === dp.dpid;
+
+		// Active players are in the cache. Only go to the DB for retired ones,
+		// and then only for this pick, not the whole league
+		p = (await idb.cache.players.getAll()).find(matches);
+		if (!p) {
+			let lid: number | undefined;
+			try {
+				lid = g.get("lid");
+			} catch {}
+			if (typeof lid === "number") {
+				const rows = await readPlayersFilter(lid, { draftDpid: dp.dpid });
+				p = rows?.find(matches);
+			}
+		}
 	}
 
 	return p;

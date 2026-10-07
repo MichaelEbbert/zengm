@@ -666,6 +666,11 @@ type PlayerFilter =
 	| { tid: number }
 	| { retiredYear: number }
 	| { draftYear: number }
+	| { draftDpid: number }
+	| { srID: string }
+	| { hasAwards: true }
+	| { retiredAlive: true }
+	| { retiredRelativesOf: number[] }
 	| { statsTid: number }
 	| { hof: true }
 	| { note: true }
@@ -688,6 +693,13 @@ export async function readPlayersFilter(
 			params.set("retiredYear", String(filter.retiredYear));
 		else if ("draftYear" in filter)
 			params.set("draftYear", String(filter.draftYear));
+		else if ("draftDpid" in filter)
+			params.set("draftDpid", String(filter.draftDpid));
+		else if ("srID" in filter) params.set("srID", filter.srID);
+		else if ("hasAwards" in filter) params.set("hasAwards", "1");
+		else if ("retiredAlive" in filter) params.set("retiredAlive", "1");
+		else if ("retiredRelativesOf" in filter)
+			params.set("retiredRelativesOf", filter.retiredRelativesOf.join(","));
 		else if ("statsTid" in filter)
 			params.set("statsTid", String(filter.statsTid));
 		else if ("hof" in filter) params.set("hof", "1");
@@ -697,6 +709,28 @@ export async function readPlayersFilter(
 		else if ("activeSeason" in filter)
 			params.set("activeSeason", String(filter.activeSeason));
 		const r = await fetch(`${API}/players?${params}`);
+		if (!r.ok) return null;
+		const data = await r.json();
+		return data.players;
+	} catch {
+		return null;
+	}
+}
+
+// pid, name, and first/last season of every player, without loading stats and ratings
+export async function readPlayerNames(lid: number): Promise<
+	| {
+			pid: number;
+			firstName: string;
+			lastName: string;
+			firstSeason: number;
+			lastSeason: number;
+	  }[]
+	| null
+> {
+	if (!(await isAvailable())) return null;
+	try {
+		const r = await fetch(`${API}/players?lid=${lid}&mode=names`);
 		if (!r.ok) return null;
 		const data = await r.json();
 		return data.players;

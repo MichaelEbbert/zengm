@@ -477,7 +477,7 @@ export const getCommon = async (
 	if (g.get("randomDebutsForever") !== undefined && p.srID !== undefined) {
 		const lid = g.get("lid");
 		const allPlayers =
-			(await readPlayersFilter(lid, { activeAndRetired: true })) ??
+			(await readPlayersFilter(lid, { srID: p.srID })) ??
 			(await idb.cache.players.getAll());
 		randomDebutsForeverPids = allPlayers
 			.filter((p2: any) => p2.srID === p.srID)

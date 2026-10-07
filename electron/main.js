@@ -11,6 +11,7 @@ import {
 	writePlayers,
 	readActivePlayers,
 	readPlayersFilter,
+	readPlayerNames,
 	countPlayers,
 	writeTeams,
 	readAllTeams,
@@ -269,6 +270,10 @@ function startApiServer(win) {
 					send(200, { players: readActivePlayers(db) });
 					return;
 				}
+				if (mode === "names") {
+					send(200, { players: readPlayerNames(db) });
+					return;
+				}
 				if (mode === "count") {
 					send(200, { count: countPlayers(db) });
 					return;
@@ -288,6 +293,19 @@ function startApiServer(win) {
 					filter.retiredYear = Number(url2.searchParams.get("retiredYear"));
 				else if (url2.searchParams.has("draftYear"))
 					filter.draftYear = Number(url2.searchParams.get("draftYear"));
+				else if (url2.searchParams.has("draftDpid"))
+					filter.draftDpid = Number(url2.searchParams.get("draftDpid"));
+				else if (url2.searchParams.has("srID"))
+					filter.srID = url2.searchParams.get("srID");
+				else if (url2.searchParams.get("hasAwards") === "1")
+					filter.hasAwards = true;
+				else if (url2.searchParams.get("retiredAlive") === "1")
+					filter.retiredAlive = true;
+				else if (url2.searchParams.has("retiredRelativesOf"))
+					filter.retiredRelativesOf = url2.searchParams
+						.get("retiredRelativesOf")
+						.split(",")
+						.map(Number);
 				else if (url2.searchParams.has("statsTid"))
 					filter.statsTid = Number(url2.searchParams.get("statsTid"));
 				else if (url2.searchParams.get("hof") === "1") filter.hof = true;

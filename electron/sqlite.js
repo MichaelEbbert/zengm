@@ -2402,6 +2402,31 @@ export function readPlayersFilter(db, filter) {
 				"SELECT * FROM players WHERE draft_year = ? AND retired_year = 9999",
 			)
 			.all(filter.draftYear);
+	} else if (filter.draftDpid !== undefined) {
+		playerRows = db
+			.prepare("SELECT * FROM players WHERE draft_dpid = ?")
+			.all(filter.draftDpid);
+	} else if (filter.srID !== undefined) {
+		playerRows = db
+			.prepare("SELECT * FROM players WHERE sr_id = ?")
+			.all(filter.srID);
+	} else if (filter.hasAwards) {
+		playerRows = db
+			.prepare(
+				"SELECT * FROM players WHERE pid IN (SELECT pid FROM player_awards)",
+			)
+			.all();
+	} else if (filter.retiredAlive) {
+		playerRows = db
+			.prepare("SELECT * FROM players WHERE tid = -3 AND died_year IS NULL")
+			.all();
+	} else if (filter.retiredRelativesOf !== undefined) {
+		const ph = filter.retiredRelativesOf.map(() => "?").join(", ");
+		playerRows = db
+			.prepare(
+				`SELECT DISTINCT p.* FROM players p JOIN player_relatives r ON r.pid = p.pid WHERE p.tid = -3 AND r.rel_pid IN (${ph})`,
+			)
+			.all(...filter.retiredRelativesOf);
 	} else if (filter.hof) {
 		playerRows = db.prepare("SELECT * FROM players WHERE hof = 1").all();
 	} else if (filter.note) {
@@ -2432,6 +2457,19 @@ export function readPlayersFilter(db, filter) {
 	if (playerRows.length === 0) return [];
 	const pids = playerRows.map((r) => r.pid);
 	return _assemblePlayersFromRows(playerRows, _loadChildRows(db, pids));
+}
+
+// Just enough of every player to list them by name, without loading stats
+// and ratings for the whole league
+export function readPlayerNames(db) {
+	return db
+		.prepare(
+			`SELECT p.pid, p.first_name AS firstName, p.last_name AS lastName,
+			        MIN(r.season) AS firstSeason, MAX(r.season) AS lastSeason
+			 FROM players p LEFT JOIN player_ratings r ON r.pid = p.pid
+			 GROUP BY p.pid`,
+		)
+		.all();
 }
 
 export function countPlayers(db) {
