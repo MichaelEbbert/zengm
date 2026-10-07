@@ -1168,6 +1168,9 @@ export type MinimalPlayerRatings = {
 export type PlayerAward = {
 	season: number;
 	type: string;
+
+	// Not stored, just added to TD Leader awards on the player page
+	value?: number;
 };
 
 export type PlayerWithoutKey<PlayerRatings = MinimalPlayerRatings> = {

@@ -17,6 +17,16 @@ export const AwardsSummary = ({ awards }: { awards: Player["awards"] }) => {
 		<div style={style}>
 			{awardsGrouped.map((a, i) => {
 				let title = a.seasons.join(", ");
+				if (a.type === "TD Leader") {
+					title = awards
+						.filter((award) => award.type === "League TD Leader")
+						.map((award) =>
+							award.value === undefined
+								? `${award.season}`
+								: `${award.season} ${award.value}`,
+						)
+						.join(", ");
+				}
 				if (a.long !== a.type) {
 					title += ` - ${a.long}`;
 				}

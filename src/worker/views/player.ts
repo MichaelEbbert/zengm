@@ -163,6 +163,28 @@ export const getPlayer = async (
 	// Filter out rows with no games played
 	p.stats = p.stats.filter((row) => row.gp! > 0);
 
+	// Attach the regular season total TDs to TD Leader awards, for the badge tooltip
+	p.awards = p.awards.map((award) => {
+		if (award.type !== "League TD Leader") {
+			return award;
+		}
+
+		let value = 0;
+		for (const row of pRaw.stats) {
+			if (row.season === award.season && !row.playoffs) {
+				value +=
+					row.rusTD +
+					row.recTD +
+					row.prTD +
+					row.krTD +
+					row.defIntTD +
+					row.defFmbTD;
+			}
+		}
+
+		return { ...award, value };
+	});
+
 	return p;
 };
 
