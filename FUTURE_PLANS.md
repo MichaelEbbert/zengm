@@ -55,6 +55,21 @@ Code changes only happen between seasons, so this is a holding note, not a live 
 2. If real, consider a more surgical fix than broadly dialing back pass rate: e.g. distinguish "still need a full scoring drive" from "already in field-goal range with clock to spare," where a steadier down/distance approach might preserve win probability with less turnover risk, rather than loosening the `toGo <= 2` run carve-out across the board.
 3. Re-verify the `hurryUp()`/`determineMode()` thresholds and line numbers above against the code at that time -- this note was written from memory of an earlier read, not a fresh search.
 
+### Long Field Goals When Leading Late -- come back to between seasons, not started
+
+Code changes only happen between seasons, so this is a holding note. Origin (2026-10-11): the coach keeps trying 55+ yard field goals when leading by 2-8 late, misses about half of them, and gives the opponent the ball near midfield when a punt would have pinned them deep.
+
+**Current logic (read from the code 2026-10-11):**
+
+- The score only selects the mode (`determineMode()` in `coachDecision.ts`). `fourthDownDecision()` never weighs a long FG against a punt.
+- **`protection` mode** (Q4, leading by 4+, under 8:00): `fgOrPunt()` kicks whenever `fgProbability >= FG_MIN_PROBABILITY` (0.40), otherwise punts. So the bar to kick is _lower_ than in normal mode.
+- **Normal mode** (includes leading by 1-3 late): `normalDecision()` kicks if `fgProbability > FG_THRESHOLD` (0.45). From 0.40 to 0.45 it goes for it on 4th and 2 or shorter and punts otherwise. Below 0.40 it uses the field-position go/punt table.
+- `probMadeFieldGoal()` (`GameSim.football/index.ts`): distance = yards to the goal line + 17 (`FIELD_GOAL_DISTANCE_YARDS_ADDED_FROM_SCRIMMAGE`), then shifted by the leg rating, from -5 yds (kpw 100) to +15 (kpw 0). Base table: 0.47 at 56 yds, 0.43 at 57, 0.39 at 58. Accuracy (`kac`) adds up to +0.10. An average kicker from the opponent's 40 (a 57-yd kick) comes out around 0.43-0.50, so the coach kicks. A strong, accurate kicker clears 0.40 on actual 60+ yd attempts. The same probability decides the real kick, so the misses are what the numbers predict.
+
+**Why it's wrong:** with a 4-8 point lead, a ~45% FG adds little (the lead stays one score either way), and a miss costs ~15-20 yards of field position compared with a punt that probably lands inside the 20.
+
+**Proposed fix:** in `protection` mode (and possibly normal mode in Q4 with any lead), require a much higher make probability, ~0.65-0.70 (about 50 yds for an average kicker), and punt below that. Before/after check: harness `-t "comeback"` and `-t "4th and 2"`, plus a `simFromState` scenario (4th and 8 at the opponent's 38, up 5, 6:00 left in Q4) comparing win% with the current threshold vs the new one.
+
 ---
 
 ### Browser Smoke Test -- incompatible with the SQLite architecture, excluded from `node --run test`
