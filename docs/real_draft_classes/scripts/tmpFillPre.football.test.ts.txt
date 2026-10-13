@@ -1,0 +1,36 @@
+// TEMPORARY vitest (copy to src/worker/core/player/tmpFillPre.football.test.ts, run, delete).
+// Fills the required ovr/ovrs/pot/pots/skills fields for files built by buildPre.js.
+// Run: FILL_IN=<dir of buildPre output> FILL_OUT=C:/claude_projects/zengm/draft_classes SPORT=football \
+//      npx vitest run --project football src/worker/core/player/tmpFillPre.football.test.ts
+import { test } from "vitest";
+import fs from "node:fs";
+import { POSITIONS } from "../../../common/constants.ts";
+import ovr from "./ovr.ts";
+import potEstimator from "./potEstimator.ts";
+import skills from "./skills.ts";
+import { helpers } from "../../util/index.ts";
+
+const IN = process.env.FILL_IN as string;
+const OUT = process.env.FILL_OUT as string;
+
+test.skipIf(!IN)("fill pre-1967 draft files", () => {
+	for (const f of fs.readdirSync(IN).filter((f) => f.endsWith(".json"))) {
+		const d = JSON.parse(fs.readFileSync(`${IN}/${f}`, "utf8"));
+		for (const p of d.players) {
+			const r = p.ratings[0];
+			const age = r.season - p.born.year;
+			r.ovrs = {};
+			r.pots = {};
+			for (const pos of POSITIONS) {
+				r.ovrs[pos] = ovr(r, pos);
+				r.pots[pos] = age >= 29 ? r.ovrs[pos] : Math.max(r.ovrs[pos], helpers.bound(Math.round(potEstimator(r.ovrs[pos], age, pos)), 0, 100));
+			}
+			r.ovr = r.ovrs[r.pos];
+			r.pot = r.pots[r.pos];
+			r.skills = skills(r);
+			p.draft.ovr = r.ovr;
+			p.draft.pot = r.pot;
+		}
+		fs.writeFileSync(`${OUT}/${f}`, JSON.stringify(d));
+	}
+});

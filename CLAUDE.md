@@ -296,6 +296,36 @@ Position, starter count, aged ovrs sorted with `|` at the starter/backup split, 
 
 ---
 
+## Kicker Check
+
+**Trigger: any request for a "kicker check"** (or "K/P check", "punter check"). Run this procedure. It exists for real-draft-class leagues (`docs/real_draft_classes/real_draft_classes.md`): the pre-1967 classes hold only real kickers and punters, so supply can run short. The engine only adds random (non-real) free agents when the whole player pool drops below `numActiveTeams * (maxRosterSize + 1)` (`freeAgents/ensureEnoughPlayers.ts`, start of free agency) or a team can't fill its roster (`team/checkRosterSizes.ts`). With 250-360-player real classes that rarely fires, and when it does the positions are random, so in practice every new K/P comes from a draft class.
+
+### Procedure
+
+1. **Verify the database.** List the leagues in `meta.db` (name, file, season, `updated_at`) and confirm with the user which league file to check. Never assume the most recently updated one. Open it `-readonly`.
+2. **Current kickers and punters.** For every team (`tid >= 0`), plus free agents (`tid = -1`), list each player whose latest `player_ratings` row has `pos` K or P: team, name, age (`season - born_year`), ovr. Flag every one aged 34+.
+3. **Upcoming supply.** Count K and P prospects (`tid = -2`) in the next 3 draft classes (`draft_year` = season, +1, +2), with name, ovr and pot. If the user has a class file ready to upload that isn't in the league yet, count from that file instead and say so.
+4. **Compare need vs supply** for the next 3 seasons, separately for K and P:
+   - **Need** = active teams (1 K + 1 P each) minus the current players who will still be under 36 in 3 seasons.
+   - **Supply** = prospects in the next 3 classes + free agents under 30.
+   - Note: the AI drafts K/P late or not at all, so an undrafted K/P becomes a free agent and still counts as supply.
+
+### Why 34+ matters
+
+`shouldRetire.ts`: a rostered K/P can't retire until **age > 35** (QB, K and P share the 35 cutoff; everyone else 32), then retires with a growing probability each year. A free agent with pot < 50 can retire at any age, and every free agent retires after 1 year unsigned.
+
+### Output
+
+A table per position (team, player, age, ovr), the prospect list per class, then the need vs supply line, e.g. `P: need 4 over 3 seasons, supply 2 -> short 2`.
+
+### Recommendation
+
+- **Supply >= need + 1:** no action.
+- **Short:** recommend converting that many players to K or P. Pick the lowest-quality real prospects in the next class to be uploaded -- latest round, generic position, no notable real career, never anyone with a real NFL career worth keeping. Name each candidate with his file, round and current position. Convert in the class JSON before upload (zero the other position ratings and copy the grade into `kpw/kac` or `ppw/pac`, as `docs/real_draft_classes/` describes), or in God Mode if he's already in the league.
+- **Never convert anything without the user's go-ahead.** Report and recommend only.
+
+---
+
 ## Contracts, Cap, and Signing Order
 
 League settings: `salaryCap` 200M, `minPayroll` 150M, `maxContract` 30M, `minContract` 0.5M, roster 40-55, `rookieContractLengths` `[3, 2]` (round 1 gets 3 years, later rounds 2).

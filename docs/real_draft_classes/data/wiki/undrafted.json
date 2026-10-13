@@ -1,0 +1,908 @@
+{
+	"1955": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Cardinals",
+			"name": "Jimmy Carr",
+			"pos": "Running back",
+			"college": "Morris Harvey College",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Cardinals",
+			"name": "Jimmy Hill",
+			"pos": "Cornerback",
+			"college": "Sam Houston State",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Cleveland Browns",
+			"name": "Chuck Weber",
+			"pos": "Linebacker",
+			"college": "West Chester (PA)",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "Don Burroughs",
+			"pos": "Defensive back",
+			"college": "Colorado State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Willie McClung",
+			"pos": "Defensive tackle",
+			"college": "Florida A&M",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "John Reger",
+			"pos": "Linebacker",
+			"college": "Pittsburgh",
+			"flag": "PB"
+		}
+	],
+	"1956": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Cardinals",
+			"name": "Carl Brettschneider",
+			"pos": "Linebacker",
+			"college": "Iowa State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "Tommy Wilson",
+			"pos": "Running back",
+			"college": "",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "San Francisco 49ers",
+			"name": "Clyde Conner",
+			"pos": "Wide receiver",
+			"college": "Pacific",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "San Francisco 49ers",
+			"name": "John Gonzaga",
+			"pos": "Offensive tackle",
+			"college": "",
+			"flag": ""
+		}
+	],
+	"1957": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Cleveland Browns",
+			"name": "Vince Costello",
+			"pos": "Linebacker",
+			"college": "Ohio",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Ed Khayat",
+			"pos": "Defensive end",
+			"college": "Tulane",
+			"flag": ""
+		}
+	],
+	"1958": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Cardinals",
+			"name": "Ed Cook",
+			"pos": "Offensive guard",
+			"college": "Notre Dame",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Cardinals",
+			"name": "Mack Reynolds",
+			"pos": "Quarterback",
+			"college": "LSU",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Don Bishop",
+			"pos": "Cornerback",
+			"college": "LA City College",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Theodore Karras",
+			"pos": "Defensive tackle",
+			"college": "Indiana",
+			"flag": ""
+		}
+	],
+	"1959": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Bears",
+			"name": "Lionel Taylor",
+			"pos": "Wide receiver",
+			"college": "New Mexico Highlands",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "John LoVetere",
+			"pos": "Defensive tackle",
+			"college": "Compton Junior College",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "San Francisco 49ers",
+			"name": "Paul Lowe",
+			"pos": "Running back",
+			"college": "Oregon State",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Tom Flores",
+			"pos": "Quarterback",
+			"college": "Pacific",
+			"flag": "HOF"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Ben Scotti",
+			"pos": "Safety",
+			"college": "Maryland",
+			"flag": ""
+		}
+	],
+	"1960": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Green Bay Packers",
+			"name": "Willie Wood",
+			"pos": "Safety",
+			"college": "USC",
+			"flag": "HOF"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Green Bay Packers",
+			"name": "Ken Iman",
+			"pos": "Center",
+			"college": "Southeast Missouri State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Green Bay Packers",
+			"name": "Dick Pesonen",
+			"pos": "Cornerback",
+			"college": "Minnesota–Duluth",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "Danny Villanueva",
+			"pos": "Kicker",
+			"college": "New Mexico State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Charley Scales",
+			"pos": "Running back",
+			"college": "Indiana",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Fred Williamson",
+			"pos": "Safety",
+			"college": "Northwestern",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Bob Whitlow",
+			"pos": "Center",
+			"college": "Arizona",
+			"flag": ""
+		}
+	],
+	"1961": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Baltimore Colts",
+			"name": "Mark Smolinski",
+			"pos": "Fullback",
+			"college": "Wyoming",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Cleveland Browns",
+			"name": "Charley Ferguson",
+			"pos": "Tight end",
+			"college": "Tennessee State",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Bears",
+			"name": "Art Anderson",
+			"pos": "Offensive tackle",
+			"college": "Idaho",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Bears",
+			"name": "Roosevelt Taylor",
+			"pos": "Safety",
+			"college": "Grambling State",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Dave Grayson",
+			"pos": "Cornerback",
+			"college": "Oregon",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Warren Livingston",
+			"pos": "Cornerback",
+			"college": "Arizona",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Amos Marsh",
+			"pos": "Running back",
+			"college": "Oregon State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Detroit Lions",
+			"name": "Pat Studstill",
+			"pos": "Wide receiver",
+			"college": "Houston",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Philadelphia Eagles",
+			"name": "Glen Amerson",
+			"pos": "Defensive back",
+			"college": "Texas Tech",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Willie Daniel",
+			"pos": "Cornerback",
+			"college": "Mississippi State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "San Francisco 49ers",
+			"name": "J.W. Lockett",
+			"pos": "Fullback",
+			"college": "Central Oklahoma",
+			"flag": ""
+		}
+	],
+	"1962": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Mike Gaechter",
+			"pos": "Safety",
+			"college": "Oregon",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Cornell Green",
+			"pos": "Cornerback",
+			"college": "Utah State",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Dave Manders",
+			"pos": "Linebacker",
+			"college": "Michigan State",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Green Bay Packers",
+			"name": "Howie Williams",
+			"pos": "Safety",
+			"college": "Howard",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "John McCormick",
+			"pos": "Quarterback",
+			"college": "UMass",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Mick Tingelhoff",
+			"pos": "Center",
+			"college": "Nebraska",
+			"flag": "HOF"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "St. Louis Cardinals",
+			"name": "Garland Boyette",
+			"pos": "Linebacker",
+			"college": "Grambling State",
+			"flag": "PB"
+		}
+	],
+	"1963": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Houston Oilers",
+			"name": "Willie Brown",
+			"pos": "CB",
+			"college": "Grambling State",
+			"flag": "HOF"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Baltimore Colts",
+			"name": "Gary Cuozzo",
+			"pos": "Quarterback",
+			"college": "Virginia",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Cleveland Browns",
+			"name": "Larry Benz",
+			"pos": "Safety",
+			"college": "Northwestern",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Wendell Hayes",
+			"pos": "Running back",
+			"college": "Humboldt State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "Bill Swain",
+			"pos": "Linebacker",
+			"college": "Oregon",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Lee Calland",
+			"pos": "Cornerback",
+			"college": "Louisville",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Mike Eischeid",
+			"pos": "Punter",
+			"college": "Upper Iowa",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Don Hultz",
+			"pos": "Defensive tackle",
+			"college": "Southern Mississippi",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Ron Vander Kelen",
+			"pos": "Quarterback",
+			"college": "Wisconsin",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Philadelphia Eagles",
+			"name": "Mike Clark",
+			"pos": "Kicker",
+			"college": "Texas A&M",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "St. Louis Cardinals",
+			"name": "Doug Hart",
+			"pos": "Cornerback",
+			"college": "Texas–Arlington",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Ted Rzempoluch",
+			"pos": "Defensive back",
+			"college": "Virginia",
+			"flag": ""
+		}
+	],
+	"1964": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Bears",
+			"name": "Andy Livingston",
+			"pos": "Running back",
+			"college": "Phoenix College",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Bears",
+			"name": "Jim Purnell",
+			"pos": "Linebacker",
+			"college": "Wisconsin",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Cleveland Browns",
+			"name": "Walter Roberts",
+			"pos": "Wide receiver",
+			"college": "San Jose State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Peter Gent",
+			"pos": "Wide receiver",
+			"college": "Michigan State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Les Josephson",
+			"pos": "Running back",
+			"college": "Augustana",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "Bruce Gossett",
+			"pos": "Kicker",
+			"college": "Richmond",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "Aaron Martin",
+			"pos": "Cornerback",
+			"college": "North Carolina Central",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Los Angeles Rams",
+			"name": "Fred Whittingham",
+			"pos": "Linebacker",
+			"college": "Brigham Young",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Lonnie Warwick",
+			"pos": "Linebacker",
+			"college": "Tennessee Tech",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Clyde Williams",
+			"pos": "Guard",
+			"college": "Southern",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "New York Giants",
+			"name": "Ernie Wheelwright",
+			"pos": "Running back",
+			"college": "Southern Illinois",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "John Stofa",
+			"pos": "Quarterback",
+			"college": "Buffalo",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Tommy Wade",
+			"pos": "Quarterback",
+			"college": "Texas",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "San Francisco 49ers",
+			"name": "David Kopay",
+			"pos": "Running back",
+			"college": "Washington",
+			"flag": ""
+		}
+	],
+	"1965": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Bears",
+			"name": "Brian Piccolo",
+			"pos": "Running back",
+			"college": "Wake Forest",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Chicago Bears",
+			"name": "Ron Smith",
+			"pos": "Cornerback",
+			"college": "Wisconsin",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Leon Crenshaw",
+			"pos": "Defensive tackle",
+			"college": "Tuskegee",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Rudy Kuechenberg",
+			"pos": "Linebacker",
+			"college": "Indiana",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Obert Logan",
+			"pos": "Safety",
+			"college": "Trinity",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Dan Reeves",
+			"pos": "Safety",
+			"college": "South Carolina",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Bill Sandeman",
+			"pos": "Offensive tackle",
+			"college": "Pacific",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "A.D. Whitfield",
+			"pos": "Running back",
+			"college": "North Texas",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Houston Oilers",
+			"name": "Sammy Weir",
+			"pos": "Wide receiver",
+			"college": "Arkansas State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Earsell Mackbee",
+			"pos": "Cornerback",
+			"college": "Utah State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Woody Peoples",
+			"pos": "Offensive guard",
+			"college": "Grambling State",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Philadelphia Eagles",
+			"name": "Jim Nettles",
+			"pos": "Cornerback",
+			"college": "Wisconsin",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Philadelphia Eagles",
+			"name": "Harold Wells",
+			"pos": "Linebacker",
+			"college": "Purdue",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Charles Leigh",
+			"pos": "Running back",
+			"college": "",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Pittsburgh Steelers",
+			"name": "Jerry Simmons",
+			"pos": "Wide receiver",
+			"college": "Bethune–Cookman",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Rich Badar",
+			"pos": "Quarterback",
+			"college": "Indiana",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Rickie Harris",
+			"pos": "Cornerback",
+			"college": "Arizona",
+			"flag": ""
+		}
+	],
+	"1966": [
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Atlanta Falcons",
+			"name": "Wade Traynham",
+			"pos": "Kicker",
+			"college": "Frederick",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Baltimore Colts",
+			"name": "Bob Lurtsema",
+			"pos": "Defensive end",
+			"college": "Western Michigan",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Dallas Cowboys",
+			"name": "Dick Daniels",
+			"pos": "Safety",
+			"college": "Pacific",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Detroit Lions",
+			"name": "Garo Yepremian",
+			"pos": "Kicker",
+			"college": "",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Green Bay Packers",
+			"name": "Kent Nix",
+			"pos": "Quarterback",
+			"college": "TCU",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Minnesota Vikings",
+			"name": "Jim Vellone",
+			"pos": "Offensive guard",
+			"college": "USC",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "New York Giants",
+			"name": "Willie Young",
+			"pos": "Offensive tackle",
+			"college": "Grambling State",
+			"flag": ""
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "St. Louis Cardinals",
+			"name": "Jim Hart",
+			"pos": "Quarterback",
+			"college": "Southern Illinois",
+			"flag": "PB"
+		},
+		{
+			"round": 0,
+			"pick": 0,
+			"team": "Washington Redskins",
+			"name": "Harry Theofiledes",
+			"pos": "Quarterback",
+			"college": "Waynesburg",
+			"flag": ""
+		}
+	]
+}
