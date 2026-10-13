@@ -4,17 +4,29 @@ import { helpers } from "../util/helpers.ts";
 import { logEvent } from "../util/logEvent.ts";
 import { toWorker } from "../util/toWorker.ts";
 import { ActionButton } from "../components/ActionButton.tsx";
+import { confirm } from "../util/confirm.tsx";
+
+const LABELS = {
+	boxScores: "ALL box scores, including this season's",
+	events: "all news feed entries",
+	teamStats: "old team stats",
+	teamHistory: "old team history",
+	retiredPlayersUnnotable: "unnotable retired players",
+	retiredPlayers: "all retired players",
+	playerStatsUnnotable: "unnotable player info",
+	playerStats: "old player info",
+};
 
 const DeleteOldData = () => {
 	const [state, setState] = useState({
-		boxScores: true,
-		events: true,
-		teamStats: true,
-		teamHistory: true,
-		retiredPlayersUnnotable: true,
-		retiredPlayers: true,
-		playerStatsUnnotable: true,
-		playerStats: true,
+		boxScores: false,
+		events: false,
+		teamStats: false,
+		teamHistory: false,
+		retiredPlayersUnnotable: false,
+		retiredPlayers: false,
+		playerStatsUnnotable: false,
+		playerStats: false,
 	});
 	const [deleting, setDeleting] = useState(false);
 
@@ -28,6 +40,39 @@ const DeleteOldData = () => {
 
 	const handleSubmit = async (event: SubmitEvent) => {
 		event.preventDefault();
+
+		const selected = helpers
+			.keys(state)
+			.filter((key) => state[key])
+			.map((key) => LABELS[key]);
+		if (selected.length === 0) {
+			return;
+		}
+
+		const sure = await confirm(
+			`Are you sure? This will permanently delete: ${selected.join("; ")}.`,
+			{ okText: "Yes, continue", cancelText: "Cancel" },
+		);
+		if (!sure) {
+			return;
+		}
+
+		const lastChance = await confirm(
+			"OK, last chance to bail. There is no undo -- this data is gone for good. Type DELETE to confirm.",
+			{ defaultValue: "", okText: "Delete", cancelText: "Bail out" },
+		);
+		if (lastChance === null) {
+			return;
+		}
+		if (lastChance !== "DELETE") {
+			logEvent({
+				type: "error",
+				text: "Nothing deleted -- you must type DELETE exactly.",
+				saveToDb: false,
+			});
+			return;
+		}
+
 		setDeleting(true);
 
 		await toWorker("main", "deleteOldData", state);
@@ -91,10 +136,8 @@ const DeleteOldData = () => {
 							type="checkbox"
 							checked={state.boxScores}
 						/>
-						Delete Old Box Scores{" "}
-						<a href={helpers.leagueUrl(["settings"])}>
-							(done automatically by default)
-						</a>
+						Delete ALL Box Scores (every season, including this one -- this
+						league keeps every box score unless you delete them here)
 					</label>
 				</div>
 				<div className="form-check">
