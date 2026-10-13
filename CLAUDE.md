@@ -17,6 +17,12 @@ Coach sidecar: `https://github.com/MichaelEbbert/zengm-coach`
 
 ---
 
+## Session Start: Real Draft Classes Project
+
+**At the start of every session, before anything else, ask the user whether they want to continue the real draft classes project.** If they say yes, read the "RESUME HERE" section of `docs/real_draft_classes/real_draft_classes.md` (full path on Windows: `C:\claude_projects\zengm\docs\real_draft_classes\real_draft_classes.md`; on Linux: `/home/michael/claude_projects/zengm/docs/real_draft_classes/real_draft_classes.md`) and pick up from its "Next step". If they say no, carry on with whatever they ask.
+
+---
+
 ## Project State (2026-07-20)
 
 ### Current Architecture
