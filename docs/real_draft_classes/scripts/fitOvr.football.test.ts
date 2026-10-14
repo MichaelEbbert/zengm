@@ -23,12 +23,15 @@ import compositeRating from "../../../src/worker/core/player/compositeRating.ts"
 import { COMPOSITE_WEIGHTS } from "../../../src/common/constants.football.ts";
 
 const WRITE = process.env.REAL_DRAFT_WRITE === "1";
+// Position (2026-10-14 overnight: RB added). QB keeps every rule below; other
+// positions order by engine ovr and move only their stat-based ratings.
+const POS = process.env.REAL_DRAFT_POS ?? "QB";
 // What sets the ORDER: "ovr" (engine QB ovr) or "game" -- passing 6 :
 // scrambling 1 (user, 2026-10-14; 3:1 was tried and weighted mobility
 // MORE than ovr does, which is ~9:2 incl. athleticism): ovr counts spd/stre twice via the
 // athleticism composite, which the game sim never uses, so slow passers
 // (Brady) ranked below mobile ones on paper.
-const RANK = process.env.REAL_DRAFT_RANK ?? "game";
+const RANK = process.env.REAL_DRAFT_RANK ?? (POS === "QB" ? "game" : "ovr");
 const comp = (r: any, name: string) => {
 	const c = (COMPOSITE_WEIGHTS as any)[name];
 	return compositeRating(r, c.ratings, c.weights, false);
@@ -59,11 +62,22 @@ const PINNED: Record<string, string[]> = {
 	"1999draft.json|Tom Brady": ["elu"],
 	"2003draft.json|Ben Roethlisberger": ["stre"],
 };
-const NORMAL = ["tha", "thp", "thv", "bsc", "elu"];
+const NORMAL: Record<string, string[]> = {
+	QB: ["tha", "thp", "thv", "bsc", "elu"],
+	// RB: every stat-based rating in RB ovr moves toward the engine mean
+	RB: ["spd", "elu", "stre", "bsc", "hnd", "rtr"],
+};
+const KEYS: Record<string, string[]> = {
+	QB: ["tha", "thp", "thv", "bsc", "elu", "spd", "stre"],
+	RB: ["spd", "elu", "stre", "bsc", "hnd", "rtr"],
+};
 
 const readEngine = () => {
 	const lines = fs
-		.readFileSync(path.join(dataDir, "qbdraftratings.csv"), "utf8")
+		.readFileSync(
+			path.join(dataDir, `${POS.toLowerCase()}draftratings.csv`),
+			"utf8",
+		)
 		.trim()
 		.split(/\r?\n/);
 	const head = lines[0].split(",");
@@ -73,8 +87,8 @@ const readEngine = () => {
 	});
 };
 
-describe.skipIf(!process.env.REAL_DRAFT)("fit QB ovr", () => {
-	test("QB", () => {
+describe.skipIf(!process.env.REAL_DRAFT)("fit ovr", () => {
+	test(POS, () => {
 		const engine = readEngine();
 		const stats = (k: string) => {
 			const v = engine.map((r) => r[k]).sort((a, b) => a - b);
@@ -85,13 +99,13 @@ describe.skipIf(!process.env.REAL_DRAFT)("fit QB ovr", () => {
 			};
 		};
 		const S = Object.fromEntries(
-			["tha", "thp", "thv", "bsc", "elu", "spd", "stre"].map((k) => [
+			[...new Set([...KEYS[POS], "spd", "elu", "stre"])].map((k) => [
 				k,
 				stats(k),
 			]),
 		);
 		const engineOvr = engine
-			.map((r) => ovr(r as any, "QB"))
+			.map((r) => ovr(r as any, POS))
 			.sort((a, b) => a - b);
 		const ovrAt = (p: number) => {
 			const x = p * (engineOvr.length - 1);
@@ -116,20 +130,17 @@ describe.skipIf(!process.env.REAL_DRAFT)("fit QB ovr", () => {
 		const qbs: any[] = [];
 		for (const f of files)
 			for (const p of classes[f].players)
-				if (p.ratings.at(-1).pos === "QB")
+				if (p.ratings.at(-1).pos === POS)
 					qbs.push({
 						f,
 						p,
 						key: `${f}|${p.firstName} ${p.lastName}`,
 						r: p.ratings.at(-1),
 					});
-		for (const q of qbs) q.ovr0 = ovr(q.r, "QB");
+		for (const q of qbs) q.ovr0 = ovr(q.r, POS);
 		// order by current ovr (ties: sum of the ovr ratings)
 		const tie = (q: any) =>
-			["tha", "thp", "thv", "bsc", "elu", "spd", "stre", "hgt"].reduce(
-				(a, k) => a + q.r[k],
-				0,
-			);
+			[...KEYS[POS], "hgt"].reduce((a, k) => a + q.r[k], 0);
 		for (const q of qbs) q.key0 = RANK === "game" ? gameKey(q.r) : q.ovr0;
 		const sorted = [...qbs].sort(
 			(a, b) => a.key0 - b.key0 || a.ovr0 - b.ovr0 || tie(a) - tie(b),
@@ -155,7 +166,8 @@ describe.skipIf(!process.env.REAL_DRAFT)("fit QB ovr", () => {
 				r[k] = Math.round(q.r[k] + f * (goal - q.r[k]));
 				r[k] = Math.max(S[k].min, r[k]);
 			};
-			for (const k of NORMAL) toward(k, 1, false);
+			for (const k of NORMAL[POS]) toward(k, 1, false);
+			if (POS !== "QB") return r;
 			if (lower) {
 				toward("stre", 3, true);
 				if (runner) toward("spd", 1, false);
@@ -176,7 +188,7 @@ describe.skipIf(!process.env.REAL_DRAFT)("fit QB ovr", () => {
 			let hi = 1;
 			for (let i = 0; i < 30; i++) {
 				const mid = (lo + hi) / 2;
-				const o = ovr(moved(q, mid) as any, "QB");
+				const o = ovr(moved(q, mid) as any, POS);
 				const past = q.target < q.ovr0 ? o <= q.target : o >= q.target;
 				if (past) hi = mid;
 				else lo = mid;
@@ -184,9 +196,9 @@ describe.skipIf(!process.env.REAL_DRAFT)("fit QB ovr", () => {
 			q.t = hi;
 			q.new = moved(q, hi);
 		}
-		const keys = ["tha", "thp", "thv", "bsc", "elu", "spd", "stre"];
+		const keys = KEYS[POS];
 		const rows = qbs.map((q) => {
-			const o1 = ovr(q.new, "QB");
+			const o1 = ovr(q.new, POS);
 			return {
 				q,
 				o1,
@@ -203,7 +215,7 @@ describe.skipIf(!process.env.REAL_DRAFT)("fit QB ovr", () => {
 		});
 		rows.sort((a, b) => a.q.rank - b.q.rank);
 		fs.writeFileSync(
-			path.join(dataDir, "qb_fit_ovr.csv"),
+			path.join(dataDir, `${POS.toLowerCase()}_fit_ovr.csv`),
 			`name,file,ovr_before,target,ovr_after,${keys.join(",")},rank\n${rows.map((x) => x.line).join("\n")}\n`,
 		);
 		if (WRITE) {

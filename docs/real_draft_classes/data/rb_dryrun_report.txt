@@ -1,0 +1,60 @@
+## spd  (1381 rated, 817 band)
+top: Barry Sanders 100, Jim Brown 99, Gale Sayers 99, Bo Jackson 98, Bo Jackson 98, Mercury Morris 98, De'Von Achane 98, Jamaal Charles 98
+middle: Eddie Hill 67, Delone Carter 67, Danny Lewis 67, Bo Robinson 67, Steve Strachan 67, Christian Okoye 67
+bottom: Lee Bouggess 25, Terrelle Smith 25, Mike Karney 25, Joey Iosefa 25, Deon Dyer 24, Michael Haddix 23
+band high/low: Ernie Davis 60, Dick Leftridge 60, Art Davis 60 ... Charley Scales 32, David Kopay 32, Charles Leigh 32
+known: Barry Sanders 100, Jim Brown 99, Gale Sayers 99, Bo Jackson 98, Adrian Peterson 89, Eric Dickerson 88, Walter Payton 88, Darren Sproles 85, Saquon Barkley 85, Marshall Faulk 85, Larry Csonka 84, Derrick Henry 84, Earl Campbell 83, LaDainian Tomlinson 83, Christian McCaffrey 81, Emmitt Smith 78, Jerome Bettis 64, Ki-Jana Carter 60, Trent Richardson 52, Mike Alstott 48
+
+## elu  (1158 rated, 1040 band)
+top: Jim Brown 87, Barry Sanders 86, Jamaal Charles 84, Gale Sayers 84, Terrell Davis 84, Priest Holmes 84, Mercury Morris 83, Wendell Tyler 83
+middle: Cliff McClain 67, Bobby Duhon 67, Preston Pearson 67, Mark Walton 67, Eric Torkelson 67, Delone Carter 67
+bottom: Trent Richardson 9, Sam Gash 6, Cory Schlesinger 3, Terrelle Smith 0, Dick Bielski 0, Michael Haddix 0
+band high/low: Ernie Davis 62, Dick Leftridge 62, Art Davis 62 ... Charley Scales 14, David Kopay 14, Charles Leigh 14
+known: Jim Brown 87, Barry Sanders 86, Gale Sayers 84, Bo Jackson 82, Eric Dickerson 82, Earl Campbell 82, Larry Csonka 81, Derrick Henry 81, Marshall Faulk 80, Walter Payton 80, Emmitt Smith 80, Adrian Peterson 78, Christian McCaffrey 76, LaDainian Tomlinson 75, Darren Sproles 73, Saquon Barkley 71, Jerome Bettis 71, Mike Alstott 68, Ki-Jana Carter 65, Trent Richardson 9
+
+## stre  (1158 rated, 1040 band)
+top: Larry Kinnebrew 58, Pete Johnson 57, Brandon Jacobs 57, Bobby Jackson 57, Craig Heyward 56, Jim Brown 55, Derrick Henry 55, Ray McDonald 54
+middle: Robert Drummond 26, Evan Royster 26, Toby Gerhart 26, Fred Taylor 26, Alex Collins 26, John Fuqua 26
+bottom: Glyn Milburn 1, Daryl Richardson 1, Warrick Dunn 0, Archie Griffin 0, Napoleon Kaufman 0, Joe Washington 0
+band high/low: Ernie Davis 18, Dick Leftridge 18, Art Davis 18 ... Charley Scales 2, David Kopay 2, Charles Leigh 2
+known: Jim Brown 55, Derrick Henry 55, Larry Csonka 51, Mike Alstott 48, Earl Campbell 47, Jerome Bettis 38, Ki-Jana Carter 36, Emmitt Smith 36, Bo Jackson 35, LaDainian Tomlinson 32, Eric Dickerson 30, Saquon Barkley 30, Trent Richardson 29, Adrian Peterson 29, Marshall Faulk 27, Gale Sayers 26, Christian McCaffrey 25, Barry Sanders 25, Walter Payton 24, Darren Sproles 18
+
+## bsc  (1158 rated, 1040 band)
+top: Tyler Allgeier 89, Joe Mixon 88, Darrell Henderson 88, Zach Charbonnet 87, Leonard Fournette 85, Saquon Barkley 84, Scottie Graham 84, Najee Harris 83
+middle: Sam Horner 53, Wayne Gallman 53, Art Malone 53, James Brooks 53, Daniel Thomas 53, Vince Clements 53
+bottom: Eddie Ray 18, Dave Meggett 8, Lionel James 3, Greg Pruitt 3, Dexter Carter 3, Terry Metcalf 3
+band high/low: Ernie Davis 46, Dick Leftridge 45, Art Davis 45 ... Charley Scales 4, David Kopay 4, Charles Leigh 4
+known: Saquon Barkley 84, Christian McCaffrey 77, Larry Csonka 76, LaDainian Tomlinson 71, Derrick Henry 70, Marshall Faulk 68, Jerome Bettis 66, Barry Sanders 66, Emmitt Smith 65, Jim Brown 63, Trent Richardson 61, Earl Campbell 61, Walter Payton 60, Darren Sproles 58, Adrian Peterson 56, Bo Jackson 54, Ki-Jana Carter 52, Eric Dickerson 51, Gale Sayers 48, Mike Alstott 47
+
+## hnd  (815 rated, 1383 band)
+top: Charley Taylor 72, Larry Centers 72, Lydell Mitchell 72, James Wilder 71, Marshall Faulk 70, Tony Galbreath 70, Emmitt Smith 70, Rickey Young 70
+middle: Charles Way 37, Michael Pittman 37, Jerald Sowell 37, Cadillac Williams 37, Rashard Mendenhall 37, Dave Hampton 37
+bottom: Greg Jones 30, Mercury Morris 30, Lawrence Vickers 30, Brandon Jacobs 30, Terrelle Smith 30, Moran Norris 30
+band high/low: Ernie Davis 30, Clint Jones 30, Dick Leftridge 30 ... Andy Livingston 5, David Kopay 5, Charles Leigh 5
+known: Marshall Faulk 70, Emmitt Smith 70, Christian McCaffrey 69, Jim Brown 62, Walter Payton 58, LaDainian Tomlinson 56, Darren Sproles 56, Gale Sayers 44, Barry Sanders 43, Trent Richardson 41, Mike Alstott 40, Eric Dickerson 39, Saquon Barkley 39, Adrian Peterson 36, Earl Campbell 35, Derrick Henry 34, Jerome Bettis 34, Larry Csonka 33, Ki-Jana Carter 32, Bo Jackson 31
+
+## rtr  (815 rated, 1383 band)
+top: Charley Taylor 77, Lenny Moore 74, Terry Barr 71, Marshall Faulk 71, Ronnie Harmon 70, Eric Metcalf 70, Christian McCaffrey 69, Dave Middleton 69
+middle: Sid Blanks 37, John Riggins 37, Daryl Richardson 37, Wayne Patrick 37, Mel Bratton 37, Ken Willard 37
+bottom: Carwell Gardner 30, Heath Evans 30, Mike Karney 30, Lorenzo Neal 30, Terrelle Smith 30, Moran Norris 30
+band high/low: Ernie Davis 30, Clint Jones 30, Dick Leftridge 30 ... Andy Livingston 5, David Kopay 5, Charles Leigh 5
+known: Marshall Faulk 71, Christian McCaffrey 69, Darren Sproles 63, LaDainian Tomlinson 62, Walter Payton 60, Saquon Barkley 54, Barry Sanders 53, Gale Sayers 47, Trent Richardson 46, Derrick Henry 40, Mike Alstott 39, Adrian Peterson 39, Jim Brown 38, Eric Dickerson 36, Bo Jackson 35, Emmitt Smith 34, Ki-Jana Carter 33, Jerome Bettis 31, Earl Campbell 30, Larry Csonka 30
+
+## endu  (1158 rated, 1040 band)
+top: Emmitt Smith 82, Frank Gore 79, Marcus Allen 77, Adrian Peterson 77, John Riggins 76, Walter Payton 76, Jerome Bettis 76, Ottis Anderson 76
+middle: Sammie Smith 39, Rashaad Penny 39, Gene Lang 39, Cory Schlesinger 39, Brent McClanahan 39, Roosevelt Potts 39
+bottom: Ben Gregory 15, Steve Strachan 15, Ryan Williams 15, Otis Wonsley 14, Lionel Vital 12, Dwight Beverly 9
+band high/low: Ernie Davis 31, Dick Leftridge 31, Art Davis 31 ... Charley Scales 0, David Kopay 0, Charles Leigh 0
+known: Emmitt Smith 82, Adrian Peterson 77, Walter Payton 76, Jerome Bettis 76, Marshall Faulk 76, LaDainian Tomlinson 73, Eric Dickerson 72, Barry Sanders 71, Derrick Henry 70, Larry Csonka 69, Jim Brown 66, Darren Sproles 65, Christian McCaffrey 64, Earl Campbell 63, Saquon Barkley 63, Mike Alstott 63, Gale Sayers 52, Ki-Jana Carter 42, Trent Richardson 39, Bo Jackson 39
+
+## hgt  (1841 rated, 357 band)
+top: Hal Smith 66, Bert Coan 66, Sean McHugh 66, Rhett Ellison 66, Phil King 62, Floyd Iglehart 62, Val Keckin 62, Ray McDonald 62
+middle: Glen Coffee 33, Mike Goodson 33, Tony Fiammetta 33, Andre Brown 33, Chris Ogbonnaya 33, Fui Vakapuna 33
+bottom: Tarik Cohen 2, Boston Scott 2, Mack Herron 2, Howard Stevens 2, Michael Clemons 2, Deuce Vaughn 2
+band high/low: Ernie Davis 39, Don Clark 39, Charles Horton 39 ... Charley Scales 28, David Kopay 28, Charles Leigh 28
+known: Larry Csonka 57, Eric Dickerson 57, Derrick Henry 57, Jim Brown 49, Bo Jackson 42, Mike Alstott 42, Adrian Peterson 42, Gale Sayers 33, Saquon Barkley 33, Earl Campbell 25, Jerome Bettis 25, Christian McCaffrey 25, Walter Payton 20, Marshall Faulk 20, Ki-Jana Carter 20, LaDainian Tomlinson 20, Emmitt Smith 15, Trent Richardson 15, Barry Sanders 11, Darren Sproles 2
+
+## ovr/pot: mean ovr 38.5, max 78, mean pot 50.6, pot 100: 0
+top: Jim Brown 78/99, Lenny Moore 77/97, Chuck Muncie 76/95, Derrick Henry 74/96, Ernie Green 73/88, Larry Csonka 71/97, William Andrews 71/88, Jahmyr Gibbs 70/94, De'Von Achane 69/95, Marshall Faulk 69/93, Barry Sanders 69/93, Robert Smith 69/92, DeMarco Murray 69/85, Gale Sayers 68/94, Jim Taylor 67/89
+middle: Bill Thomas 39/47, Randy Baldwin 39/45, Vaughn Dunbar 39/44, Sedrick Irvin 38/55, Larry Conjar 38/55, Jordan James 38/55, Ronnie Bull 38/54, William Floyd 38/53
+bottom: Art Luppino 18/25, Sam Wesley 18/24, David Kopay 17/25, Bob Gongola 17/23, Charles Leigh 17/22, Charley Scales 16/25

@@ -213,6 +213,16 @@ X --write` for each of the nine -> `seedQb.cjs --write` ->
 - **Deshaun Watson removed from 2016draft.json (user, 2026-10-14).** 779
   QBs now. Removing him nudged rank rounding: Manning and Allen swapped
   the #2/#3 ovr slots (Manning 82, Allen 79); 47 others moved 1.
+- **RBs DONE: overnight run approved by the user and WRITTEN to all 71
+  files (2026-10-14, uncommitted).** 2,198 RBs; the written ratings match
+  the dry run exactly, and no non-RB player changed. Decisions, data files,
+  scripts and flags are in `scratch_rb_progress.md` ("Morning summary");
+  tier samples in `data/rb_dryrun_report.txt`. Scripts: `rateRb.cjs`,
+  `seedRb.cjs`, `runRb.sh`; `fitOvr` now takes `REAL_DRAFT_POS`. To rerun:
+  `bash scripts/runRb.sh /c/claude_projects/zengm/draft_classes` (the
+  script cds into `scripts/`, so a relative path must be
+  `../../../draft_classes`), then `npx oxfmt draft_classes` from the repo
+  root. Next: the next position, same interactive loop.
 - **Next (QBs):** QBs are done. (1) the next position, same interactive loop (rank by stat,
   map onto the engine, then fit ovr, then ovr/pot).
   - `stre`: rushing TDs (short-yardage proxy), weight, sack resistance,
