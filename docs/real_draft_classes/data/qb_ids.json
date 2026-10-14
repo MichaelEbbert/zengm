@@ -1,0 +1,4256 @@
+[
+	{
+		"file": "1954draft.json",
+		"pid": 0,
+		"name": "George Shaw",
+		"id": "ShawGe00"
+	},
+	{
+		"file": "1954draft.json",
+		"pid": 3,
+		"name": "Ralph Guglielmi",
+		"id": "GuglRa00"
+	},
+	{
+		"file": "1954draft.json",
+		"pid": 101,
+		"name": "Johnny Unitas",
+		"id": "UnitJo00"
+	},
+	{
+		"file": "1954draft.json",
+		"pid": 156,
+		"name": "John Borton",
+		"id": "BortJo20"
+	},
+	{
+		"file": "1954draft.json",
+		"pid": 183,
+		"name": "Charlie Brackins",
+		"id": "BracCh20"
+	},
+	{ "file": "1954draft.json", "pid": 259, "name": "Pete Vann", "id": "" },
+	{
+		"file": "1955draft.json",
+		"pid": 2,
+		"name": "Earl Morrall",
+		"id": "MorrEa00"
+	},
+	{
+		"file": "1955draft.json",
+		"pid": 31,
+		"name": "John Roach",
+		"id": "RoacJo00"
+	},
+	{
+		"file": "1955draft.json",
+		"pid": 38,
+		"name": "Jerry Reichow",
+		"id": "ReicJe00"
+	},
+	{ "file": "1955draft.json", "pid": 143, "name": "Em Lindbeck", "id": "" },
+	{ "file": "1955draft.json", "pid": 174, "name": "John Polzer", "id": "" },
+	{ "file": "1955draft.json", "pid": 178, "name": "Tom Spiers", "id": "" },
+	{
+		"file": "1955draft.json",
+		"pid": 183,
+		"name": "George Herring",
+		"id": "HerrGe00"
+	},
+	{ "file": "1955draft.json", "pid": 185, "name": "George Welsh", "id": "" },
+	{
+		"file": "1955draft.json",
+		"pid": 199,
+		"name": "Bart Starr",
+		"id": "StarBa00"
+	},
+	{
+		"file": "1955draft.json",
+		"pid": 202,
+		"name": "Eagle Day",
+		"id": "DayxEa00"
+	},
+	{ "file": "1955draft.json", "pid": 204, "name": "Eddie West", "id": "" },
+	{ "file": "1955draft.json", "pid": 206, "name": "John Stephans", "id": "" },
+	{ "file": "1955draft.json", "pid": 267, "name": "Pete Neft", "id": "" },
+	{ "file": "1955draft.json", "pid": 282, "name": "Bobby Fox", "id": "" },
+	{ "file": "1955draft.json", "pid": 314, "name": "Jerry Gustafson", "id": "" },
+	{ "file": "1955draft.json", "pid": 329, "name": "Jim Miller", "id": "" },
+	{ "file": "1955draft.json", "pid": 330, "name": "John Shearer", "id": "" },
+	{ "file": "1955draft.json", "pid": 331, "name": "Bobby Lance", "id": "" },
+	{ "file": "1955draft.json", "pid": 354, "name": "Rod Hermes", "id": "" },
+	{
+		"file": "1956draft.json",
+		"pid": 2,
+		"name": "John Brodie",
+		"id": "BrodJo00"
+	},
+	{
+		"file": "1956draft.json",
+		"pid": 4,
+		"name": "Len Dawson",
+		"id": "DawsLe00"
+	},
+	{
+		"file": "1956draft.json",
+		"pid": 16,
+		"name": "Milt Plum",
+		"id": "PlumMi00"
+	},
+	{
+		"file": "1956draft.json",
+		"pid": 36,
+		"name": "Ronnie Knox",
+		"id": "KnoxRo20"
+	},
+	{ "file": "1956draft.json", "pid": 37, "name": "Bobby Cox", "id": "" },
+	{
+		"file": "1956draft.json",
+		"pid": 42,
+		"name": "Sonny Jurgensen",
+		"id": "JurgSo00"
+	},
+	{
+		"file": "1956draft.json",
+		"pid": 49,
+		"name": "Jimmy Harris",
+		"id": "HarrJi22"
+	},
+	{ "file": "1956draft.json", "pid": 84, "name": "Chuck Curtis", "id": "" },
+	{
+		"file": "1956draft.json",
+		"pid": 125,
+		"name": "Andy Nelson",
+		"id": "NelsAn00"
+	},
+	{ "file": "1956draft.json", "pid": 140, "name": "Wade Mitchell", "id": "" },
+	{
+		"file": "1956draft.json",
+		"pid": 198,
+		"name": "Corny Salvaterra",
+		"id": ""
+	},
+	{
+		"file": "1956draft.json",
+		"pid": 202,
+		"name": "Jack Kemp",
+		"id": "KempJa00"
+	},
+	{ "file": "1956draft.json", "pid": 221, "name": "Ken Ploen", "id": "" },
+	{ "file": "1956draft.json", "pid": 245, "name": "Gene Cichowski", "id": "" },
+	{ "file": "1956draft.json", "pid": 254, "name": "Ronnie Quillian", "id": "" },
+	{ "file": "1956draft.json", "pid": 257, "name": "Bob Winters", "id": "" },
+	{ "file": "1957draft.json", "pid": 0, "name": "King Hill", "id": "HillKi00" },
+	{ "file": "1957draft.json", "pid": 39, "name": "Dan Nolan", "id": "" },
+	{
+		"file": "1957draft.json",
+		"pid": 48,
+		"name": "Jim Ninowski",
+		"id": "NinoJi00"
+	},
+	{ "file": "1957draft.json", "pid": 53, "name": "Jim Van Pelt", "id": "" },
+	{
+		"file": "1957draft.json",
+		"pid": 54,
+		"name": "Frank Ryan",
+		"id": "RyanFr00"
+	},
+	{ "file": "1957draft.json", "pid": 114, "name": "Al Jacks", "id": "" },
+	{
+		"file": "1957draft.json",
+		"pid": 143,
+		"name": "Bob Brodhead",
+		"id": "BrodBo00"
+	},
+	{ "file": "1957draft.json", "pid": 147, "name": "Mickey Trimarki", "id": "" },
+	{ "file": "1957draft.json", "pid": 149, "name": "Ken Ford", "id": "" },
+	{ "file": "1957draft.json", "pid": 235, "name": "Tom Forrestal", "id": "" },
+	{ "file": "1957draft.json", "pid": 359, "name": "Mack Reynolds", "id": "" },
+	{
+		"file": "1958draft.json",
+		"pid": 0,
+		"name": "Randy Duncan",
+		"id": "DuncRa00"
+	},
+	{
+		"file": "1958draft.json",
+		"pid": 3,
+		"name": "Don Allard",
+		"id": "AllaDo20"
+	},
+	{
+		"file": "1958draft.json",
+		"pid": 9,
+		"name": "Lee Grosscup",
+		"id": "GrosLe00"
+	},
+	{
+		"file": "1958draft.json",
+		"pid": 15,
+		"name": "Buddy Humphrey",
+		"id": "HumpBu00"
+	},
+	{ "file": "1958draft.json", "pid": 38, "name": "Jim Grazione", "id": "" },
+	{ "file": "1958draft.json", "pid": 78, "name": "Mitch Ogiego", "id": "" },
+	{
+		"file": "1958draft.json",
+		"pid": 86,
+		"name": "Bob Ptacek",
+		"id": "PtacBo20"
+	},
+	{
+		"file": "1958draft.json",
+		"pid": 143,
+		"name": "Dick Wood",
+		"id": "WoodDi00"
+	},
+	{
+		"file": "1958draft.json",
+		"pid": 207,
+		"name": "Joe Kapp",
+		"id": "KappJo00"
+	},
+	{
+		"file": "1958draft.json",
+		"pid": 245,
+		"name": "Johnny Green",
+		"id": "GreeJo00"
+	},
+	{ "file": "1958draft.json", "pid": 273, "name": "Frank Kremblas", "id": "" },
+	{
+		"file": "1958draft.json",
+		"pid": 289,
+		"name": "Dick Jamieson",
+		"id": "JamiDi00"
+	},
+	{
+		"file": "1958draft.json",
+		"pid": 362,
+		"name": "Tom Flores",
+		"id": "FlorTo00"
+	},
+	{
+		"file": "1959draft.json",
+		"pid": 1,
+		"name": "George Izo",
+		"id": "IzoxGe00"
+	},
+	{
+		"file": "1959draft.json",
+		"pid": 3,
+		"name": "Richie Lucas",
+		"id": "LucaRi00"
+	},
+	{
+		"file": "1959draft.json",
+		"pid": 14,
+		"name": "Warren Rabb",
+		"id": "RabbWa00"
+	},
+	{
+		"file": "1959draft.json",
+		"pid": 24,
+		"name": "Charley Britt",
+		"id": "BritCh20"
+	},
+	{
+		"file": "1959draft.json",
+		"pid": 31,
+		"name": "Don Meredith",
+		"id": "MereDo00"
+	},
+	{ "file": "1959draft.json", "pid": 44, "name": "Jack Cummings", "id": "" },
+	{
+		"file": "1959draft.json",
+		"pid": 56,
+		"name": "Dick Norman",
+		"id": "NormDi20"
+	},
+	{
+		"file": "1959draft.json",
+		"pid": 60,
+		"name": "Jacky Lee",
+		"id": "LeexJa00"
+	},
+	{ "file": "1959draft.json", "pid": 82, "name": "Bobby Waters", "id": "" },
+	{
+		"file": "1959draft.json",
+		"pid": 108,
+		"name": "Charley Johnson",
+		"id": "JohnCh02"
+	},
+	{ "file": "1959draft.json", "pid": 138, "name": "Dave Grosz", "id": "" },
+	{
+		"file": "1959draft.json",
+		"pid": 143,
+		"name": "Pete Hall",
+		"id": "HallPe00"
+	},
+	{ "file": "1959draft.json", "pid": 187, "name": "Jim Walden", "id": "" },
+	{
+		"file": "1959draft.json",
+		"pid": 228,
+		"name": "Dean Look",
+		"id": "LookDe00"
+	},
+	{
+		"file": "1960draft.json",
+		"pid": 1,
+		"name": "Norm Snead",
+		"id": "SneaNo00"
+	},
+	{
+		"file": "1960draft.json",
+		"pid": 10,
+		"name": "Billy Kilmer",
+		"id": "KilmBi00"
+	},
+	{
+		"file": "1960draft.json",
+		"pid": 28,
+		"name": "Fran Tarkenton",
+		"id": "TarkFr00"
+	},
+	{
+		"file": "1960draft.json",
+		"pid": 35,
+		"name": "Jim Wright",
+		"id": "WrigJi21"
+	},
+	{
+		"file": "1960draft.json",
+		"pid": 40,
+		"name": "Ron Miller",
+		"id": "MillRo01"
+	},
+	{ "file": "1960draft.json", "pid": 82, "name": "Dick Thornton", "id": "" },
+	{ "file": "1960draft.json", "pid": 124, "name": "Jake Gibbs", "id": "" },
+	{
+		"file": "1960draft.json",
+		"pid": 155,
+		"name": "Lowndes Shingler",
+		"id": ""
+	},
+	{ "file": "1960draft.json", "pid": 159, "name": "Howard Dyer", "id": "" },
+	{ "file": "1960draft.json", "pid": 164, "name": "Jack Moynihan", "id": "" },
+	{
+		"file": "1960draft.json",
+		"pid": 181,
+		"name": "Don Jonas",
+		"id": "JonaDo20"
+	},
+	{
+		"file": "1960draft.json",
+		"pid": 229,
+		"name": "Terry Nofsinger",
+		"id": "NofsTe00"
+	},
+	{ "file": "1960draft.json", "pid": 256, "name": "Ben Charles", "id": "" },
+	{ "file": "1960draft.json", "pid": 266, "name": "Mike McFarland", "id": "" },
+	{ "file": "1960draft.json", "pid": 270, "name": "Mike Jones", "id": "" },
+	{
+		"file": "1961draft.json",
+		"pid": 1,
+		"name": "Roman Gabriel",
+		"id": "GabrRo00"
+	},
+	{ "file": "1961draft.json", "pid": 9, "name": "John Hadl", "id": "HadlJo00" },
+	{
+		"file": "1961draft.json",
+		"pid": 17,
+		"name": "Sonny Gibbs",
+		"id": "GibbSo00"
+	},
+	{
+		"file": "1961draft.json",
+		"pid": 23,
+		"name": "Eddie Wilson",
+		"id": "WilsEd00"
+	},
+	{ "file": "1961draft.json", "pid": 41, "name": "John Furman", "id": "" },
+	{
+		"file": "1961draft.json",
+		"pid": 53,
+		"name": "Glynn Griffing",
+		"id": "GrifGl00"
+	},
+	{ "file": "1961draft.json", "pid": 117, "name": "Wilburn Hollis", "id": "" },
+	{ "file": "1961draft.json", "pid": 120, "name": "Walt Rappold", "id": "" },
+	{ "file": "1961draft.json", "pid": 139, "name": "Gale Weidner", "id": "" },
+	{ "file": "1961draft.json", "pid": 238, "name": "Charlie Furlow", "id": "" },
+	{ "file": "1961draft.json", "pid": 245, "name": "Mel Rideout", "id": "" },
+	{ "file": "1961draft.json", "pid": 246, "name": "Joe Zuger", "id": "" },
+	{ "file": "1961draft.json", "pid": 250, "name": "Bob Joiner", "id": "" },
+	{ "file": "1961draft.json", "pid": 260, "name": "Jon Anabo", "id": "" },
+	{ "file": "1961draft.json", "pid": 264, "name": "Ed Trancyier", "id": "" },
+	{
+		"file": "1961draft.json",
+		"pid": 280,
+		"name": "John McCormick",
+		"id": "McCoJo00"
+	},
+	{
+		"file": "1962draft.json",
+		"pid": 0,
+		"name": "Terry Baker",
+		"id": "BakeTe00"
+	},
+	{
+		"file": "1962draft.json",
+		"pid": 38,
+		"name": "Dennis Claridge",
+		"id": "ClarDe02"
+	},
+	{ "file": "1962draft.json", "pid": 80, "name": "Dave Mathieson", "id": "" },
+	{
+		"file": "1962draft.json",
+		"pid": 116,
+		"name": "Don Trull",
+		"id": "TrulDo00"
+	},
+	{ "file": "1962draft.json", "pid": 129, "name": "Peter Liske", "id": "" },
+	{
+		"file": "1962draft.json",
+		"pid": 135,
+		"name": "Bill Nelsen",
+		"id": "NelsBi00"
+	},
+	{
+		"file": "1962draft.json",
+		"pid": 137,
+		"name": "Mike Taliaferro",
+		"id": "TaliMi00"
+	},
+	{
+		"file": "1962draft.json",
+		"pid": 167,
+		"name": "Daryle Lamonica",
+		"id": "LamoDa00"
+	},
+	{
+		"file": "1962draft.json",
+		"pid": 281,
+		"name": "Gary Cuozzo",
+		"id": "CuozGa00"
+	},
+	{
+		"file": "1962draft.json",
+		"pid": 288,
+		"name": "Ron Vander Kelen",
+		"id": "VandRo00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 4,
+		"name": "Pete Beathard",
+		"id": "BeatPe00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 6,
+		"name": "Bill Munson",
+		"id": "MunsBi00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 14,
+		"name": "George Mira",
+		"id": "MiraGe00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 15,
+		"name": "Jack Concannon",
+		"id": "ConcJa00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 80,
+		"name": "Henry Schichtle",
+		"id": "SchiHe20"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 86,
+		"name": "Dick Shiner",
+		"id": "ShinDi00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 108,
+		"name": "Gary Wood",
+		"id": "WoodGa00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 111,
+		"name": "Larry Rakestraw",
+		"id": "RakeLa00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 128,
+		"name": "Roger Staubach",
+		"id": "StauRo00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 130,
+		"name": "Ron Smith",
+		"id": "SmitRo03"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 141,
+		"name": "Bob Berry",
+		"id": "BerrBo00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 171,
+		"name": "Jerry Rhome",
+		"id": "RhomJe00"
+	},
+	{ "file": "1963draft.json", "pid": 218, "name": "Jack Ankerson", "id": "" },
+	{
+		"file": "1963draft.json",
+		"pid": 290,
+		"name": "John Stofa",
+		"id": "StofJo00"
+	},
+	{
+		"file": "1963draft.json",
+		"pid": 291,
+		"name": "Tommy Wade",
+		"id": "WadeTo00"
+	},
+	{
+		"file": "1964draft.json",
+		"pid": 4,
+		"name": "Craig Morton",
+		"id": "MortCr00"
+	},
+	{
+		"file": "1964draft.json",
+		"pid": 11,
+		"name": "Joe Namath",
+		"id": "NamaJo00"
+	},
+	{
+		"file": "1964draft.json",
+		"pid": 32,
+		"name": "Bob Timberlake",
+		"id": "TimbBo20"
+	},
+	{ "file": "1964draft.json", "pid": 45, "name": "Tommy Myers", "id": "" },
+	{
+		"file": "1964draft.json",
+		"pid": 75,
+		"name": "John Huarte",
+		"id": "HuarJo00"
+	},
+	{ "file": "1964draft.json", "pid": 99, "name": "John Hankinson", "id": "" },
+	{
+		"file": "1964draft.json",
+		"pid": 124,
+		"name": "Gary Lane",
+		"id": "LaneGa00"
+	},
+	{ "file": "1964draft.json", "pid": 138, "name": "Pat Screen", "id": "" },
+	{ "file": "1964draft.json", "pid": 194, "name": "Dan Simrell", "id": "" },
+	{
+		"file": "1964draft.json",
+		"pid": 222,
+		"name": "Steve Tensi",
+		"id": "TensSt00"
+	},
+	{ "file": "1964draft.json", "pid": 226, "name": "Tom LaFramboise", "id": "" },
+	{
+		"file": "1964draft.json",
+		"pid": 247,
+		"name": "Karl Sweetan",
+		"id": "SweeKa00"
+	},
+	{
+		"file": "1964draft.json",
+		"pid": 259,
+		"name": "Billy Guy Anderson",
+		"id": "AndeBi21"
+	},
+	{ "file": "1964draft.json", "pid": 265, "name": "John Torok", "id": "" },
+	{ "file": "1964draft.json", "pid": 268, "name": "Craig Fertig", "id": "" },
+	{
+		"file": "1964draft.json",
+		"pid": 275,
+		"name": "George Wilson",
+		"id": "WilsGe00"
+	},
+	{ "file": "1964draft.json", "pid": 278, "name": "George Haffner", "id": "" },
+	{ "file": "1964draft.json", "pid": 294, "name": "Rich Badar", "id": "" },
+	{
+		"file": "1965draft.json",
+		"pid": 15,
+		"name": "Randy Johnson",
+		"id": "JohnRa00"
+	},
+	{
+		"file": "1965draft.json",
+		"pid": 28,
+		"name": "Rick Norton",
+		"id": "NortRi00"
+	},
+	{ "file": "1965draft.json", "pid": 57, "name": "Gary Snook", "id": "" },
+	{
+		"file": "1965draft.json",
+		"pid": 87,
+		"name": "Tim Van Galder",
+		"id": "VanGTi00"
+	},
+	{
+		"file": "1965draft.json",
+		"pid": 106,
+		"name": "Ron Meyer",
+		"id": "MeyeRo00"
+	},
+	{ "file": "1965draft.json", "pid": 124, "name": "Jack White", "id": "" },
+	{
+		"file": "1965draft.json",
+		"pid": 155,
+		"name": "Steve Sloan",
+		"id": "SloaSt00"
+	},
+	{
+		"file": "1965draft.json",
+		"pid": 187,
+		"name": "Benjy Dial",
+		"id": "DialBe00"
+	},
+	{
+		"file": "1965draft.json",
+		"pid": 214,
+		"name": "Jim Ward",
+		"id": "WardJi00"
+	},
+	{
+		"file": "1965draft.json",
+		"pid": 240,
+		"name": "Jim LeClair",
+		"id": "LeClJi00"
+	},
+	{ "file": "1965draft.json", "pid": 247, "name": "Mike Brundage", "id": "" },
+	{
+		"file": "1965draft.json",
+		"pid": 251,
+		"name": "Benny Russell",
+		"id": "RussBe00"
+	},
+	{ "file": "1965draft.json", "pid": 262, "name": "Ken Lucas", "id": "" },
+	{ "file": "1965draft.json", "pid": 277, "name": "Dave Neilson", "id": "" },
+	{
+		"file": "1965draft.json",
+		"pid": 309,
+		"name": "Kent Nix",
+		"id": "NixxKe00"
+	},
+	{
+		"file": "1965draft.json",
+		"pid": 312,
+		"name": "Jim Hart",
+		"id": "HartJi00"
+	},
+	{
+		"file": "1965draft.json",
+		"pid": 313,
+		"name": "Harry Theofiledes",
+		"id": "TheoHa00"
+	},
+	{
+		"file": "1966draft.json",
+		"pid": 2,
+		"name": "Steve Spurrier",
+		"id": "SpurSt00"
+	},
+	{
+		"file": "1966draft.json",
+		"pid": 3,
+		"name": "Bob Griese",
+		"id": "GrieBo00"
+	},
+	{ "file": "1966draft.json", "pid": 23, "name": "Don Horn", "id": "HornDo00" },
+	{
+		"file": "1966draft.json",
+		"pid": 28,
+		"name": "Bob Davis",
+		"id": "DaviBo00"
+	},
+	{
+		"file": "1966draft.json",
+		"pid": 92,
+		"name": "Dave Lewis",
+		"id": "LewiDa22"
+	},
+	{
+		"file": "1966draft.json",
+		"pid": 114,
+		"name": "Virgil Carter",
+		"id": "CartVi00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 10,
+		"name": "Greg Landry",
+		"id": "LandGr00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 29,
+		"name": "Gary Beban",
+		"id": "BebaGa00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 47,
+		"name": "Mike Livingston",
+		"id": "LiviMi00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 51,
+		"name": "Ken Stabler",
+		"id": "StabKe00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 64,
+		"name": "Billy Stevens",
+		"id": "StevBi00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 104,
+		"name": "Ronnie Lee South",
+		"id": "SoutRo00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 122,
+		"name": "Kim Hammond",
+		"id": "HammKi00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 131,
+		"name": "Dewey Warren",
+		"id": "WarrDe00"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 160,
+		"name": "Greg Barton",
+		"id": "BartGr20"
+	},
+	{
+		"file": "1967draft.json",
+		"pid": 198,
+		"name": "Dan Darragh",
+		"id": "DarrDa00"
+	},
+	{ "file": "1967draft.json", "pid": 221, "name": "Bob Lee", "id": "LeexBo00" },
+	{ "file": "1968draft.json", "pid": 3, "name": "Greg Cook", "id": "CookGr00" },
+	{
+		"file": "1968draft.json",
+		"pid": 7,
+		"name": "Marty Domres",
+		"id": "DomrMa00"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 28,
+		"name": "Terry Hanratty",
+		"id": "HanrTe00"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 39,
+		"name": "Bobby Douglass",
+		"id": "DougBo00"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 48,
+		"name": "Al Woodall",
+		"id": "WoodAl00"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 131,
+		"name": "James Harris",
+		"id": "HarrJa01"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 160,
+		"name": "Bob Naponic",
+		"id": "NapoBo00"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 163,
+		"name": "Alan Pastrana",
+		"id": "PastCh00"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 166,
+		"name": "Brian Dowling",
+		"id": "DowlBr00"
+	},
+	{
+		"file": "1968draft.json",
+		"pid": 196,
+		"name": "Edd Hargett",
+		"id": "HargEd00"
+	},
+	{
+		"file": "1969draft.json",
+		"pid": 0,
+		"name": "Terry Bradshaw",
+		"id": "BradTe00"
+	},
+	{
+		"file": "1969draft.json",
+		"pid": 2,
+		"name": "Mike Phipps",
+		"id": "PhipMi00"
+	},
+	{
+		"file": "1969draft.json",
+		"pid": 29,
+		"name": "Dennis Shaw",
+		"id": "ShawDe00"
+	},
+	{
+		"file": "1969draft.json",
+		"pid": 49,
+		"name": "Bill Cappleman",
+		"id": "CappBi00"
+	},
+	{
+		"file": "1969draft.json",
+		"pid": 102,
+		"name": "Steve Ramsey",
+		"id": "RamsSt00"
+	},
+	{
+		"file": "1969draft.json",
+		"pid": 142,
+		"name": "Wayne Clark",
+		"id": "ClarWa00"
+	},
+	{
+		"file": "1969draft.json",
+		"pid": 166,
+		"name": "Frank Patrick",
+		"id": "PatrFr00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 0,
+		"name": "Jim Plunkett",
+		"id": "PlunJi00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 1,
+		"name": "Archie Manning",
+		"id": "MannAr00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 2,
+		"name": "Dan Pastorini",
+		"id": "PastDa00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 52,
+		"name": "Lynn Dickey",
+		"id": "DickLy00"
+	},
+	{ "file": "1970draft.json", "pid": 55, "name": "Leo Hart", "id": "HartLe00" },
+	{
+		"file": "1970draft.json",
+		"pid": 62,
+		"name": "Ken Anderson",
+		"id": "AndeKe00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 87,
+		"name": "Joe Theismann",
+		"id": "TheiJo00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 114,
+		"name": "Scott Hunter",
+		"id": "HuntSc00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 181,
+		"name": "Joe Reed",
+		"id": "ReedJo00"
+	},
+	{
+		"file": "1970draft.json",
+		"pid": 195,
+		"name": "Bobby Scott",
+		"id": "ScotBo00"
+	},
+	{
+		"file": "1971draft.json",
+		"pid": 10,
+		"name": "Jerry Tagge",
+		"id": "TaggJe00"
+	},
+	{
+		"file": "1971draft.json",
+		"pid": 13,
+		"name": "John Reaves",
+		"id": "ReavJo00"
+	},
+	{
+		"file": "1971draft.json",
+		"pid": 38,
+		"name": "Pat Sullivan",
+		"id": "SullPa00"
+	},
+	{
+		"file": "1971draft.json",
+		"pid": 128,
+		"name": "Dean Carlson",
+		"id": "CarlDe00"
+	},
+	{
+		"file": "1971draft.json",
+		"pid": 160,
+		"name": "Joe Gilliam",
+		"id": "GillJo00"
+	},
+	{
+		"file": "1971draft.json",
+		"pid": 174,
+		"name": "Brian Sipe",
+		"id": "SipeBr00"
+	},
+	{
+		"file": "1971draft.json",
+		"pid": 190,
+		"name": "Neil Graff",
+		"id": "GrafNe00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 1,
+		"name": "Bert Jones",
+		"id": "JoneBe00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 31,
+		"name": "Gary Huff",
+		"id": "HuffGa00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 35,
+		"name": "Ron Jaworski",
+		"id": "JawoRo00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 43,
+		"name": "Gary Keithley",
+		"id": "KeitGa00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 54,
+		"name": "Joe Ferguson",
+		"id": "FergJo00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 59,
+		"name": "Dan Fouts",
+		"id": "FoutDa00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 73,
+		"name": "Mike Wells",
+		"id": "WellMi21"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 100,
+		"name": "Don Strock",
+		"id": "StroDo00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 156,
+		"name": "Mike Rae",
+		"id": "RaexMi00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 198,
+		"name": "Tony Adams",
+		"id": "AdamTo00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 202,
+		"name": "John Hufnagel",
+		"id": "HufnJo00"
+	},
+	{
+		"file": "1972draft.json",
+		"pid": 205,
+		"name": "Dennis Morrison",
+		"id": "MorrDe00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 49,
+		"name": "Danny White",
+		"id": "WhitDa01"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 61,
+		"name": "David Jaynes",
+		"id": "JaynDa00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 64,
+		"name": "Kim McQuilken",
+		"id": "McQuKi00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 65,
+		"name": "Gary Marangi",
+		"id": "MaraGa00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 73,
+		"name": "Carl Summerell",
+		"id": "SummCa00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 78,
+		"name": "Mike Boryla",
+		"id": "BoryMi00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 88,
+		"name": "Norris Weese",
+		"id": "WeesNo00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 111,
+		"name": "Jesse Freitas",
+		"id": "FreiJe00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 189,
+		"name": "Joe Barnes",
+		"id": "BarnJo01"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 191,
+		"name": "Tom Owen",
+		"id": "OwenTo00"
+	},
+	{
+		"file": "1973draft.json",
+		"pid": 202,
+		"name": "Larry Cipa",
+		"id": "CipaLa00"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 0,
+		"name": "Steve Bartkowski",
+		"id": "BartSt00"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 97,
+		"name": "Steve Grogan",
+		"id": "GrogSt00"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 107,
+		"name": "David Humm",
+		"id": "HummDa00"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 112,
+		"name": "Bob Avellini",
+		"id": "AvelBo00"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 127,
+		"name": "Steve Joachim",
+		"id": "JoacSt20"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 136,
+		"name": "Pat Haden",
+		"id": "HadePa00"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 177,
+		"name": "Carlos Brown",
+		"id": "BrowCa00"
+	},
+	{
+		"file": "1974draft.json",
+		"pid": 205,
+		"name": "Neal Jeffrey",
+		"id": "JeffNe00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 5,
+		"name": "Richard Todd",
+		"id": "ToddRi00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 46,
+		"name": "Mike Kruczek",
+		"id": "KrucMi00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 49,
+		"name": "Jeb Blount",
+		"id": "BlouJe00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 89,
+		"name": "Steve Myer",
+		"id": "MyerSt00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 99,
+		"name": "Craig Penrose",
+		"id": "PenrCr00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 128,
+		"name": "Mike Kirkland",
+		"id": "KirkMi00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 150,
+		"name": "Scott Bull",
+		"id": "BullSc00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 153,
+		"name": "Parnell Dickinson",
+		"id": "DickPa00"
+	},
+	{
+		"file": "1975draft.json",
+		"pid": 212,
+		"name": "Jerry Golsteyn",
+		"id": "GolsJe00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 17,
+		"name": "Steve Pisarkiewicz",
+		"id": "PisaSt00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 25,
+		"name": "Tommy Kramer",
+		"id": "KramTo00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 51,
+		"name": "Glenn Carano",
+		"id": "CaraGl00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 84,
+		"name": "Vince Ferragamo",
+		"id": "FerrVi00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 106,
+		"name": "Randy Dean",
+		"id": "DeanRa00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 109,
+		"name": "Cliff Stoudt",
+		"id": "StouCl00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 116,
+		"name": "Cliff Olander",
+		"id": "OlanCl00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 126,
+		"name": "Vince Evans",
+		"id": "EvanVi00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 142,
+		"name": "Tom Duniven",
+		"id": "DuniTo20"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 169,
+		"name": "Randy Hedberg",
+		"id": "HedbRa00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 176,
+		"name": "David Whitehurst",
+		"id": "WhitDa02"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 182,
+		"name": "Matt Robinson",
+		"id": "RobiMa01"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 191,
+		"name": "Sam Adkins",
+		"id": "AdkiSa00"
+	},
+	{
+		"file": "1976draft.json",
+		"pid": 200,
+		"name": "Steve DeBerg",
+		"id": "DebeSt00"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 16,
+		"name": "Doug Williams",
+		"id": "WillDo01"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 47,
+		"name": "Matt Cavanaugh",
+		"id": "CavaMa00"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 48,
+		"name": "Guy Benjamin",
+		"id": "BenjGu00"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 65,
+		"name": "Mark Miller",
+		"id": "MillMa00"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 70,
+		"name": "Gifford Nielsen",
+		"id": "NielGi00"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 97,
+		"name": "Mark Manges",
+		"id": "MangMa20"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 118,
+		"name": "Rob Hertel",
+		"id": "HertRo20"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 163,
+		"name": "Dennis Sproul",
+		"id": "SproDe20"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 198,
+		"name": "Pat Ryan",
+		"id": "RyanPa00"
+	},
+	{
+		"file": "1977draft.json",
+		"pid": 214,
+		"name": "Bill Kenney",
+		"id": "KennBi00"
+	},
+	{ "file": "1977draft.json", "name": "Warren Moon", "id": "MoonWa00" },
+	{
+		"file": "1978draft.json",
+		"pid": 2,
+		"name": "Jack Thompson",
+		"id": "ThomJa00"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 6,
+		"name": "Phil Simms",
+		"id": "SimmPh00"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 22,
+		"name": "Steve Fuller",
+		"id": "FullSt00"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 81,
+		"name": "Joe Montana",
+		"id": "MontJo01"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 95,
+		"name": "Steve Dils",
+		"id": "DilsSt00"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 113,
+		"name": "Dan Manucci",
+		"id": "ManuDa20"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 126,
+		"name": "Chuck Fusina",
+		"id": "FusiCh00"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 144,
+		"name": "Mike Moroski",
+		"id": "MoroMi00"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 191,
+		"name": "Jeff Komlo",
+		"id": "KomlJe00"
+	},
+	{
+		"file": "1978draft.json",
+		"pid": 202,
+		"name": "Jeff Rutledge",
+		"id": "RutlJe00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 14,
+		"name": "Marc Wilson",
+		"id": "WilsMa00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 27,
+		"name": "Mark Malone",
+		"id": "MaloMa00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 80,
+		"name": "Eric Hipple",
+		"id": "HippEr00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 84,
+		"name": "Rusty Lisch",
+		"id": "LiscRu00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 95,
+		"name": "Ed Luther",
+		"id": "LuthEd00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 102,
+		"name": "Paul McDonald",
+		"id": "McDoPa00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 116,
+		"name": "Gary Hogeboom",
+		"id": "HogeGa00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 128,
+		"name": "Scott Brunner",
+		"id": "BrunSc00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 154,
+		"name": "Craig Bradshaw",
+		"id": "BradCr20"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 166,
+		"name": "David Woodley",
+		"id": "WoodDa00"
+	},
+	{
+		"file": "1979draft.json",
+		"pid": 178,
+		"name": "Turk Schonert",
+		"id": "SchoTu00"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 4,
+		"name": "Rich Campbell",
+		"id": "CampRi00"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 31,
+		"name": "Neil Lomax",
+		"id": "LomaNe00"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 84,
+		"name": "Tom Flick",
+		"id": "FlicTo00"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 90,
+		"name": "Mark Herrmann",
+		"id": "HerrMa00"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 169,
+		"name": "Mark Reed",
+		"id": "ReedMa20"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 172,
+		"name": "Wade Wilson",
+		"id": "WilsWa00"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 209,
+		"name": "Rick Trocano",
+		"id": "TrocRi20"
+	},
+	{
+		"file": "1980draft.json",
+		"pid": 220,
+		"name": "Bob Gagliano",
+		"id": "GaglBo00"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 3,
+		"name": "Art Schlichter",
+		"id": "SchlAr00"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 4,
+		"name": "Jim McMahon",
+		"id": "McMaJi00"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 42,
+		"name": "Oliver Luck",
+		"id": "LuckOl00"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 46,
+		"name": "Matt Kofler",
+		"id": "KoflMa00"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 80,
+		"name": "Mike Pagel",
+		"id": "PageMi00"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 138,
+		"name": "Mike Kelley",
+		"id": "KellMi21"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 142,
+		"name": "Mike Machurek",
+		"id": "MachMi00"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 192,
+		"name": "Bryan Clark",
+		"id": "ClarBr22"
+	},
+	{
+		"file": "1981draft.json",
+		"pid": 207,
+		"name": "Bob Holly",
+		"id": "HollBo00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 0,
+		"name": "John Elway",
+		"id": "ElwaJo00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 6,
+		"name": "Todd Blackledge",
+		"id": "BlacTo00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 13,
+		"name": "Jim Kelly",
+		"id": "KellJi00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 14,
+		"name": "Tony Eason",
+		"id": "EasoTo00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 23,
+		"name": "Ken O'Brien",
+		"id": "OBriKe00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 26,
+		"name": "Dan Marino",
+		"id": "MariDa00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 129,
+		"name": "Jeff Christensen",
+		"id": "ChriJe20"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 150,
+		"name": "Reggie Collier",
+		"id": "CollRe20"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 154,
+		"name": "Babe Laufenberg",
+		"id": "LaufBa00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 174,
+		"name": "Gary Kubiak",
+		"id": "KubiGa00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 219,
+		"name": "Tom Ramsey",
+		"id": "RamsTo00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 222,
+		"name": "Bruce Mathison",
+		"id": "MathBr00"
+	},
+	{
+		"file": "1982draft.json",
+		"pid": 227,
+		"name": "Jim Bob Taylor",
+		"id": "TaylJi20"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 36,
+		"name": "Boomer Esiason",
+		"id": "EsiaBo00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 57,
+		"name": "Jeff Hostetler",
+		"id": "HostJe00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 77,
+		"name": "Rick McIvor",
+		"id": "McIvRi20"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 80,
+		"name": "Jay Schroeder",
+		"id": "SchrJa00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 110,
+		"name": "Steve Pelluer",
+		"id": "PellSt00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 130,
+		"name": "Dean May",
+		"id": "MayxDe20"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 137,
+		"name": "Ben Bennett",
+		"id": "BennBe20"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 142,
+		"name": "Randy Wright",
+		"id": "WrigRa00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 146,
+		"name": "Terry Nugent",
+		"id": "NugeTe20"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 148,
+		"name": "John Witkowski",
+		"id": "WitkJo00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 173,
+		"name": "Scott Campbell",
+		"id": "CampSc00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 222,
+		"name": "Blair Kiel",
+		"id": "KielBl00"
+	},
+	{
+		"file": "1983draft.json",
+		"pid": 228,
+		"name": "Kyle Mackey",
+		"id": "MackKy00"
+	},
+	{
+		"file": "1984draft.json",
+		"pid": 36,
+		"name": "Randall Cunningham",
+		"id": "CunnRa00"
+	},
+	{
+		"file": "1984draft.json",
+		"pid": 56,
+		"name": "Frank Reich",
+		"id": "ReicFr00"
+	},
+	{
+		"file": "1984draft.json",
+		"pid": 127,
+		"name": "Steve Bono",
+		"id": "BonoSt00"
+	},
+	{
+		"file": "1984draft.json",
+		"pid": 128,
+		"name": "Rusty Hilger",
+		"id": "HilgRu00"
+	},
+	{
+		"file": "1984draft.json",
+		"pid": 218,
+		"name": "Doug Flutie",
+		"id": "FlutDo00"
+	},
+	{
+		"file": "1984draft.json",
+		"pid": 222,
+		"name": "Joe Shield",
+		"id": "ShieJo20"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 2,
+		"name": "Jim Everett",
+		"id": "EverJi00"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 11,
+		"name": "Chuck Long",
+		"id": "LongCh00"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 46,
+		"name": "Jack Trudeau",
+		"id": "TrudJa00"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 66,
+		"name": "Bubby Brister",
+		"id": "BrisBu00"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 70,
+		"name": "Hugh Millen",
+		"id": "MillHu00"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 93,
+		"name": "Doug Gaynor",
+		"id": "GaynDo20"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 135,
+		"name": "Mark Rypien",
+		"id": "RypiMa00"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 138,
+		"name": "Stan Gelbaugh",
+		"id": "GelbSt00"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 156,
+		"name": "Mike Norseth",
+		"id": "NorsMi20"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 237,
+		"name": "David Norrie",
+		"id": "NorrDa20"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 247,
+		"name": "Kent Austin",
+		"id": "AustKe20"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 248,
+		"name": "Brian McClure",
+		"id": "McClBr20"
+	},
+	{
+		"file": "1985draft.json",
+		"pid": 250,
+		"name": "Steve Bradley",
+		"id": "BradSt20"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 0,
+		"name": "Vinny Testaverde",
+		"id": "TestVi00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 5,
+		"name": "Kelly Stouffer",
+		"id": "StouKe00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 12,
+		"name": "Chris Miller",
+		"id": "MillCh00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 25,
+		"name": "Jim Harbaugh",
+		"id": "HarbJi00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 62,
+		"name": "Cody Carlson",
+		"id": "CarlCo00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 86,
+		"name": "Mark Vlasic",
+		"id": "VlasMa00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 96,
+		"name": "Rich Gannon",
+		"id": "GannRi00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 107,
+		"name": "Steve Beuerlein",
+		"id": "BeueSt00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 168,
+		"name": "Kevin Sweeney",
+		"id": "SweeKe00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 174,
+		"name": "Doug Hudson",
+		"id": "HudsDo20"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 198,
+		"name": "Sammy Garza",
+		"id": "GarzSa20"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 226,
+		"name": "Don Majkowski",
+		"id": "MajkDo00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 255,
+		"name": "Brent Pease",
+		"id": "PeasBr00"
+	},
+	{
+		"file": "1986draft.json",
+		"pid": 262,
+		"name": "Dave Walter",
+		"id": "WaltDa20"
+	},
+	{ "file": "1987draft.json", "pid": 65, "name": "Tom Tupa", "id": "TupaTo20" },
+	{
+		"file": "1987draft.json",
+		"pid": 73,
+		"name": "Chris Chandler",
+		"id": "ChanCh00"
+	},
+	{
+		"file": "1987draft.json",
+		"pid": 133,
+		"name": "Scott Secules",
+		"id": "SecuSc00"
+	},
+	{
+		"file": "1987draft.json",
+		"pid": 138,
+		"name": "Stan Humphries",
+		"id": "HumpSt00"
+	},
+	{
+		"file": "1987draft.json",
+		"pid": 149,
+		"name": "Kerwin Bell",
+		"id": "BellKe00"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 0,
+		"name": "Troy Aikman",
+		"id": "AikmTr00"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 31,
+		"name": "Mike Elkins",
+		"id": "ElkiMi00"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 50,
+		"name": "Billy Joe Tolliver",
+		"id": "TollBi00"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 73,
+		"name": "Anthony Dilweg",
+		"id": "DilwAn00"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 82,
+		"name": "Erik Wilhelm",
+		"id": "WilhEr00"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 98,
+		"name": "Jeff Carlson",
+		"id": "CarlJe00"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 129,
+		"name": "Jeff Francis",
+		"id": "FranJe20"
+	},
+	{
+		"file": "1988draft.json",
+		"pid": 130,
+		"name": "Rodney Peete",
+		"id": "PeetRo00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 0,
+		"name": "Jeff George",
+		"id": "GeorJe00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 6,
+		"name": "Andre Ware",
+		"id": "WareAn00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 58,
+		"name": "Tom Hodson",
+		"id": "HodsTo00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 62,
+		"name": "Peter Tom Willis",
+		"id": "WillPe00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 69,
+		"name": "Neil O'Donnell",
+		"id": "ODonNe00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 83,
+		"name": "Troy Taylor",
+		"id": "TaylTr00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 85,
+		"name": "Cary Conklin",
+		"id": "ConkCa00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 90,
+		"name": "Scott Mitchell",
+		"id": "MitcSc00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 127,
+		"name": "Craig Kupp",
+		"id": "KuppCr20"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 129,
+		"name": "John Friesz",
+		"id": "FrieJo00"
+	},
+	{
+		"file": "1989draft.json",
+		"pid": 146,
+		"name": "Mike Buck",
+		"id": "BuckMi00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 15,
+		"name": "Dan McGwire",
+		"id": "McGwDa00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 23,
+		"name": "Todd Marinovich",
+		"id": "MariTo00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 32,
+		"name": "Brett Favre",
+		"id": "FavrBr00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 33,
+		"name": "Browning Nagle",
+		"id": "NaglBr00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 82,
+		"name": "Scott Zolak",
+		"id": "ZolaSc00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 97,
+		"name": "Donald Hollas",
+		"id": "HollDo00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 103,
+		"name": "Bill Musgrave",
+		"id": "MusgBi00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 160,
+		"name": "Paul Justin",
+		"id": "JustPa00"
+	},
+	{
+		"file": "1990draft.json",
+		"pid": 202,
+		"name": "Shawn Moore",
+		"id": "MoorSh00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 5,
+		"name": "David Klingler",
+		"id": "KlinDa00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 24,
+		"name": "Tommy Maddox",
+		"id": "MaddTo00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 39,
+		"name": "Matt Blundin",
+		"id": "BlunMa00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 44,
+		"name": "Tony Sacca",
+		"id": "SaccTo00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 83,
+		"name": "Craig Erickson",
+		"id": "EricCr00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 99,
+		"name": "Casey Weldon",
+		"id": "WeldCa00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 104,
+		"name": "Will Furrer",
+		"id": "FurrWi00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 141,
+		"name": "Jeff Blake",
+		"id": "BlakJe00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 167,
+		"name": "Kent Graham",
+		"id": "GrahKe00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 171,
+		"name": "Bucky Richardson",
+		"id": "RichBu00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 177,
+		"name": "Brad Johnson",
+		"id": "JohnBr00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 178,
+		"name": "T.J. Rubley",
+		"id": "RublTJ00"
+	},
+	{
+		"file": "1991draft.json",
+		"pid": 179,
+		"name": "Ty Detmer",
+		"id": "DetmTy00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 0,
+		"name": "Drew Bledsoe",
+		"id": "BledDr00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 1,
+		"name": "Rick Mirer",
+		"id": "MireRi00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 56,
+		"name": "Billy Joe Hobert",
+		"id": "HobeBi00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 113,
+		"name": "Mark Brunell",
+		"id": "BrunMa00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 180,
+		"name": "Gino Torretta",
+		"id": "ToreGi00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 201,
+		"name": "Alex Van Pelt",
+		"id": "VanPAl00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 204,
+		"name": "Elvis Grbac",
+		"id": "GrbaEl00"
+	},
+	{
+		"file": "1992draft.json",
+		"pid": 206,
+		"name": "Trent Green",
+		"id": "GreeTr00"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 2,
+		"name": "Heath Shuler",
+		"id": "ShulHe00"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 5,
+		"name": "Trent Dilfer",
+		"id": "DilfTr00"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 106,
+		"name": "Perry Klein",
+		"id": "KleiPe20"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 110,
+		"name": "Doug Nussmeier",
+		"id": "NussDo00"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 157,
+		"name": "Jim Miller",
+		"id": "MillJi00"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 171,
+		"name": "Gus Frerotte",
+		"id": "FrerGu00"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 172,
+		"name": "Jay Walker",
+		"id": "WalkJa22"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 173,
+		"name": "Steve Matthews",
+		"id": "MattSt00"
+	},
+	{
+		"file": "1993draft.json",
+		"pid": 178,
+		"name": "Glenn Foley",
+		"id": "FoleGl00"
+	},
+	{ "file": "1993draft.json", "name": "Kurt Warner", "id": "WarnKu00" },
+	{
+		"file": "1994draft.json",
+		"pid": 2,
+		"name": "Steve McNair",
+		"id": "McNaSt00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 4,
+		"name": "Kerry Collins",
+		"id": "CollKe00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 43,
+		"name": "Todd Collins",
+		"id": "CollTo00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 58,
+		"name": "Kordell Stewart",
+		"id": "StewKo00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 76,
+		"name": "Stoney Case",
+		"id": "CaseSt00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 80,
+		"name": "Eric Zeier",
+		"id": "ZeieEr00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 94,
+		"name": "Rob Johnson",
+		"id": "JohnRo00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 110,
+		"name": "Dave Barr",
+		"id": "BarrDa20"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 124,
+		"name": "Steve Stenstrom",
+		"id": "StenSt00"
+	},
+	{
+		"file": "1994draft.json",
+		"pid": 167,
+		"name": "Craig Whelihan",
+		"id": "WhelCr00"
+	},
+	{
+		"file": "1995draft.json",
+		"pid": 41,
+		"name": "Tony Banks",
+		"id": "BankTo00"
+	},
+	{
+		"file": "1995draft.json",
+		"pid": 82,
+		"name": "Bobby Hoying",
+		"id": "HoyiBo00"
+	},
+	{
+		"file": "1995draft.json",
+		"pid": 96,
+		"name": "Jeff Lewis",
+		"id": "LewiJe01"
+	},
+	{
+		"file": "1995draft.json",
+		"pid": 125,
+		"name": "Danny Kanell",
+		"id": "KaneDa00"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 25,
+		"name": "Jim Druckenmiller",
+		"id": "DrucJi00"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 41,
+		"name": "Jake Plummer",
+		"id": "PlumJa00"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 96,
+		"name": "Danny Wuerffel",
+		"id": "WuerDa00"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 107,
+		"name": "Pat Barnes",
+		"id": "BarnPa20"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 160,
+		"name": "Mike Cherry",
+		"id": "CherMi00"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 177,
+		"name": "Chuck Clements",
+		"id": "ClemCh21"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 186,
+		"name": "Tony Graziani",
+		"id": "GrazTo00"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 188,
+		"name": "Koy Detmer",
+		"id": "DetmKo00"
+	},
+	{
+		"file": "1996draft.json",
+		"pid": 205,
+		"name": "Wally Richardson",
+		"id": "RichWa00"
+	},
+	{
+		"file": "1997draft.json",
+		"pid": 0,
+		"name": "Peyton Manning",
+		"id": "MannPe00"
+	},
+	{ "file": "1997draft.json", "pid": 1, "name": "Ryan Leaf", "id": "LeafRy00" },
+	{
+		"file": "1997draft.json",
+		"pid": 57,
+		"name": "Charlie Batch",
+		"id": "BatcCh00"
+	},
+	{
+		"file": "1997draft.json",
+		"pid": 81,
+		"name": "Jonathan Quinn",
+		"id": "QuinJo00"
+	},
+	{
+		"file": "1997draft.json",
+		"pid": 86,
+		"name": "Brian Griese",
+		"id": "GrieBr00"
+	},
+	{
+		"file": "1997draft.json",
+		"pid": 166,
+		"name": "Matt Hasselbeck",
+		"id": "HassMa00"
+	},
+	{
+		"file": "1997draft.json",
+		"pid": 197,
+		"name": "Moses Moreno",
+		"id": "MoreMo00"
+	},
+	{ "file": "1998draft.json", "pid": 0, "name": "Tim Couch", "id": "CoucTi00" },
+	{
+		"file": "1998draft.json",
+		"pid": 1,
+		"name": "Donovan McNabb",
+		"id": "McNaDo00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 2,
+		"name": "Akili Smith",
+		"id": "SmitAk00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 10,
+		"name": "Daunte Culpepper",
+		"id": "CulpDa00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 11,
+		"name": "Cade McNown",
+		"id": "McNoCa00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 47,
+		"name": "Shaun King",
+		"id": "KingSh00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 73,
+		"name": "Brock Huard",
+		"id": "HuarBr00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 96,
+		"name": "Joe Germaine",
+		"id": "GermJo00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 123,
+		"name": "Aaron Brooks",
+		"id": "BrooAa00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 198,
+		"name": "Michael Bishop",
+		"id": "BishMi00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 208,
+		"name": "Chris Greisen",
+		"id": "GreiCh00"
+	},
+	{
+		"file": "1998draft.json",
+		"pid": 213,
+		"name": "Scott Covington",
+		"id": "CoviSc00"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 17,
+		"name": "Chad Pennington",
+		"id": "PennCh01"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 71,
+		"name": "Chris Redman",
+		"id": "RedmCh00"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 146,
+		"name": "Tee Martin",
+		"id": "MartTe00"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 151,
+		"name": "Marc Bulger",
+		"id": "BulgMa00"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 163,
+		"name": "Spergon Wynn",
+		"id": "WynnSp00"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 177,
+		"name": "Tom Brady",
+		"id": "BradTo00"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 179,
+		"name": "Todd Husak",
+		"id": "HusaTo20"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 184,
+		"name": "Tim Rattay",
+		"id": "RattTi00"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 186,
+		"name": "Jarious Jackson",
+		"id": "JackJa01"
+	},
+	{
+		"file": "1999draft.json",
+		"pid": 200,
+		"name": "Joe Hamilton",
+		"id": "HamiJo20"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 0,
+		"name": "Michael Vick",
+		"id": "VickMi00"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 31,
+		"name": "Drew Brees",
+		"id": "BreeDr00"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 51,
+		"name": "Quincy Carter",
+		"id": "CartQu00"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 57,
+		"name": "Marques Tuiasosopo",
+		"id": "TuiaMa00"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 104,
+		"name": "Chris Weinke",
+		"id": "WeinCh00"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 107,
+		"name": "Sage Rosenfels",
+		"id": "RoseSa00"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 123,
+		"name": "Jesse Palmer",
+		"id": "PalmJe00"
+	},
+	{
+		"file": "2000draft.json",
+		"pid": 144,
+		"name": "Mike McMahon",
+		"id": "McMaMi00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 0,
+		"name": "David Carr",
+		"id": "CarrDa00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 2,
+		"name": "Joey Harrington",
+		"id": "HarrJo00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 30,
+		"name": "Patrick Ramsey",
+		"id": "RamsPa00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 79,
+		"name": "Josh McCown",
+		"id": "McCoJo01"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 104,
+		"name": "David Garrard",
+		"id": "GarrDa00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 112,
+		"name": "Rohan Davey",
+		"id": "DaveRo01"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 128,
+		"name": "Randy Fasani",
+		"id": "FasaRa00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 148,
+		"name": "Kurt Kittner",
+		"id": "KittKu00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 152,
+		"name": "Craig Nall",
+		"id": "NallCr00"
+	},
+	{
+		"file": "2001draft.json",
+		"pid": 205,
+		"name": "Jeff Kelly",
+		"id": "KellJe21"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 0,
+		"name": "Carson Palmer",
+		"id": "PalmCa00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 6,
+		"name": "Byron Leftwich",
+		"id": "LeftBy00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 18,
+		"name": "Kyle Boller",
+		"id": "BollKy00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 21,
+		"name": "Rex Grossman",
+		"id": "GrosRe00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 84,
+		"name": "Dave Ragone",
+		"id": "RagoDa00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 93,
+		"name": "Chris Simms",
+		"id": "SimmCh00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 106,
+		"name": "Seneca Wallace",
+		"id": "WallSe00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 182,
+		"name": "Drew Henson",
+		"id": "HensDr00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 188,
+		"name": "Brooks Bollinger",
+		"id": "BollBr00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 189,
+		"name": "Kliff Kingsbury",
+		"id": "KingKl00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 212,
+		"name": "Gibran Hamdan",
+		"id": "HamdGi00"
+	},
+	{
+		"file": "2002draft.json",
+		"pid": 217,
+		"name": "Ken Dorsey",
+		"id": "DorsKe00"
+	},
+	{ "file": "2002draft.json", "name": "Tony Romo", "id": "RomoTo00" },
+	{
+		"file": "2003draft.json",
+		"pid": 0,
+		"name": "Eli Manning",
+		"id": "MannEl00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 3,
+		"name": "Philip Rivers",
+		"id": "RivePh00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 10,
+		"name": "Ben Roethlisberger",
+		"id": "RoetBe00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 85,
+		"name": "Matt Schaub",
+		"id": "SchaMa00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 101,
+		"name": "Luke McCown",
+		"id": "McCoLu00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 140,
+		"name": "Craig Krenzel",
+		"id": "KrenCr00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 169,
+		"name": "Andy Hall",
+		"id": "HallAn00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 175,
+		"name": "Jim Sorgi",
+		"id": "SorgJi00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 181,
+		"name": "John Navarre",
+		"id": "NavaJo00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 195,
+		"name": "Cody Pickett",
+		"id": "PickCo00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 201,
+		"name": "Matt Mauck",
+		"id": "MaucMa00"
+	},
+	{
+		"file": "2003draft.json",
+		"pid": 220,
+		"name": "Bradlee Van Pelt",
+		"id": "VanPBr00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 0,
+		"name": "Alex Smith",
+		"id": "SmitAl03"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 23,
+		"name": "Aaron Rodgers",
+		"id": "RodgAa00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 24,
+		"name": "Jason Campbell",
+		"id": "CampJa00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 64,
+		"name": "Charlie Frye",
+		"id": "FryeCh00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 66,
+		"name": "Andrew Walter",
+		"id": "WaltAn00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 99,
+		"name": "Kyle Orton",
+		"id": "OrtoKy00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 134,
+		"name": "Dan Orlovsky",
+		"id": "OrloDa00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 186,
+		"name": "Derek Anderson",
+		"id": "AndeDe00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 197,
+		"name": "Matt Cassel",
+		"id": "CassMa00"
+	},
+	{
+		"file": "2004draft.json",
+		"pid": 214,
+		"name": "Ryan Fitzpatrick",
+		"id": "FitzRy00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 2,
+		"name": "Vince Young",
+		"id": "YounVi00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 8,
+		"name": "Matt Leinart",
+		"id": "LeinMa00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 9,
+		"name": "Jay Cutler",
+		"id": "CutlJa00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 47,
+		"name": "Kellen Clemens",
+		"id": "ClemKe00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 62,
+		"name": "Tarvaris Jackson",
+		"id": "JackTa00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 79,
+		"name": "Charlie Whitehurst",
+		"id": "WhitCh02"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 83,
+		"name": "Brodie Croyle",
+		"id": "CroyBr00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 101,
+		"name": "Brad Smith",
+		"id": "SmitBr01"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 141,
+		"name": "Ingle Martin",
+		"id": "MartIn00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 178,
+		"name": "Reggie McNeal",
+		"id": "McNeRe00"
+	},
+	{
+		"file": "2005draft.json",
+		"pid": 179,
+		"name": "Bruce Gradkowski",
+		"id": "GradBr00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 0,
+		"name": "JaMarcus Russell",
+		"id": "RussJa00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 21,
+		"name": "Brady Quinn",
+		"id": "QuinBr00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 35,
+		"name": "Kevin Kolb",
+		"id": "KolbKe00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 39,
+		"name": "John Beck",
+		"id": "BeckJo00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 42,
+		"name": "Drew Stanton",
+		"id": "StanDr00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 89,
+		"name": "Trent Edwards",
+		"id": "EdwaTr01"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 99,
+		"name": "Isaiah Stanback",
+		"id": "StanIs00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 143,
+		"name": "Jeff Rowe",
+		"id": "RoweJe00"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 164,
+		"name": "Troy Smith",
+		"id": "SmitTr02"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 188,
+		"name": "Jordan Palmer",
+		"id": "PalmJo20"
+	},
+	{
+		"file": "2006draft.json",
+		"pid": 194,
+		"name": "Tyler Thigpen",
+		"id": "ThigTy00"
+	},
+	{ "file": "2007draft.json", "pid": 2, "name": "Matt Ryan", "id": "RyanMa00" },
+	{
+		"file": "2007draft.json",
+		"pid": 17,
+		"name": "Joe Flacco",
+		"id": "FlacJo00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 55,
+		"name": "Brian Brohm",
+		"id": "BrohBr00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 56,
+		"name": "Chad Henne",
+		"id": "HennCh01"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 93,
+		"name": "Kevin O'Connell",
+		"id": "OConKe00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 154,
+		"name": "Dennis Dixon",
+		"id": "DixoDe00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 158,
+		"name": "Josh Johnson",
+		"id": "JohnJo05"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 160,
+		"name": "Erik Ainge",
+		"id": "AingEr00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 184,
+		"name": "Colt Brennan",
+		"id": "BrenCo00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 196,
+		"name": "Andre Woodson",
+		"id": "WoodAn00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 207,
+		"name": "Matt Flynn",
+		"id": "FlynMa00"
+	},
+	{
+		"file": "2007draft.json",
+		"pid": 221,
+		"name": "Alex Brink",
+		"id": "BrinAl00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 0,
+		"name": "Matthew Stafford",
+		"id": "StafMa00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 4,
+		"name": "Mark Sanchez",
+		"id": "SancMa00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 16,
+		"name": "Josh Freeman",
+		"id": "FreeJo00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 43,
+		"name": "Pat White",
+		"id": "WhitPa01"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 100,
+		"name": "Stephen McGee",
+		"id": "McGeSt00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 148,
+		"name": "Rhett Bomar",
+		"id": "BomaRh00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 167,
+		"name": "Nate Davis",
+		"id": "DaviNa00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 170,
+		"name": "Tom Brandstater",
+		"id": "BranTo00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 174,
+		"name": "Mike Teel",
+		"id": "TeelMi00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 192,
+		"name": "Keith Null",
+		"id": "NullKe00"
+	},
+	{
+		"file": "2008draft.json",
+		"pid": 196,
+		"name": "Curtis Painter",
+		"id": "PainCu00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 0,
+		"name": "Sam Bradford",
+		"id": "BradSa00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 23,
+		"name": "Tim Tebow",
+		"id": "TeboTi00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 45,
+		"name": "Jimmy Clausen",
+		"id": "ClauJi00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 80,
+		"name": "Colt McCoy",
+		"id": "McCoCo00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 115,
+		"name": "Mike Kafka",
+		"id": "KafkMi00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 147,
+		"name": "John Skelton",
+		"id": "SkelJo00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 160,
+		"name": "Jonathan Crompton",
+		"id": "CromJo00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 166,
+		"name": "Rusty Smith",
+		"id": "SmitRu01"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 171,
+		"name": "Dan LeFevour",
+		"id": "LeFeDa00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 192,
+		"name": "Tony Pike",
+		"id": "PikeTo00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 196,
+		"name": "Levi Brown",
+		"id": "BrowLe00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 222,
+		"name": "Sean Canfield",
+		"id": "CanfSe00"
+	},
+	{
+		"file": "2009draft.json",
+		"pid": 230,
+		"name": "Zac Robinson",
+		"id": "RobiZa00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 0,
+		"name": "Cam Newton",
+		"id": "NewtCa00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 6,
+		"name": "Jake Locker",
+		"id": "LockJa00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 8,
+		"name": "Blaine Gabbert",
+		"id": "GabbBl00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 9,
+		"name": "Christian Ponder",
+		"id": "PondCh00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 32,
+		"name": "Andy Dalton",
+		"id": "DaltAn00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 33,
+		"name": "Colin Kaepernick",
+		"id": "KaepCo00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 71,
+		"name": "Ryan Mallett",
+		"id": "MallRy00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 131,
+		"name": "Ricky Stanzi",
+		"id": "StanRi00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 154,
+		"name": "Nathan Enderle",
+		"id": "EndeNa00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 174,
+		"name": "Tyrod Taylor",
+		"id": "TaylTy00"
+	},
+	{
+		"file": "2010draft.json",
+		"pid": 200,
+		"name": "Greg McElroy",
+		"id": "McElGr00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 0,
+		"name": "Andrew Luck",
+		"id": "LuckAn00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 1,
+		"name": "Robert Griffin III",
+		"id": "GrifRo01"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 7,
+		"name": "Ryan Tannehill",
+		"id": "TannRy00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 21,
+		"name": "Brandon Weeden",
+		"id": "WeedBr00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 55,
+		"name": "Brock Osweiler",
+		"id": "OsweBr00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 72,
+		"name": "Russell Wilson",
+		"id": "WilsRu00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 85,
+		"name": "Nick Foles",
+		"id": "FoleNi00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 98,
+		"name": "Kirk Cousins",
+		"id": "CousKi00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 179,
+		"name": "Ryan Lindley",
+		"id": "LindRy00"
+	},
+	{
+		"file": "2011draft.json",
+		"pid": 244,
+		"name": "Chandler Harnish",
+		"id": "HarnCh00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 15,
+		"name": "EJ Manuel",
+		"id": "ManuEJ00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 38,
+		"name": "Geno Smith",
+		"id": "SmitGe00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 72,
+		"name": "Mike Glennon",
+		"id": "GlenMi00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 96,
+		"name": "Matt Barkley",
+		"id": "BarkMa00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 108,
+		"name": "Ryan Nassib",
+		"id": "NassRy00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 110,
+		"name": "Tyler Wilson",
+		"id": "WilsTy00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 113,
+		"name": "Landry Jones",
+		"id": "JoneLa02"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 218,
+		"name": "Brad Sorensen",
+		"id": "SoreBr00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 231,
+		"name": "Zac Dysert",
+		"id": "DyseZa00"
+	},
+	{
+		"file": "2012draft.json",
+		"pid": 245,
+		"name": "Sean Renfree",
+		"id": "RenfSe00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 2,
+		"name": "Blake Bortles",
+		"id": "BortBl00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 20,
+		"name": "Johnny Manziel",
+		"id": "ManzJo00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 30,
+		"name": "Teddy Bridgewater",
+		"id": "BridTe00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 33,
+		"name": "Derek Carr",
+		"id": "CarrDe02"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 59,
+		"name": "Jimmy Garoppolo",
+		"id": "GaroJi00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 116,
+		"name": "Logan Thomas",
+		"id": "ThomLo00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 131,
+		"name": "Tom Savage",
+		"id": "SavaTo00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 159,
+		"name": "Aaron Murray",
+		"id": "MurrAa00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 173,
+		"name": "Zach Mettenberger",
+		"id": "MettZa00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 178,
+		"name": "David Fales",
+		"id": "FaleDa00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 187,
+		"name": "Keith Wenning",
+		"id": "WennKe00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 206,
+		"name": "Tajh Boyd",
+		"id": "BoydTa00"
+	},
+	{
+		"file": "2013draft.json",
+		"pid": 207,
+		"name": "Garrett Gilbert",
+		"id": "GilbGa01"
+	},
+	{
+		"file": "2014draft.json",
+		"pid": 0,
+		"name": "Jameis Winston",
+		"id": "WinsJa00"
+	},
+	{
+		"file": "2014draft.json",
+		"pid": 1,
+		"name": "Marcus Mariota",
+		"id": "MariMa01"
+	},
+	{
+		"file": "2014draft.json",
+		"pid": 71,
+		"name": "Garrett Grayson",
+		"id": "GrayGa00"
+	},
+	{
+		"file": "2014draft.json",
+		"pid": 84,
+		"name": "Sean Mannion",
+		"id": "MannSe00"
+	},
+	{
+		"file": "2014draft.json",
+		"pid": 98,
+		"name": "Bryce Petty",
+		"id": "PettBr01"
+	},
+	{
+		"file": "2014draft.json",
+		"pid": 141,
+		"name": "Brett Hundley",
+		"id": "HundBr00"
+	},
+	{
+		"file": "2014draft.json",
+		"pid": 239,
+		"name": "Trevor Siemian",
+		"id": "SiemTr00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 0,
+		"name": "Jared Goff",
+		"id": "GoffJa00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 1,
+		"name": "Carson Wentz",
+		"id": "WentCa00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 25,
+		"name": "Paxton Lynch",
+		"id": "LyncPa00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 50,
+		"name": "Christian Hackenberg",
+		"id": "HackCh01"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 88,
+		"name": "Jacoby Brissett",
+		"id": "BrisJa00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 90,
+		"name": "Cody Kessler",
+		"id": "KessCo00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 97,
+		"name": "Connor Cook",
+		"id": "CookCo00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 131,
+		"name": "Dak Prescott",
+		"id": "PresDa01"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 135,
+		"name": "Cardale Jones",
+		"id": "JoneCa01"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 157,
+		"name": "Kevin Hogan",
+		"id": "HogaKe00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 180,
+		"name": "Nate Sudfeld",
+		"id": "SudfNa00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 184,
+		"name": "Jake Rudock",
+		"id": "RudoJa00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 194,
+		"name": "Brandon Allen",
+		"id": "AlleBr00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 200,
+		"name": "Jeff Driskel",
+		"id": "DrisJe00"
+	},
+	{
+		"file": "2015draft.json",
+		"pid": 216,
+		"name": "Brandon Doughty",
+		"id": "DougBr00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 1,
+		"name": "Mitchell Trubisky",
+		"id": "TrubMi00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 9,
+		"name": "Patrick Mahomes",
+		"id": "MahoPa00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 49,
+		"name": "DeShone Kizer",
+		"id": "KizeDe00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 84,
+		"name": "Davis Webb",
+		"id": "WebbDa00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 131,
+		"name": "Joshua Dobbs",
+		"id": "DobbJo00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 167,
+		"name": "Nathan Peterman",
+		"id": "PeteNa00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 209,
+		"name": "Brad Kaaya",
+		"id": "KaayBr00"
+	},
+	{
+		"file": "2016draft.json",
+		"pid": 247,
+		"name": "Chad Kelly",
+		"id": "KellCh00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 0,
+		"name": "Baker Mayfield",
+		"id": "MayfBa00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 2,
+		"name": "Sam Darnold",
+		"id": "DarnSa00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 6,
+		"name": "Josh Allen",
+		"id": "AlleJo02"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 9,
+		"name": "Josh Rosen",
+		"id": "RoseJo01"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 30,
+		"name": "Lamar Jackson",
+		"id": "JackLa00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 71,
+		"name": "Mason Rudolph",
+		"id": "RudoMa00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 103,
+		"name": "Kyle Lauletta",
+		"id": "LaulKy00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 164,
+		"name": "Mike White",
+		"id": "WhitMi01"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 192,
+		"name": "Luke Falk",
+		"id": "FalkLu00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 196,
+		"name": "Tanner Lee",
+		"id": "LeexTa00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 211,
+		"name": "Danny Etling",
+		"id": "EtliDa00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 212,
+		"name": "Alex McGough",
+		"id": "McGoAl00"
+	},
+	{
+		"file": "2017draft.json",
+		"pid": 241,
+		"name": "Logan Woodside",
+		"id": "WoodLo00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 0,
+		"name": "Kyler Murray",
+		"id": "MurrKy00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 5,
+		"name": "Daniel Jones",
+		"id": "JoneDa05"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 14,
+		"name": "Dwayne Haskins",
+		"id": "HaskDw00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 40,
+		"name": "Drew Lock",
+		"id": "LockDr00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 98,
+		"name": "Will Grier",
+		"id": "GrieWi00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 102,
+		"name": "Ryan Finley",
+		"id": "FinlRy00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 131,
+		"name": "Jarrett Stidham",
+		"id": "StidJa00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 164,
+		"name": "Easton Stick",
+		"id": "SticEa00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 165,
+		"name": "Clayton Thorson",
+		"id": "ThorCl00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 176,
+		"name": "Gardner Minshew II",
+		"id": "MinsGa00"
+	},
+	{
+		"file": "2018draft.json",
+		"pid": 195,
+		"name": "Trace McSorley",
+		"id": "McSoTr00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 0,
+		"name": "Joe Burrow",
+		"id": "BurrJo01"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 4,
+		"name": "Tua Tagovailoa",
+		"id": "TagoTu00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 5,
+		"name": "Justin Herbert",
+		"id": "HerbJu00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 25,
+		"name": "Jordan Love",
+		"id": "LoveJo03"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 52,
+		"name": "Jalen Hurts",
+		"id": "HurtJa00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 121,
+		"name": "Jacob Eason",
+		"id": "EasoJa00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 124,
+		"name": "James Morgan",
+		"id": "MorgJa00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 166,
+		"name": "Jake Fromm",
+		"id": "FromJa00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 188,
+		"name": "Jake Luton",
+		"id": "LutoJa00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 223,
+		"name": "Cole McDonald",
+		"id": "McDoCo00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 230,
+		"name": "Ben DiNucci",
+		"id": "DiNuBe00"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 239,
+		"name": "Tommy Stevens",
+		"id": "StevTo01"
+	},
+	{
+		"file": "2019draft.json",
+		"pid": 243,
+		"name": "Nate Stanley",
+		"id": "StanNa00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 0,
+		"name": "Trevor Lawrence",
+		"id": "LawrTr00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 1,
+		"name": "Zach Wilson",
+		"id": "WilsZa00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 2,
+		"name": "Trey Lance",
+		"id": "LancTr00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 10,
+		"name": "Justin Fields",
+		"id": "FielJu00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 14,
+		"name": "Mac Jones",
+		"id": "JoneMa05"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 63,
+		"name": "Kyle Trask",
+		"id": "TrasKy00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 65,
+		"name": "Kellen Mond",
+		"id": "MondKe00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 66,
+		"name": "Davis Mills",
+		"id": "MillDa02"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 132,
+		"name": "Ian Book",
+		"id": "BookIa00"
+	},
+	{
+		"file": "2020draft.json",
+		"pid": 217,
+		"name": "Sam Ehlinger",
+		"id": "EhliSa00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 19,
+		"name": "Kenny Pickett",
+		"id": "PickKe00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 73,
+		"name": "Desmond Ridder",
+		"id": "RiddDe00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 85,
+		"name": "Malik Willis",
+		"id": "WillMa12"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 93,
+		"name": "Matt Corral",
+		"id": "CorrMa00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 136,
+		"name": "Bailey Zappe",
+		"id": "ZappBa00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 143,
+		"name": "Sam Howell",
+		"id": "HoweSa00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 240,
+		"name": "Chris Oladokun",
+		"id": "OladCh00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 246,
+		"name": "Skylar Thompson",
+		"id": "ThomSk00"
+	},
+	{
+		"file": "2021draft.json",
+		"pid": 261,
+		"name": "Brock Purdy",
+		"id": "PurdBr00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 0,
+		"name": "Bryce Young",
+		"id": "YounBr01"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 1,
+		"name": "C.J. Stroud",
+		"id": "StroCJ00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 3,
+		"name": "Anthony Richardson",
+		"id": "RichAn03"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 32,
+		"name": "Will Levis",
+		"id": "LeviWi00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 67,
+		"name": "Hendon Hooker",
+		"id": "HookHe00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 126,
+		"name": "Jake Haener",
+		"id": "HaenJa00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 127,
+		"name": "Stetson Bennett",
+		"id": "BennSt00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 134,
+		"name": "Aidan O'Connell",
+		"id": "OConAi00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 138,
+		"name": "Clayton Tune",
+		"id": "TuneCl00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 139,
+		"name": "Dorian Thompson-Robinson",
+		"id": "ThomDo02"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 148,
+		"name": "Sean Clifford",
+		"id": "ClifSe00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 163,
+		"name": "Jaren Hall",
+		"id": "HallJa00"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 187,
+		"name": "Tanner McKee",
+		"id": "McKeTa01"
+	},
+	{
+		"file": "2022draft.json",
+		"pid": 238,
+		"name": "Max Duggan",
+		"id": "DuggMa00"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 0,
+		"name": "Caleb Williams",
+		"id": "WillCa03"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 1,
+		"name": "Jayden Daniels",
+		"id": "DaniJa02"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 2,
+		"name": "Drake Maye",
+		"id": "MayeDr00"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 7,
+		"name": "Michael Penix",
+		"id": "PeniMi00"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 9,
+		"name": "J.J. McCarthy",
+		"id": "McCaJJ00"
+	},
+	{ "file": "2023draft.json", "pid": 11, "name": "Bo Nix", "id": "NixxBo00" },
+	{
+		"file": "2023draft.json",
+		"pid": 149,
+		"name": "Spencer Rattler",
+		"id": "RattSp00"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 170,
+		"name": "Jordan Travis",
+		"id": "TravJo00"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 192,
+		"name": "Joe Milton",
+		"id": "MiltJo00"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 217,
+		"name": "Devin Leary",
+		"id": "LearDe00"
+	},
+	{
+		"file": "2023draft.json",
+		"pid": 244,
+		"name": "Michael Pratt",
+		"id": "PratMi00"
+	},
+	{ "file": "2024draft.json", "pid": 0, "name": "Cam Ward", "id": "WardCa00" },
+	{
+		"file": "2024draft.json",
+		"pid": 24,
+		"name": "Jaxson Dart",
+		"id": "DartJa00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 39,
+		"name": "Tyler Shough",
+		"id": "ShouTy00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 91,
+		"name": "Jalen Milroe",
+		"id": "MilrJa00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 93,
+		"name": "Dillon Gabriel",
+		"id": "GabrDi00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 143,
+		"name": "Shedeur Sanders",
+		"id": "SandSh00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 180,
+		"name": "Kyle McCord",
+		"id": "McCoKy00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 184,
+		"name": "Will Howard",
+		"id": "HowaWi01"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 188,
+		"name": "Riley Leonard",
+		"id": "LeonRi02"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 196,
+		"name": "Graham Mertz",
+		"id": "MertGr00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 212,
+		"name": "Tommy Mellott",
+		"id": "MellTo00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 214,
+		"name": "Cam Miller",
+		"id": "MillCa00"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 226,
+		"name": "Kurtis Rourke",
+		"id": "RourKu01"
+	},
+	{
+		"file": "2024draft.json",
+		"pid": 230,
+		"name": "Quinn Ewers",
+		"id": "EwerQu00"
+	}
+]

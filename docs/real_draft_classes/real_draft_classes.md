@@ -7,7 +7,7 @@ long-career starters 60-89, short-career players stay under 40.
 
 ---
 
-## RESUME HERE (last updated 2026-10-13)
+## RESUME HERE (last updated 2026-10-14)
 
 If you are picking this up on another computer or in a new session, read
 this section first, then "Decisions made" and "Next step" below.
@@ -36,21 +36,241 @@ this section first, then "Decisions made" and "Next step" below.
 
 ### Next step (agreed)
 
-**Rate QBs one attribute at a time, from real stats, on a bell curve.**
-Start with `tha` (completion % vs league), then the rest of the important QB
-ratings (`thp`, `thv`, `bsc`, `spd`, `elu`, `stre`, `endu`, `hgt`). Full plan
-in "Quarterbacks -- rating-by-rating plan" below. Before the first one:
+**Rate QBs one attribute at a time, from real stats, on a bell curve,
+through "The interactive loop" below.** Start with `tha`, then the rest of
+the important QB ratings (`thp`, `thv`, `bsc`, `spd`, `elu`, `stre`, `endu`,
+`hgt`). Plan details in "Quarterbacks -- rating-by-rating plan".
 
-1. **Solve the data source** -- Pro Football Reference blocks scripts (see
-   "Data sources"). Decide between Claude-in-Chrome on PFR, nflverse (1999+
-   only), or another source.
-2. **Measure the engine's draft-time distribution** for each QB rating (done
-   only for `spd` so far: mean 46.5, SD 14.7) from the engine-generated
-   classes in the Goin Fast / Daily / No Help leagues -- the bell curve targets.
-3. Pull, rank, assign, review the list standalone, then write into the files.
+- **Data source decided (2026-10-13): Claude-in-Chrome on Pro Football
+  Reference.** Pulled 2026-10-13: every passer, every season, NFL 1955-2025 +
+  AFL 1960-69, in `data/pfr_passing.csv` (7,260 rows, PFR id per row). How:
+  `fetch()` the season pages from inside a PFR tab (same origin, passes
+  Cloudflare), parse, then save one CSV via a blob download -- the JS tool
+  returns only ~1,000 chars, so don't pipe data back through it. Needs Chrome
+  enabled in Claude Code (`/chrome` -> "Enabled by default", then restart).
+- **QB `tha` DONE (rewritten in all 71 files 2026-10-13 with the under-50
+  rule and recent-class scatter, uncommitted).** `node
+scripts/rateQb.cjs --rating tha --write` (scripts must be `.cjs`, the repo
+  is ESM), then `npx oxfmt draft_classes`; per-QB list in `data/qb_tha.csv`.
+  780 QBs: 508 rated from 50+ attempts, 272 no-career (46, recent classes
+  scattered 36-60). Stored ovr/pot in the files are stale -- expected until
+  every rating is rebuilt.
+- **Craig Erickson's 1990draft.json entry deleted** (user, 2026-10-13); he
+  stays in 1991draft.json (his real 1992 Bucs pick).
+- **QB `thp` DONE (written to all 71 files 2026-10-13, uncommitted)**, with
+  real heights/weights for 709 QBs (`--write-size`; bio `hgt`/`weight` only,
+  not the `hgt` rating). Stat: 80% yards per completion vs league -- from
+  2018 completed air yards per completion (`data/pfr_air.csv`, PFR advanced
+  passing; drops YAC) -- weighted/shrunk by completions (k 240), + 20% size.
+  No-career spread 39-54 around 47 by size. Pins (in `PINS`, rateQb.cjs):
+  Mahomes 85, Herbert 85 (elite arms, short offenses), Montana 50, Purdy 75.
+  Winston #1 (100): most aggressive deep thrower; rank-based, so #1 gets
+  ~100 regardless of margin (user aware). Real sizes from
+  `data/pfr_qb_size.csv` (13 pre-1967 no-career QBs found via PFR draft
+  pages; 71 unknown = average size; Jeff Rowe from the 2007 Combine page).
+  PFR Combine pages (`/draft/YYYY-combine.htm`, 1987+) have 40 times for
+  `spd`.
+- **QB `thv` DONE (written 2026-10-13, uncommitted).** Blend (user): INT
+  rate 50% (lower better) + TD rate 30% + sack rate 20% (sacks/(att+sacks),
+  lower better), each vs league per season, shrunk k 400 attempts,
+  standardized across QBs, then blended; careers without sack data (pre-1960
+  seasons) blend INT/TD only. Engine curve is low at draft (mean 38.6, SD
+  12.9 -- vision develops), so top is ~80 (Rodgers), no-career 30. Top ten:
+  Rodgers, Montana, Brady, P. Manning, Marino, Brees, Mahomes, Staubach,
+  Jurgensen/Gabriel. `rateQb.cjs` now takes multi-part ratings (`parts` in
+  `STATS`). Known shape: the no-career block fills ~7-42nd percentile, so
+  played-but-bad QBs land below it (0-19) -- intended (busts unappetizing).
+- **Floors (user, 2026-10-13):** every rating's curve is cut at the
+  engine's lowest draft-time value for it (`floor` in `STATS`): QB tha 18,
+  thp 17, thv 14, bsc 7. A bust is bad, not absurd. **Ask the user before
+  any floor above 40** (the script refuses without `--floor-ok`). All four
+  QB ratings written with their floors.
+- **QB `bsc` DONE (written 2026-10-13, uncommitted):** fumbles per play
+  handled (passes + sacks + rushes) vs league, lower better, shrink k 1000
+  plays (fumbles are rare). Data: `data/pfr_rushing.csv` (every rusher,
+  NFL 1955-2025 + AFL 1960-69, 34,099 rows; fumbles complete back to 1955;
+  also feeds spd/elu/stre and RBs later). Top: Bert Jones 74, Flores,
+  Brodie, Tarkenton, Montana, P. Manning; bottom: Culpepper, RG3, Fields,
+  McCown. 27 QBs sit on the floor (7).
+- **QB `spd` DONE (written 2026-10-13, uncommitted):** Combine 40 time 60%
+  - rushing yards per carry 40% (vs league passers, shrink k 100 carries);
+    a QB with a 40 but no career is rated from the 40 (user). 40 times:
+    `data/pfr_combine_qb.csv` (PFR, 2000-2025, PFR ids; also vertical/broad/
+    cone/shuttle) + `data/nflcombine_qb_1987_1999.csv` (nflcombineresults.com,
+    matched by year + name; PFR's Combine pages start in 2000). Close-out
+    plays (kneels/sneaks) removed before YPC: per win as starter
+    (`data/pfr_qb_rec.csv`), 0.7/win at -1.2 yd from 1990, 0.7 at -0.3 yd
+    1979-89, 0.35 at +0.5 yd before 1979 (`CLOSE_OUTS`; `--closeout` scales
+    it). The first estimate (1.4/win) over-corrected (Manning 9 -> 59); half
+    matches reputations. Sacks are not rushing in NFL stats (they are in
+    college). Floor 8. Pins: Vick 95, Lamar 90, Starr 55. **Rewritten 2026-10-13** after
+    a fix: rushing league averages now pool only real passers (50+ att), not
+    RBs who threw a pass (364 QBs moved, 27 by 5+). Results: Cunningham
+    94, Douglass 87, McNair 84 ... Montana 58, Favre 54, Eli 29, Peyton 17,
+    Brady 9, Marino 8.
+- **Remaining QB ratings -- user's direction (2026-10-13), weights still
+  to confirm at each gate 1:**
+  - `elu` DONE (written 2026-10-13): rush attempts per game 40% + rushing
+    first downs per carry 30% (`data/pfr_rush_fd.csv`, from 1977) + sack
+    rate 30% (lower better); under 100 carries with first-down data ->
+    60% volume / 40% sack rate. No Combine drills. Close-outs removed;
+    rushing league averages pool only 50+ att passers. Floor 3. Pins:
+    Brady 30 (sneak first downs), Vick 70, Lamar 70. Top Allen 71.
+  - `stre` DONE (written 2026-10-13): rushing TDs per carry 50%
+    (close-outs removed) + weight 40% + height 10%, weight/height compared
+    within the QB's draft decade (QBs gained ~26 lb 1950s -> 2000s). No
+    sack resistance. **Mapped onto the engine's own QB values
+    (`empirical: true`), not a bell curve** -- the engine's stre is
+    lopsided against 0; the bell curve put 9% at 0, this puts 4% (engine
+    3.4%). Top capped at the engine max 38 (user). No-career QBs spread by
+    size in percentile space. Pins: Lamar 30, Roethlisberger 36.
+  - `endu` DONE (written 2026-10-14): endu does almost nothing for a QB
+    (no rotation, not in QB ovr, not tied to injuries; engine QB endu is
+    uncorrelated with his other ratings). Derived: career length 40%
+    (first to last season; QBs active in 2025 get at least the average
+    finished career, 8.2 yrs) + stre 35% + weight 25% (within decade).
+    Empirical engine mapping, floor 1. No-career QBs spread by weight only.
+    Starts per season was considered and dropped (backup years read as
+    injury).
+  - `hgt` DONE (written 2026-10-14): absolute real height ranked onto the
+    engine QB curve (49.2/13.5), ~8 points per inch (6'2" 43, 6'4" 61);
+    unknown height (71 pre-1967 no-career QBs) sits in the middle (48).
+    Floor 14. Fix found here: the no-career block could split a run of
+    tied scores; it now snaps to a tie boundary (changed one spd value,
+    Chuck Clements 30 -> 42, rewritten).
+  - Seeded ratings DONE (written 2026-10-14): `scripts/seedQb.cjs` copies
+    all 12 (rtr hnd rbk pbk pcv tck prs rns kpw kac ppw pac) from one
+    engine-generated QB (`data/qbdraft_seeded.csv`, 174 QBs) picked by a
+    seeded hash of file + name; means/SDs match the engine's.
+- **METHOD CHANGE (user, 2026-10-14) -- applies to every rating, every
+  position: rank, then map onto the engine.** Step 1: the stat only
+  decides the ORDER (who is #1, #2 ... #780). Step 2: the QB at percentile
+  p gets the value of the engine-generated QB at percentile p. So each
+  rating has the engine's exact shape -- its floor, its share at the
+  floor, its cap (the engine's max; players grow past it with coaching),
+  its lopsidedness. No bell curves. Engine sample: `data/qbdraftratings.csv`
+  = every engine-generated QB's draft-time row (first ratings row, season
+  = draft year, `real` = 0; league-start players excluded) from all four
+  league DBs: 620 QBs. No-career QBs keep their block at the 25th
+  percentile but are ORDERED INSIDE IT BY REAL DRAFT POSITION (round, pick;
+  undrafted last) -- e.g. QB tha 1st-2nd rounders 50-51, rounds 10+/UDFA
+  32-40. This replaced the recent-class random scatter and the size spread
+  for no-career QBs. Pins still apply on top (Vick spd 95 exceeds the cap).
+  All nine stat ratings rewritten this way; seeded ratings rebuilt from the
+  620-QB sample (`seedQb.cjs` now reads `qbdraftratings.csv`).
+- **ALL QB RATINGS DONE (2026-10-14, uncommitted).** 779 QBs (780 before Watson was removed) x 21 ratings,
+  plus real bio height/weight. `rateQb.cjs --rating X` reproduces every
+  stat-based rating exactly (verified for all nine).
+- **OVR FIT DONE (written 2026-10-14).** Each rating matched the engine
+  alone, but real QBs are good at everything at once: 24 QBs had draft ovr
+  80+ (engine: 2 of 620) and 31 pot 100. `scripts/fitOvr.football.test.ts`
+  keeps an ORDER and gives the QB at percentile p the engine QB ovr at
+  percentile p, reached by one shrink factor per QB: tha/thp/thv/bsc/elu
+  move toward the engine QB mean; stre 3x and only down (its ovr weight is
+  mostly the athleticism composite, which the game sim never uses); spd 2x
+  and only down for pocket passers (runners = engine 80th pct+ spd or elu
+  get 1x toward the mean); never below the engine min; hgt (a measurement),
+  endu (not in QB ovr) and pinned ratings untouched. ORDER = "game key":
+  passing 6 : scrambling 1 (mean of the passing composites x6 + rushing
+  composite) -- the user's 3:1 was tested and weighted mobility MORE than
+  ovr does (~9:2 incl. athleticism); ovr itself ranked slow passers (Brady)
+  low via athleticism. Result: Herbert 85, Allen 82, P. Manning 79,
+  Staubach 74, Culpepper 72, Lamar 71 ... Brady 68 (#12). Rams starters
+  52-58 (#43-#117). Then `scripts/ovrPot.football.test.ts` recomputed
+  ovr/ovrs/pot/pots/skills/draft.ovr/pot with the engine's own functions
+  (pot = potEstimator + seeded -2..+2, never below ovr, max 100). Now: ovr
+  80+ 2, pot 100 3, mean ovr 40.8 (engine 40.9), mean pot 55.0 (engine
+  58.4).
+- **WHY the stored ovr/pot matter:** on upload the engine KEEPS a file's
+  ovr/pot when present (`augmentPartialPlayer.ts`), so they must be
+  recomputed after ANY rating change.
+- **QB pipeline order (rerun all after any change):** `rateQb.cjs --rating
+X --write` for each of the nine -> `seedQb.cjs --write` ->
+  `fitOvr.football.test.ts` (REAL_DRAFT=1 REAL_DRAFT_WRITE=1) ->
+  `ovrPot.football.test.ts` (same env) -> `npx oxfmt draft_classes`. After
+  the fit, file ratings no longer equal rateQb's output -- expected.
+- **Note:** the engine regenerates a player's bio weight each season from
+  his hgt/stre ratings (`develop.ts`, +/-10 lb per year), so real weights
+  drift after upload.
+- **No-career BAND (user, 2026-10-14, written to all 71 files, all nine
+  ratings, uncommitted):** the solid no-career block made a cliff -- a
+  played QB at its edge jumped all ~270 no-career QBs on a tiny score
+  change (+/-19 thp swings). Now no-career QBs get stand-in scores spread
+  evenly over +/-0.5 SD (of played-QB scores) by draft position (best pick
+  highest; undrafted tied at the bottom), centered so the median no-career
+  QB still sits at the 25th percentile, and all 780 are ranked together.
+  `rateQb.cjs --band x` (default 0.5; `--band none` = old block). Result
+  after fit: mean ovr/pot unchanged (40.8/55.0), no-career ovr 11-48 median
+  31 vs played 45; 418 QBs changed ovr, 5 by 5+ (Quinn 31->37, Mack
+  Reynolds 20->12, Bryce Young 37->33). Apply the same band at every
+  position. All four scripts take `REAL_DRAFT_CLASSES=<dir>` to run the
+  whole pipeline on a copy for dry runs.
+- **`thp` size now compared within draft decade (user, 2026-10-14,
+  written, uncommitted)**, like stre/endu; default in rateQb.cjs
+  (`--size-abs` = old pooled way). Effect after fit: 1950s-70s QBs about
+  +1 thp, 1990s-2010s about -1; ovr within +/-0.4 per decade; e.g. King
+  Hill thp 44->52, Brodie 37->44, Brees 57->53.
+- **Deshaun Watson removed from 2016draft.json (user, 2026-10-14).** 779
+  QBs now. Removing him nudged rank rounding: Manning and Allen swapped
+  the #2/#3 ovr slots (Manning 82, Allen 79); 47 others moved 1.
+- **Next (QBs):** QBs are done. (1) the next position, same interactive loop (rank by stat,
+  map onto the engine, then fit ovr, then ovr/pot).
+  - `stre`: rushing TDs (short-yardage proxy), weight, sack resistance,
+    height -- decreasing weight in that order.
+  - `endu`: starts per season (= injury resistance), skipping a rookie
+    season with under 9 starts; spread only +/-2 SD around the mean (it
+    barely matters).
+  - `hgt`: real height on the engine's QB curve.
+  - Seeded (rtr, hnd, rbk, pbk, pcv, tck, prs, rns, kpw, kac, ppw, pac):
+    random, as for an engine-generated QB.
+- **Measure the engine's draft-time distribution** for each QB rating (done
+  only for `spd` so far: mean 46.5, SD 14.7) from the engine-generated
+  classes in the Goin Fast / Daily / No Help leagues -- the bell curve targets.
 
 Then: **seed the QB ratings that no stat covers** (see "Unused ratings that
 must still be seeded"), then repeat the whole process per position.
+
+### The interactive loop (user's rule, 2026-10-13)
+
+**Applies to every attribute of every position**, including the seeded
+(no-stat) ratings, not just QBs. Gates, in order. Never skip ahead.
+
+1. **Discuss one zengm attribute for one position at a time**, and **agree
+   with the user on which stat(s) rate it** (for a seeded rating, agree on
+   the seeding method). Any stat table in this doc is only a starting
+   proposal. Don't fetch anything before the stat is agreed.
+2. **Only after that, pull the stats** and rate the players. **Always fit
+   the bell curve to the engine's own draft-time spread for that rating and
+   position** (mean/SD of engine-generated players in the league DBs -- see
+   "Engine reference data"); never invent a curve. Then **show a
+   sample**: a few players rated high, a few in the middle and a few low,
+   each with the stat behind his rating.
+3. **Discuss the samples** and adjust the stat, weighting or curve until the
+   user is happy.
+4. **Ask permission**, then write that single attribute into the JSON
+   files for every player at that position in all 71 files. Then start the
+   next attribute at step 1.
+
+**Players with no career at that skill sit at the 25th percentile** (user,
+2026-10-13), every attribute, every position -- e.g. a QB who never threw an
+NFL pass gets `tha` 46, not the middle. Goal: make them unappetizing in the
+draft. Mechanically they're a band (+/-0.5 SD, ordered by draft position)
+centered on the 25th percentile of the rank curve and ranked together with
+the played players (2026-10-14; was one solid block), so the overall
+mean/SD still match the engine's. (A zero
+z-score would read as "average starter" -- league averages are starter
+averages -- and put them above two-thirds of the real players.)
+
+- **"No career" = under 50 reps in that skill** (user, 2026-10-13; for QBs,
+  under 50 career attempts, for every passing rating). A few passes say
+  nothing, and the small-sample shrink would pull them _up_ toward the
+  starter-heavy league average. Players stay in the classes (they were
+  real picks; deleting thins the draft and invites random fake players) --
+  low ratings make the AI skip or cut them.
+- **Recent classes are scattered, not flat:** no-career players in files
+  2022+ (real 2023-2025 drafts) haven't had their chance yet, so they get
+  the no-career value plus a seeded normal draw (SD = half the curve SD, cut
+  at +/-1 curve SD). QB `tha`: 36-60 around 46. `--recent` moves the cutoff.
 
 ---
 
@@ -457,6 +677,21 @@ No individual stats, so a composite:
 pre-1967 files). Every rating is set the same way: **rank all QBs on one
 telltale stat, then assign the rating from a bell curve.**
 
+Every rating below goes through "The interactive loop" (top of this doc).
+
+**Agreed stats (gate 1 passed):**
+
+- `tha` (2026-10-13): **pure career completion % vs league**, the
+  per-season z-score weighted by attempts, shrunk toward average for small
+  samples -- shrink `z * att / (att + 400)` (user picked 400 over 200/500,
+  2026-10-13: puts long elite careers above short ones, e.g. Brees 97 over
+  Schonert 82; ranks barely move beyond that). No depth adjustment -- `thp`
+  covers deep passing. Curve
+  **not capped** at the engine's observed 18-87 (user, 2026-10-13): with 781
+  QBs the rank curve runs ~9 to ~102 (#1 ~102, which the engine's 0-100
+  rating limit makes 100; #2 ~97, #3 ~95); revisit if the sample shows
+  a problem.
+
 ### Steps
 
 1. **Pull the stats once, cache them** in `data/` (one row per QB per
@@ -478,6 +713,15 @@ SD`, combined across seasons weighted by attempts. Converting to today's
    - Measured so far (12 engine classes: Goin Fast 1912-1921, Daily 2001, No
      Help 1901; 174 QBs): **QB `spd` mean 46.5, SD 14.7, range 8-87.** Raw
      values in `data/qbspd.csv` (league, draft year, pick, spd).
+   - **QB `tha`: mean 55.4, SD 14.5, range 18-87** (same 174 QBs; p10 36,
+     median 55, p90 75). Raw values in `data/qbdraftratings.csv` (league,
+     draft year, round, spd, tha) -- add new columns there as ratings get
+     measured. League DBs on the Windows desktop are under
+     `C:\Users\micha\Dropbox\Gaming and Magic and Comics\ZenGM\football\`.
+   - **All QB curves (measured 2026-10-13, same 174 QBs, in
+     `data/qbdraftratings.csv`):** spd 46.5/14.7, tha 55.4/14.5, thp
+     56.7/13.9, thv 38.6/12.9, bsc 31.6/13.3, elu 24.8/14.3, stre 14.6/9.5,
+     endu 33.5/14.3, hgt 49.2/13.5 (mean/SD).
    - **Measure every other rating the same way before using it** (query the
      league DBs: draft-time `player_ratings` row of engine-generated QBs).
 4. **Review the list standalone** -- rank, name, years, attempts, z-score,
@@ -619,8 +863,11 @@ the bell-curve targets: the draft-time `player_ratings` row
 
 ## Open questions
 
-- Which data source for the stat pulls (PFR via browser vs nflverse vs
-  other)?
+- **Double-drafted players:** Craig Erickson was in two files (fixed). Check
+  other positions the same way (same srID in two files).
+- **Listed QB, made it elsewhere:** Logan Thomas (TE), Brad Smith (WR/KR),
+  Jerry Reichow (end), Terry Baker (RB) -- rated as no-career QBs. Revisit
+  their position when the other positions are rated.
 - Target year for the user to take over the league (Staubach era, ~1964+?).
 - How variable is `developSeason`? Determines how wide the tier bands should
   be.
