@@ -4,6 +4,22 @@ Planned / in-progress work items, moved out of `CLAUDE.md` since that file is re
 
 ---
 
+## Recommended Order (decided 2026-10-29)
+
+**Follow this order. The items were reviewed and ranked on 2026-10-29, so don't repeat the triage discussion; start at the first item not done.**
+
+**Timing: finish #1-#5 in the Daily League offseason, after the 2002 draft (about to happen as of 2026-10-29) and before the user starts the next season.** Don't start any of it before that draft.
+
+1. **4th Down Near Midfield When Leading.** Outside `protection` mode, `fourthDownDecision()` ignores the score, so a team up 17-0 still goes for it on 4th and 2 at midfield. Proposed fix and its own before/after sims are in the section below. One decision is still open before coding: the lead threshold for the midfield punt -- 9+ as written, or lower so a 4-8 point lead (e.g. up 6) also punts.
+2. **Long Field Goals When Leading Late.** Up 2-8 late, the coach tries 55+ yard field goals, misses about half, and hands the opponent the ball near midfield; proposed fix is to require a ~0.65-0.70 make chance in `protection` mode and punt otherwise. Same root cause as #1 (`fourthDownDecision()` ignoring the score), so the two may ship together. They stay separate items because each needs different sims: see each section's before/after check.
+3. **Desperation Mode Tuning: research first, implementation optional.** Measure the real cost (do interceptions really cluster in the trailing-late window, and do they cost wins?) before deciding whether to change anything. Unblocked: its "fix pacing first" prerequisite shipped 2026-09-11.
+4. **Rushing boost in the run/pass balance -- work on this too.** Too many 3-and-outs, so teams need to run a little more. Once the offense has 5 rushes and 5 dropbacks, `playDecision()` in `coachDecision.ts` sets the run share from effectiveness: `runProb = ypc / (ypc + ypa)`. Proposed: add +0.05 to +0.10 to that run share, capped at 0.90. E.g. 6.0 ypc vs 4.0 ypa is 60/40 today and would become 65/35 to 70/30, depending on the boost we pick. Note: the ratio only decides 1st-down calls; 2nd and 3rd down use the `toGo <= 4` run rule. **Run simulations before making the change** (pick the boost, and measure 3-and-outs, points and drives before/after).
+5. **Trade Evaluation API:** a read-only local HTTP API that returns exactly what the engine's trade logic would decide on a hypothetical trade, and why (per-asset values, cap check, team ovr deltas), plus search helpers. Full spec: `TRADE-EVAL-API-SPEC.md` (written by the `zengm-press` assistant, which would call it with `curl`).
+6. **Upstream sync:** ongoing, one batch whenever there's room.
+7. **Browser smoke test:** skip; low value, needs a stand-in for the Electron database process.
+
+---
+
 ### DB Conversion -- COMPLETE (Phases 1-8 done)
 
 Full plan: `docs/db_conversion.md`
@@ -24,7 +40,7 @@ Supersedes the earlier league-wide plan in `docs/preseason_games.md`, which is k
 Process and research checklist: `UPSTREAM_CHANGE_HANDLING.md`. Per-sync record: `docs/upstream_sync_log.md`.
 Upstream diverges increasingly as we add Electron + SQLite. Manual per-commit review.
 
-### Clock / Play Pacing -- leading plan chosen, not started
+### Clock / Play Pacing -- COMPLETE (shipped 2026-09-11, config K; see `CLAUDE.md` and `docs/clock_play_pacing.md`)
 
 Full findings and the plan: `docs/clock_play_pacing.md` (moved from `zengm-press` 2026-09-10).
 
