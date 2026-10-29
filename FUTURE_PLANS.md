@@ -70,6 +70,20 @@ Code changes only happen between seasons, so this is a holding note. Origin (202
 
 **Proposed fix:** in `protection` mode (and possibly normal mode in Q4 with any lead), require a much higher make probability, ~0.65-0.70 (about 50 yds for an average kicker), and punt below that. Before/after check: harness `-t "comeback"` and `-t "4th and 2"`, plus a `simFromState` scenario (4th and 8 at the opponent's 38, up 5, 6:00 left in Q4) comparing win% with the current threshold vs the new one.
 
+### 4th Down Near Midfield When Leading -- come back to between seasons, not started
+
+Code changes only happen between seasons, so this is a holding note. Origin (2026-10-21): a team leading 17-0 went for it on 4th and 2 near midfield. A big lead makes the gamble unnecessary: punt and make the opponent drive the length of the field.
+
+**Current logic (read from the code 2026-10-21):**
+
+- Outside `protection` mode, `fourthDownDecision()` ignores the score. `protection` only applies in Q4 under 8:00 when leading by 4+, so a 17-0 lead in Q1-Q3 (or Q4 before 8:00) gets the same call as a tie game.
+- `normalDecision()` in `coachDecision.ts` uses a field-position table when out of FG range (`scrimmage` = yards from own goal line): own 40-49 goes on 4th and 1, opponent's 50-45 goes on 4th and 2 or shorter, opponent's 44-31 on 4th and 3, inside the 30 on 4th and 4. 4th and 2 at the opponent's 47 is a go every time.
+- In the FG window (`fgProbability` 0.40-0.45) it also goes for it on 4th and 2 or shorter, whatever the score.
+
+**Proposed fix:** when leading by two scores or more (9+), punt instead of going for it near midfield (the `scrimmage` 40-55 rows), in every quarter. The kick-a-field-goal rule is unchanged. Open questions: whether smaller leads (4-8) should also tighten, and whether the 56-69 row (opponent's 44-31, where a punt nets little) should stay a go.
+
+**Before/after check:** a `simFromState` scenario (4th and 2 at the opponent's 47, up 17, Q2 or Q3) comparing win% and points allowed, plus harness `-t "4th and 2"` and `-t "comeback"` to make sure trailing teams' comeback rates don't shift. Related: "Long Field Goals When Leading Late" above -- both come from `fourthDownDecision()` being score-blind outside `protection` mode, so they may be fixed together.
+
 ---
 
 ### Browser Smoke Test -- incompatible with the SQLite architecture, excluded from `node --run test`
