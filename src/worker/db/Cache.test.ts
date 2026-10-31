@@ -17,6 +17,29 @@ beforeEach(() => {
 	idb.cache._status = "full";
 });
 
+describe("_hasPendingWrites", () => {
+	test("sees dirty records and deletes, including stores outside of STORES", () => {
+		// Setting up the test cache leaves writes pending
+		for (const set of [
+			...Object.values(idb.cache._dirtyRecords),
+			...Object.values(idb.cache._deletes),
+		]) {
+			set.clear();
+		}
+		assert.isFalse(idb.cache._hasPendingWrites());
+
+		idb.cache._dirtyRecords.players.add(1);
+		assert.isTrue(idb.cache._hasPendingWrites());
+		idb.cache._dirtyRecords.players.clear();
+
+		idb.cache._deletes.events.add(1);
+		assert.isTrue(idb.cache._hasPendingWrites());
+		idb.cache._deletes.events.clear();
+
+		assert.isFalse(idb.cache._hasPendingWrites());
+	});
+});
+
 describe("get", () => {
 	test("retrieve an object", async () => {
 		const p = (await idb.cache.players.getAll())[0]!;

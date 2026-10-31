@@ -1264,6 +1264,14 @@ class Cache {
 		this._setStatus("full");
 	}
 
+	// Covers every store, including the ones that are not in STORES because they only live in SQLite
+	_hasPendingWrites() {
+		return (
+			Object.values(this._deletes).some((set) => set.size > 0) ||
+			Object.values(this._dirtyRecords).some((set) => set.size > 0)
+		);
+	}
+
 	// Take current contents in database and write to disk
 	async flush(storesToCheck = STORES) {
 		if (!local.autoSave) {
@@ -1411,7 +1419,8 @@ class Cache {
 		await flushSqliteStore("scheduledEvents", flushScheduledEvents);
 		await flushSqliteStore("seasonLeaders", flushSeasonLeaders);
 
-		this._dirty = false;
+		// Recompute rather than setting to false, because a write that lands during one of the awaits above leaves its record pending, and _autoFlush would skip it until some later write set _dirty again
+		this._dirty = this._hasPendingWrites();
 
 		// Update lastPlayed
 		await league.updateMeta({
@@ -1427,7 +1436,10 @@ class Cache {
 		// Only flush if cache is dirty and nothing is going on
 		if (this._dirty) {
 			const skipFlush =
-				lock.get("gameSim") || lock.get("newPhase") || !!local.autoPlayUntil;
+				this._status !== "full" ||
+				lock.get("gameSim") ||
+				lock.get("newPhase") ||
+				!!local.autoPlayUntil;
 
 			if (!skipFlush) {
 				await this.flush();
