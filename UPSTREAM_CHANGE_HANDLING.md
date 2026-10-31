@@ -38,7 +38,7 @@ Decision guide: `MERGE` when the change has real gameplay/bugfix value, doesn't 
 
 **Batch 1 applied 2026-09-08.** All 17 MERGE rows are on branch `upstream-sync-2001`, one commit per row; see `docs/upstream_sync_log.md` for the merge record, the hand-merge notes, and the outstanding row #16 Hall of Fame backfill.
 
-**Batch 4 (rows #71-#85) researched 2026-10-31 through `bda1fa504`; see the Batch 4 section, which also settles batch 3's five open non-football items. Nothing applied yet.** User decisions 2026-10-31: #78/#79 go-down MERGE; `a706aaeb6` + `d21b14a74` trade AI MERGE; perf chain #48-#55 DECLINE; #57 DECLINE (keep our run/pass colors).
+**Sync 2 applied 2026-10-31; see `docs/upstream_sync_log.md`. New watermark: `bda1fa504a944522a72c14d442aa8f23e49298be`, which supersedes the SHA below. Next sync starts from it, at row #86.** Batch 4 (rows #71-#85) was researched the same day through `bda1fa504`; see the Batch 4 section, which also settles batch 3's five open non-football items. `282848cc3` could not be applied because it needs an undo feature we don't have. User decisions 2026-10-31: #78/#79 go-down MERGE; `a706aaeb6` + `d21b14a74` trade AI MERGE; perf chain #48-#55 DECLINE; #57 DECLINE (keep our run/pass colors).
 
 **Batch 3 (rows #44-#70) researched 2026-10-07; see the Batch 3 section. Nothing applied yet.** Two rows wait on the user (#57 run/pass colors, the perf-chain go/no-go), and the item-12 sweep left five non-football commits not yet researched (listed at the end of that section). Batches 1-2: all 43 rows resolved (17 MERGE, 26 DECLINE).
 

@@ -93,6 +93,61 @@ Expect all four again on the next sync.
 - Tests gated per group with `node --run test` (~32s). Final: **52 files / 335 passed, 12 skipped, 0 failed** — up from 333 pre-merge, the +2 being new regression tests from rows #10 and #17.
 - The browser smoke-test project is excluded from `node --run test` and is expected to fail; see `FUTURE_PLANS.md`. It is unrelated to this sync — verified failing identically on `master` before any of it was applied.
 
+## Sync 2 — 2026-10-31, Daily League offseason before 2003
+
+Applied directly to `master`, one commit per row. Rollback point: tag `pre-upstream-sync-2-daily-2003` (`eb6a142e8`). Against `upstream/master` at `bda1fa504a944522a72c14d442aa8f23e49298be`, from batch 4 and batch 3's open items.
+
+| Upstream SHA             | Row      | Subject                                       | Status                                                                               |
+| ------------------------ | -------- | --------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `4b29d8d2a`              | sweep    | common opponents tiebreaker                   | applied                                                                              |
+| `67168d75e`              | batch 3  | stable trade proposals                        | applied, hand-merged                                                                 |
+| `c1c75fb29`              | sweep    | auto play leaves the user's re-signings alone | applied, rewritten inline (our `autoPlay.ts` predates `autoPlayStopsAt`)             |
+| `ec9d7b4a0`              | batch 3  | views and phase changes exclusive             | applied, hand-merged                                                                 |
+| `c93be7556`              | sweep    | double-click draft guard                      | applied, `draftUser`/`canBeDrafted` hunks only                                       |
+| `bda1fa504`              | sweep    | no fast-forward before a live game loads      | applied, hand-merged                                                                 |
+| `a706aaeb6`, `d21b14a74` | batch 3  | offseason trade AI weighting                  | applied, hand-merged into `valueChange.ts`                                           |
+| `86e3d8013`              | #75      | go for 2 when XP is under 50%; injury news    | applied, hand-merged                                                                 |
+| `de9ee78fa`              | #73      | penalty, feat and roster fixes                | applied, partial                                                                     |
+| `3b3c7ae5e`, `d590e4986` | #82, #83 | overtime tries                                | applied, hand-merged                                                                 |
+| `4a63954e0`              | #85      | multiple overtimes                            | applied, hand-merged                                                                 |
+| `01cb21898`, `3880817d3` | #74, #76 | kneel decision                                | applied, `index.ts` only                                                             |
+| `2cd01fba1`, `5b59e4bdd` | #78, #79 | go down instead of scoring                    | applied, hand-merged                                                                 |
+| `795d32510`              | #84      | clock runs before a play commits              | applied, hand-translated                                                             |
+| `282848cc3`              | sweep    | undo partial `reSignAll`                      | **not applied:** it relies on `undoFunctions`, an undo feature our fork doesn't have |
+| `e508b0d38`              | batch 3  | keep the cache dirty                          | our own version, `_hasPendingWrites` covers every store                              |
+
+### Hand-merge notes
+
+- **Phase lock and `realtimeUpdate`.** With `ec9d7b4a0`, views wait for the `newPhase` lock, and the UI waits for views, so awaiting `toUI("realtimeUpdate")` while holding that lock deadlocks. Upstream's own move in `afterPicks.ts` covered one path; ours had two calls inside the lock, in the fantasy and expansion draft branches, both moved after the unlock. `finalize.ts` already unlocks first. `Promise.withResolvers` was swapped for plain promises.
+- **`ValueChangeCalculator.ts` is `valueChange.ts` here** (upstream renamed it in `81ad2e921`, which we declined), so `git apply` can't see the file at all.
+- **`getPlayType` is async here.** Ported tests needed `await`; without it `assert.notStrictEqual` passes on the promise.
+- **`git apply --3way` can stage conflict markers.** The pre-commit hook caught them. Check for markers before staging.
+- **`clockAtEndOfPlay` is gone.** `this.clock` now holds the end-of-play time from just before `commit()` onward, so timeout thresholds and the `hurryUp` check used in `deadTimeCase` read about one play later than before. The harness shows no effect.
+- **`kickoffAfterEndOfPeriod` in overtime.** With unlimited playoff overtimes it is false for the first overtime period, so that period has no two-minute warning and no late window; the period after it ends the "half".
+- **Our `<= 8` removal in `getBestPenaltyResult` stays:** upstream still caps the trailing team at 8 points.
+
+### Verification
+
+- Tests: **60 files / 512 passed, 20 skipped, 0 failed**, including 16 ported upstream tests (`index.test.ts`, `Play.test.ts`) and new draft and cache tests. These run stock play-calling.
+- Typecheck: only 2 new errors, both `TS6307` from a new file seen through the node project's real-draft scripts, not real type errors.
+- Harness, 1,000 games and 24 comeback scenarios x 2,000 replays, before / after:
+
+| Measure                        | Before | After   |
+| ------------------------------ | ------ | ------- |
+| Offensive plays per team-game  | 64.4   | 64.1    |
+| Points per team-game           | 24.33  | 24.15   |
+| Points per drive               | 2.04   | 2.05    |
+| 2nd-half late points per game  | 4.78   | 4.08    |
+| Kneel stops per game           | 1.42   | 1.61    |
+| 36-40s gaps                    | 21.6%  | 21.3%   |
+| Comeback win rate, mean change |        | -0.0002 |
+
+The gap histogram matches within 0.3 points per bucket. The late-points drop is the intended effect of going down and better kneeling.
+
+### Not yet done
+
+- Sim a season in Electron. The view lock, overtime and the scoring summary have not been exercised in the real app.
+
 ## Sync 1 follow-up — 2026-09-09, the `totTD` crash
 
 **Symptom.** Advancing past the Super Bowl in Test League 1 threw `Critical error during phase change: Missing leader requirements for totTD`, stranding the UI on "Playoffs Processing...". The Super Bowl result was saved; no further day could be advanced.
