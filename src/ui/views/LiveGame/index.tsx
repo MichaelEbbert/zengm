@@ -585,6 +585,11 @@ export const LiveGame = (props: View<"liveGame">) => {
 	}, [processToNextPause]);
 
 	const fastForwardMenuItems = useMemo(() => {
+		// boxScore is still empty before the game loads, and these all assume it has teams
+		if (!started) {
+			return [];
+		}
+
 		// Plays up to `cutoffs` seconds, or until end of quarter
 		const playSeconds = (cutoff: number) => {
 			let seconds = 0;
@@ -982,6 +987,7 @@ export const LiveGame = (props: View<"liveGame">) => {
 		boxScore.current.shootout,
 		quarters.current.length,
 		processToNextPause,
+		started,
 	]);
 
 	const scrollTop = useRef<HTMLDivElement>(null);
