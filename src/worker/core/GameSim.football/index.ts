@@ -54,6 +54,12 @@ const YARDS_NEEDED_TO_KNEEL = 3;
 // Teams don't bother with timeouts late in a game when the score difference is this big
 const BLOWOUT_POINTS = 24;
 
+// A ball carrier will go down short of the goal line rather than score a TD to keep the ball and kneel out the clock, if the opponent would still be within 2 max scores
+const GO_DOWN_MAX_LEAD_AFTER_TD = 16;
+
+// A ball carrier going down to kneel out the clock will still advance the ball at least this far, to have plenty of room to kneel
+const GO_DOWN_MIN_SCRIMMAGE = 20;
+
 // Roughly how often 2 point conversions succeed in the game simulation
 const TWO_POINT_CONVERSION_SUCCESS_RATE = 0.5;
 
@@ -724,6 +730,82 @@ class GameSim extends GameSimBase {
 		if (index >= 0) {
 			return index + 1;
 		}
+	}
+
+	// Like Play.boundedYds, but late in the game if the winning team can kneel out the clock, it's better to go down somewhere safe rather than scoring a TD, because that would give the ball back to the other team
+	boundedYdsBallCarrier(ydsRaw: number) {
+		const yds = this.currentPlay.boundedYds(ydsRaw);
+
+		const state = this.currentPlay.state.current;
+		const scrimmageGoDown = this.getScrimmageToGoDown();
+		if (
+			scrimmageGoDown !== undefined &&
+			state.scrimmage + yds > scrimmageGoDown
+		) {
+			return scrimmageGoDown - state.scrimmage;
+		}
+
+		return yds;
+	}
+
+	// Where the ball carrier should go down to kneel out the clock, or undefined if they should try to score
+	getScrimmageToGoDown() {
+		const quarter = this.team[0].stat.ptsQtrs.length;
+		if (
+			quarter !== this.numPeriods ||
+			this.twoPointConversionTeam !== undefined
+		) {
+			return;
+		}
+
+		const state = this.currentPlay.state.current;
+
+		const lead = state.pts[state.o] - state.pts[state.d];
+		if (lead <= 0 || lead + 6 > GO_DOWN_MAX_LEAD_AFTER_TD) {
+			return;
+		}
+
+		// Same down logic as Play.checkDownAtEndOfPlay
+		let nextDown;
+		let scrimmageGoDown;
+		if (state.numPossessionChanges > 0) {
+			// Just got the ball, so no need to return it
+			nextDown = 1;
+			scrimmageGoDown = state.scrimmage;
+		} else if (state.firstDownLine < 100) {
+			// Go a few yards past the first down line to be sure, unless that's too close to the goal line
+			nextDown = 1;
+			scrimmageGoDown = Math.max(
+				state.scrimmage,
+				Math.min(state.firstDownLine + random.randInt(3, 6), 99),
+			);
+		} else {
+			// Goal to go, so no first down is possible
+			nextDown = state.downIncremented ? state.down : state.down + 1;
+			scrimmageGoDown = 99;
+		}
+
+		// Make sure there's room to kneel
+		scrimmageGoDown = Math.max(scrimmageGoDown, GO_DOWN_MIN_SCRIMMAGE);
+
+		// Ignores the time this play takes, which is conservative
+		const numKneels = this.getNumKneelsToRunOutClock({
+			nextDown,
+			numTimeouts: this.timeouts[state.d],
+		});
+
+		if (
+			numKneels !== undefined &&
+			scrimmageGoDown > YARDS_NEEDED_TO_KNEEL * numKneels &&
+			Math.random() >= this.probForgetToGoDown()
+		) {
+			return scrimmageGoDown;
+		}
+	}
+
+	// Sometimes the ball carrier forgets to go down and scores anyway
+	probForgetToGoDown() {
+		return 0.1;
 	}
 
 	hurryUp() {
@@ -1740,7 +1822,7 @@ class GameSim extends GameSimBase {
 				});
 
 				const rawLength = Math.random() < 0.003 ? 100 : random.randInt(0, 5);
-				yds = this.currentPlay.boundedYds(rawLength);
+				yds = this.boundedYdsBallCarrier(rawLength);
 				dt += Math.abs(yds) / 8;
 			}
 
@@ -1848,7 +1930,7 @@ class GameSim extends GameSimBase {
 					ydsRaw += random.randInt(0, 109);
 				}
 
-				const returnLength = this.currentPlay.boundedYds(ydsRaw);
+				const returnLength = this.boundedYdsBallCarrier(ydsRaw);
 				dt = Math.abs(returnLength) / 8;
 
 				this.checkPenalties("kickoffReturn", {
@@ -1957,7 +2039,6 @@ class GameSim extends GameSimBase {
 				p: punter,
 			});
 		} else {
-			const maxReturnLength = 100 - this.currentPlay.state.current.scrimmage;
 			const meanYds = 4 + 10 * puntReturner.compositeRating.rushing;
 			let ydsRaw = Math.round(random.truncGauss(meanYds, 10, -10, 109));
 
@@ -1965,7 +2046,7 @@ class GameSim extends GameSimBase {
 				ydsRaw += random.randInt(0, 109);
 			}
 
-			const returnLength = helpers.bound(ydsRaw, 0, maxReturnLength);
+			const returnLength = this.boundedYdsBallCarrier(Math.max(ydsRaw, 0));
 			dt += Math.abs(returnLength) / 8;
 			this.checkPenalties("puntReturn", {
 				ballCarrier: puntReturner,
@@ -2298,7 +2379,7 @@ class GameSim extends GameSimBase {
 			});
 		}
 
-		const yds = this.currentPlay.boundedYds(ydsRaw);
+		const yds = this.boundedYdsBallCarrier(ydsRaw);
 
 		const { safety, td, touchback } = this.currentPlay.addEvent({
 			type: "fmbRec",
@@ -2377,7 +2458,7 @@ class GameSim extends GameSimBase {
 			ydsRaw += random.randInt(0, 109);
 		}
 
-		const yds = this.currentPlay.boundedYds(ydsRaw);
+		const yds = this.boundedYdsBallCarrier(ydsRaw);
 		let dt = Math.abs(yds) / 8;
 
 		const { td, touchback } = this.currentPlay.addEvent({
@@ -2689,7 +2770,7 @@ class GameSim extends GameSimBase {
 
 		ydsRaw = Math.round(ydsRaw * g.get("passYdsFactor"));
 
-		const yds = this.currentPlay.boundedYds(ydsRaw);
+		const yds = this.boundedYdsBallCarrier(ydsRaw);
 
 		const defender = this.pickPlayer(d, "passCoverage", undefined, 2);
 		const complete = Math.random() < this.probComplete(qb, target, defender);
@@ -2917,7 +2998,7 @@ class GameSim extends GameSimBase {
 
 		ydsRaw = Math.round(ydsRaw * g.get("rushYdsFactor"));
 
-		const yds = this.currentPlay.boundedYds(ydsRaw);
+		const yds = this.boundedYdsBallCarrier(ydsRaw);
 		const dt = random.randInt(2, 4) + Math.abs(yds) / 10;
 
 		this.checkPenalties("run", {
