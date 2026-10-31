@@ -3191,8 +3191,13 @@ const releasePlayer = async ({ pids }: { pids: number[] }) => {
 		return "Player not found";
 	}
 
-	if (players.some((p) => p.tid !== g.get("userTid"))) {
-		return "You aren't allowed to do this";
+	// Could happen if the UI hasn't updated yet after a player was released or traded
+	const notOnTeam = players.filter((p) => p.tid !== g.get("userTid"));
+	if (notOnTeam.length === 1) {
+		const p = notOnTeam[0]!;
+		return `${p.firstName} ${p.lastName} is no longer on your team.`;
+	} else if (notOnTeam.length > 1) {
+		return `${notOnTeam.length} players are no longer on your team.`;
 	}
 
 	for (const p of players) {

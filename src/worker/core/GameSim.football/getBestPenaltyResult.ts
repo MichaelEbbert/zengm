@@ -3,6 +3,9 @@ import { random } from "../../util/index.ts";
 import { orderBy, range } from "../../../common/utils.ts";
 import type { TeamNum } from "../../../common/types.ts";
 
+// Beyond this yard line, teams will want to try an untimed down at the end of the half if there was a defensive penalty
+const SCORING_RANGE_END_OF_HALF = 40;
+
 // Sort by looking at a bunch of different factors in order of importance
 const getBestPenaltyResult = <
 	T extends {
@@ -36,7 +39,7 @@ const getBestPenaltyResult = <
 		if (state.overtimeState === "over") {
 			if (state.pts[t] > state.pts[t2]) {
 				overtimeScore = 1;
-			} else if (state.pts[t2] < state.pts[t]) {
+			} else if (state.pts[t] < state.pts[t2]) {
 				overtimeScore = -1;
 			}
 		}
@@ -65,16 +68,23 @@ const getBestPenaltyResult = <
 			madeLateFG = -1;
 		}
 
-		// Penalty at end of period to give an untimed possession - good at end of game if losing/tied, and good at end of half if team didn't score
+		// Penalty at end of period to give an untimed possession - good at end of game if losing/tied, bad at end of game if winning, and at end of half good if team has the ball in scoring range and didn't score, otherwise bad
 		// Only the result that actually grants the extra play counts. Declining also leaves the offense with the ball when time runs out, so without the state.playUntimedPossession check both results scored the same here and a trailing team declined its last snap whenever the play gained more than the penalty.
 		let playUntimedPossession = 0;
 		if (timeExpiredAtEndOfHalf && state.playUntimedPossession) {
 			const pointsDown = state.pts[t2] - state.pts[t];
-			if (
-				(state.o === t && gameCanEndAtEndOfPeriod && pointsDown >= 0) ||
-				(!gameCanEndAtEndOfPeriod && ptsScoredThisPlay[t] === 0)
-			) {
-				playUntimedPossession = 1;
+			if (gameCanEndAtEndOfPeriod) {
+				if (state.o === t && pointsDown >= 0) {
+					playUntimedPossession = 1;
+				} else if (pointsDown < 0) {
+					playUntimedPossession = -1;
+				}
+			} else if (ptsScoredThisPlay[t] === 0) {
+				if (state.o === t && state.scrimmage >= SCORING_RANGE_END_OF_HALF) {
+					playUntimedPossession = 1;
+				} else {
+					playUntimedPossession = -1;
+				}
 			}
 		}
 
