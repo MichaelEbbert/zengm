@@ -61,15 +61,25 @@ const PINNED: Record<string, string[]> = {
 	"1955draft.json|Bart Starr": ["spd"],
 	"1999draft.json|Tom Brady": ["elu"],
 	"2003draft.json|Ben Roethlisberger": ["stre"],
+	"1963draft.json|Bob Hayes": ["spd"],
+	"1963draft.json|Paul Warfield": ["hnd"],
+	"1966draft.json|Tommie Smith": ["spd"],
+	"1971draft.json|Cliff Branch": ["spd"],
+	"1979draft.json|Lam Jones": ["spd"],
+	"1982draft.json|Ron Brown": ["spd"],
+	"2006draft.json|Ted Ginn Jr.": ["spd"],
 };
 const NORMAL: Record<string, string[]> = {
 	QB: ["tha", "thp", "thv", "bsc", "elu"],
 	// RB: every stat-based rating in RB ovr moves toward the engine mean
 	RB: ["spd", "elu", "stre", "bsc", "hnd", "rtr"],
+	// WR: same; hgt (a measurement) and endu (not in WR ovr) stay as set
+	WR: ["hnd", "rtr", "spd", "elu", "stre", "bsc"],
 };
 const KEYS: Record<string, string[]> = {
 	QB: ["tha", "thp", "thv", "bsc", "elu", "spd", "stre"],
 	RB: ["spd", "elu", "stre", "bsc", "hnd", "rtr"],
+	WR: ["hnd", "rtr", "spd", "elu", "stre", "bsc"],
 };
 
 const readEngine = () => {

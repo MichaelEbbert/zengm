@@ -223,6 +223,62 @@ X --write` for each of the nine -> `seedQb.cjs --write` ->
   script cds into `scripts/`, so a relative path must be
   `../../../draft_classes`), then `npx oxfmt draft_classes` from the repo
   root. Next: the next position, same interactive loop.
+- **WRs IN PROGRESS (interactive loop, 2026-10-31). `hnd` DONE (written,
+  uncommitted):** `scripts/rateWr.cjs --rating hnd --write`, 1,961 WRs (982
+  career, 979 band), 50% catch rate vs league WRs adjusted for depth (expected
+  rate moves -0.0087 per yard of yards per catch) + 50% receptions per game;
+  shrink k 150 targets / 50 games. PFR targets are complete from 1977 (not
+  1992); earlier seasons use receptions per game alone. No-career cutoff stays
+  50 catches or targets; floor 51 approved (engine min, above 40). Data:
+  `data/pfr_receiving.csv` (every receiver, NFL 1955-2025 + AFL 1960-69, 34,013
+  rows, fumbles included, reusable for TEs), `data/pfr_wr_draftids.csv` (36
+  ids), `data/wrdraftratings.csv` (1,228 engine WRs). **`rtr` DONE (written):**
+  50% targets per game + 50% yards per target vs league, shrink k 50 games /
+  150 targets; seasons before 1977 use receptions per game + yards per catch;
+  WRs with under half their games in the target era are scaled as their own
+  group. Floor 50 approved. **26 pre-1967 receivers moved to WR** (user;
+  `scripts/moveToWr.cjs`, was OL/TE/RB/DL/S/QB, e.g. Warfield, Hayes, Charley
+  Taylor), 1,987 WRs now; run it before `rateWr.cjs` from a fresh copy. QB and
+  RB pools were not rerun for the 4 who left them (Reichow; Middleton, Barr,
+  Taylor). Joe Walton (filed DL) is a TE: fix at TE. Other pre-1967 files
+  likely hold more misfiled ends: check at each position. **`hgt` DONE
+  (written):** real height, not by decade, ranked onto the engine curve; every
+  WR ranked, no band; the 192 with no PFR id sit at the median (53). Real bio
+  height/weight written (`rateWr.cjs --write-size`, from nflverse +
+  `data/pfr_wr_size.csv`, 243 PFR player pages, includes PFR position). Some
+  pre-1967 "WRs" really played elsewhere (Milt Graham, T); left in. **`bsc`
+  DONE (written):** fumbles per touch vs league WRs that season, lower better;
+  touches = catches + carries + kick/punt returns (`data/pfr_returns.csv`,
+  every returner, 16,020 rows, reusable); shrink k 600 touches. Returners stay
+  low on purpose (the engine uses bsc on returns). **`spd` DONE (written):**
+  Combine 40 60% (`data/nflcombine_wr_1987_2025.csv`, curl, year = real draft
+  year; RB file as fallback) + yards per catch vs league 40%, shrink k 100
+  catches; a 40 alone rates a no-career WR; each stat mix scaled on its own.
+  Pins (`PINS`, rateWr.cjs; add to `PINNED` in fitOvr before the WR fit): Hayes
+  100, Tommie Smith 95, Branch 90, Lam Jones 90, Ron Brown (1982 file) 90,
+  Ginn 88. **`elu` DONE (written):** punt return average 2 : yards per carry 1
+  vs league (10+ to count, shrink k 40; returns vs all returners, carries vs
+  50+-carry rushers). Yards per catch only for WRs with neither, at half
+  spread: a first try with it in the blend let deep threats own the top. 20+
+  punt returns or carries also makes a career. **`stre` DONE (written):**
+  weight within draft decade 70% + receiving TDs per catch vs league 30%,
+  shrink k 100 catches; a real weight alone rates a no-career WR; the 192 with
+  no PFR id are the band. **`endu` DONE (written):** games started per game
+  60% (shrink k 30 games) + career length 40% (active WRs at least the average
+  finished career). Older seasons show more starts (0.88 vs 0.70 per game from
+  1980); left in, endu isn't in WR ovr. **ALL WR RATINGS DONE (written
+  2026-10-31, uncommitted).** Seeded from one engine WR (`seedWr.cjs`, same 13
+  as RBs), ovr fit (`REAL_DRAFT_POS=WR`, moves hnd rtr spd elu stre bsc; hgt
+  and endu untouched), ovr/pot. Warfield `hnd` pinned 78 (run-heavy offense).
+  To rerun everything: `bash scripts/runWr.sh <class dir>`, then `npx oxfmt
+draft_classes`; rerun the whole script after any change, never one rating.
+  **For the TE pass:** move Darren Waller (2014 file, drafted WR) and Joe Walton
+  (1956 file, filed DL) to TE, then rerun runWr.sh. Open: no WR reaches pot 90
+  (Rice 89); draft age caps older rookies (Harrison 24, pot 67). Next
+  position: not yet chosen. Chrome can't
+  POST from PFR to localhost (hangs) -- use a blob download, with the user's OK.
+  `bsc` needs returns and `hgt` needs pre-1970 sizes from PFR; Cloudflare may
+  need the user to click through first.
 - **Next (QBs):** QBs are done. (1) the next position, same interactive loop (rank by stat,
   map onto the engine, then fit ovr, then ovr/pot).
   - `stre`: rushing TDs (short-yardage proxy), weight, sack resistance,
