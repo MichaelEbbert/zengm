@@ -128,7 +128,7 @@ Applied directly to `master`, one commit per row. Rollback point: tag `pre-upstr
 
 ### Verification
 
-- Tests: **60 files / 512 passed, 20 skipped, 0 failed**, including 16 ported upstream tests (`index.test.ts`, `Play.test.ts`) and new draft and cache tests. These run stock play-calling.
+- Tests: **60 files / 512 passed, 20 skipped, 0 failed**, including 22 ported upstream tests (16 in `index.test.ts`, 6 in `Play.test.ts`), upstream's double-click draft test, and a new cache test. These run stock play-calling.
 - Typecheck: only 2 new errors, both `TS6307` from a new file seen through the node project's real-draft scripts, not real type errors.
 - Harness, 1,000 games and 24 comeback scenarios x 2,000 replays, before / after:
 
