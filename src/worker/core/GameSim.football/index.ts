@@ -503,7 +503,9 @@ class GameSim extends GameSimBase {
 		this.scrimmage = SCRIMMAGE_KICKOFF;
 
 		while (
-			(this.clock > 0 || this.playUntimedPossession) &&
+			(this.clock > 0 ||
+				this.awaitingAfterTouchdown ||
+				this.playUntimedPossession) &&
 			this.overtimeState !== "over"
 		) {
 			await this.simPlay();
@@ -924,8 +926,8 @@ class GameSim extends GameSimBase {
 					(() => {
 						// In overtime, if tied and a field goal would win, try it
 						if (
-							((quarter > this.numPeriods &&
-								this.overtimeType === "suddenDeath") ||
+							quarter > this.numPeriods &&
+							(this.overtimeType === "suddenDeath" ||
 								this.overtimeState !== "firstPossession") &&
 							ptsDown === 0 &&
 							probMadeFieldGoal >= 0.7
