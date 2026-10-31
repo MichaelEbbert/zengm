@@ -3611,7 +3611,9 @@ const runBefore = async (
 	const view = views[viewId];
 
 	if (view) {
-		const data = await view(inputs, updateEvents, prevData, conditions);
+		const data = await lock.runView(() =>
+			view(inputs, updateEvents, prevData, conditions),
+		);
 		return data ?? {};
 	}
 

@@ -88,6 +88,7 @@ const newPhase = async (phase: Phase, conditions: Conditions, extra?: any) => {
 		);
 	} else {
 		try {
+			// While this lock is held, do not await toUI("realtimeUpdate") from anywhere in the phase change code: the UI waits for views, and views wait for this lock
 			await lock.set("newPhase", true);
 
 			if (
