@@ -3590,7 +3590,7 @@ const runBefore = async (
 		return;
 	}
 
-	let inputs;
+	let inputs: any;
 	if (Object.hasOwn(processInputs, viewId)) {
 		// https://github.com/microsoft/TypeScript/issues/21732
 		// @ts-expect-error

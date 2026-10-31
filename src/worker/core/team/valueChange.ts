@@ -33,16 +33,19 @@ type Asset =
 	  };
 
 let prevValueChangeKey: number | undefined;
-let cache: {
+type PickEstimates = {
 	estPicks: Record<number, number>;
-	estValues: TradePickValues;
-	teamOvrs: {
-		tid: number;
-		ovr: number;
-	}[];
 	wps: {
 		tid: number;
 		wp: number;
+	}[];
+};
+let cache: PickEstimates & {
+	estValues: TradePickValues;
+	future: PickEstimates;
+	teamOvrs: {
+		tid: number;
+		ovr: number;
 	}[];
 };
 
@@ -54,6 +57,44 @@ const ovrIndexToEstWinPercent = (teamOvrIndex: number) => {
 		0.25 +
 		(0.5 * (g.get("numActiveTeams") - 1 - teamOvrIndex)) /
 			(g.get("numActiveTeams") - 1)
+	);
+};
+
+// After the regular season, rosters keep changing but the record does not, so it says less about how good a team will be in future seasons
+const OFFSEASON_RECORD_WEIGHT = 0.25;
+
+// Weighted average of current season record and team rating, based on how much of the current season is complete. futureDraft means this is for a draft after the current one, which is decided by future seasons rather than the current record.
+const getEstWinPercent = ({
+	futureDraft,
+	teamOvrWinp,
+	teamSeason,
+}: {
+	futureDraft: boolean;
+	teamOvrWinp: number;
+	teamSeason:
+		| {
+				won: number;
+				lost: number;
+				tied: number;
+				otl: number;
+		  }
+		| undefined;
+}) => {
+	const gp = teamSeason ? helpers.getTeamSeasonGp(teamSeason) : 0;
+
+	if (!teamSeason || gp === 0) {
+		// Expansion team?
+		return teamOvrWinp;
+	}
+
+	let recordWeight = helpers.bound(gp / g.get("numGames"), 0, 1);
+	if (futureDraft && g.get("phase") > PHASE.PLAYOFFS) {
+		recordWeight = Math.min(recordWeight, OFFSEASON_RECORD_WEIGHT);
+	}
+
+	return (
+		recordWeight * helpers.calcWinp(teamSeason) +
+		(1 - recordWeight) * teamOvrWinp
 	);
 };
 
@@ -101,7 +142,6 @@ const getContractValue = (
 const getPlayers = async ({
 	add,
 	remove,
-	roster,
 	pidsAdd,
 	pidsRemove,
 	tid,
@@ -109,7 +149,6 @@ const getPlayers = async ({
 }: {
 	add: Asset[];
 	remove: Asset[];
-	roster: Asset[];
 	pidsAdd: number[];
 	pidsRemove: number[];
 	tid: number;
@@ -129,36 +168,30 @@ const getPlayers = async ({
 			? 1.05
 			: 1) * difficultyFudgeFactor;
 
-	// Get roster and players to remove
+	// Get players to remove
 	const players = await idb.cache.players.indexGetAll("playersByTid", tid);
 
 	for (const p of players) {
-		const value = zscore(p.value);
 		if (!pidsRemove.includes(p.pid)) {
-			roster.push({
-				type: "player",
-				value,
-				contractValue: getContractValue(p.contract, value),
-				injury: p.injury,
-				age: g.get("season") - p.born.year,
-				justDrafted: helpers.justDrafted(p, phase, season),
-			});
-		} else {
-			// Only apply fudge factor to positive assets
-			let fudgedValue = value;
-			if (fudgedValue > 0) {
-				fudgedValue *= fudgeFactor;
-			}
-
-			remove.push({
-				type: "player",
-				value: fudgedValue,
-				contractValue: getContractValue(p.contract, value),
-				injury: p.injury,
-				age: g.get("season") - p.born.year,
-				justDrafted: helpers.justDrafted(p, phase, season),
-			});
+			continue;
 		}
+
+		const value = zscore(p.value);
+
+		// Only apply fudge factor to positive assets
+		let fudgedValue = value;
+		if (fudgedValue > 0) {
+			fudgedValue *= fudgeFactor;
+		}
+
+		remove.push({
+			type: "player",
+			value: fudgedValue,
+			contractValue: getContractValue(p.contract, value),
+			injury: p.injury,
+			age: g.get("season") - p.born.year,
+			justDrafted: helpers.justDrafted(p, phase, season),
+		});
 	}
 
 	// Get players to add
@@ -193,7 +226,8 @@ const getPickNumber = async (
 	if (dp.pick > 0) {
 		estPick = dp.pick;
 	} else {
-		let temp = cache.estPicks[dp.originalTid];
+		const futureDraft = season > g.get("season");
+		let temp = (futureDraft ? cache.future : cache).estPicks[dp.originalTid];
 
 		// Used to know when to overvalue own pick
 		const tradeWithUser = tradingPartnerTid === g.get("userTid");
@@ -207,7 +241,7 @@ const getPickNumber = async (
 			tradeWithUser &&
 			pidsAdd.length + pidsRemove.length > 0
 		) {
-			temp = await getModifiedPickRank(tid, pidsAdd, pidsRemove);
+			temp = await getModifiedPickRank(futureDraft, tid, pidsAdd, pidsRemove);
 		}
 		estPick = temp !== undefined ? temp : numPicksPerRound / 2;
 
@@ -424,7 +458,7 @@ const getPicks = async ({
 			if (numBeyond2Other > 0) {
 				for (const pick of otherPicks) {
 					if (pick.value > 0) {
-						pick.value *= 1 + numBeyond2 / (SPORT_FACTOR * pick.dp.round);
+						pick.value *= 1 + numBeyond2Other / (SPORT_FACTOR * pick.dp.round);
 					}
 				}
 			}
@@ -535,59 +569,50 @@ export const getEstPicks = async (
 		[[g.get("season")], [g.get("season"), "Z"]],
 	);
 
-	let gp = 0;
-
-	// Estimate the order of the picks by team
-	const wps = teams.map((t) => {
+	const teamInfos = teams.map((t) => {
 		let teamOvrIndex = teamOvrsSorted.findIndex((t2) => t2.tid === t.tid);
 		if (teamOvrIndex < 0) {
 			// This happens if a team has no players on it - just assume they are the worst
 			teamOvrIndex = teamOvrsSorted.length - 1;
 		}
 
-		// 25% to 75% based on rank
-		const teamOvrWinp = ovrIndexToEstWinPercent(teamOvrIndex);
-
-		const teamSeasons = allTeamSeasons.filter(
-			(teamSeason) => teamSeason.tid === t.tid,
-		);
-		let record: [number, number];
-
-		if (!teamSeasons[0]) {
-			// Expansion team?
-			record = [0, 0];
-		} else {
-			const teamSeason = teamSeasons[0];
-			record = [teamSeason.won, teamSeason.lost];
-		}
-
-		gp = record[0] + record[1];
-
-		const seasonFraction = gp / g.get("numGames");
-
 		return {
 			tid: t.tid,
-			// Weighted average of current season record and team rating, based on how much of the current season is complete
-			wp:
-				gp === 0
-					? teamOvrWinp
-					: seasonFraction * (record[0] / gp) +
-						(1 - seasonFraction) * teamOvrWinp,
+			// 25% to 75% based on rank
+			teamOvrWinp: ovrIndexToEstWinPercent(teamOvrIndex),
+			teamSeason: allTeamSeasons.find((teamSeason) => teamSeason.tid === t.tid),
 		};
 	});
 
-	// Get rank order of wps http://stackoverflow.com/a/14834599/786644
-	wps.sort((a, b) => a.wp - b.wp);
+	// Estimate the order of the picks by team
+	const getPickEstimates = (futureDraft: boolean): PickEstimates => {
+		const wps = teamInfos.map(({ tid, teamOvrWinp, teamSeason }) => {
+			return {
+				tid,
+				wp: getEstWinPercent({ futureDraft, teamOvrWinp, teamSeason }),
+			};
+		});
 
-	// For each team, what is their estimated draft position?
-	const estPicks: Record<number, number> = {};
-	for (const [i, wp] of wps.entries()) {
-		estPicks[wp.tid] = i + 1;
-	}
+		// Get rank order of wps http://stackoverflow.com/a/14834599/786644
+		wps.sort((a, b) => a.wp - b.wp);
+
+		// For each team, what is their estimated draft position?
+		const estPicks: Record<number, number> = {};
+		for (const [i, wp] of wps.entries()) {
+			estPicks[wp.tid] = i + 1;
+		}
+
+		return {
+			estPicks,
+			wps,
+		};
+	};
 
 	return {
-		estPicks,
-		wps,
+		...getPickEstimates(false),
+
+		// For drafts after the current season's draft
+		future: getPickEstimates(true),
 	};
 };
 
@@ -618,13 +643,10 @@ const refreshCache = async () => {
 	}
 	teamOvrs.sort((a, b) => b.ovr - a.ovr);
 
-	const { estPicks, wps } = await getEstPicks(teamOvrs);
-
 	return {
-		estPicks,
+		...(await getEstPicks(teamOvrs)),
 		estValues: await trade.getPickValues(),
 		teamOvrs,
-		wps,
 	};
 };
 
@@ -641,7 +663,6 @@ const valueChange = async (
 	await player.updateOvrMeanStd();
 
 	// Get value and skills for each player on team or involved in the proposed transaction
-	const roster: Asset[] = [];
 	const add: Asset[] = [];
 	const remove: Asset[] = [];
 	const t = await idb.cache.teams.get(tid);
@@ -660,7 +681,6 @@ const valueChange = async (
 	await getPlayers({
 		add,
 		remove,
-		roster,
 		pidsAdd,
 		pidsRemove,
 		tid,
@@ -689,6 +709,7 @@ const valueChange = async (
 };
 
 const getModifiedPickRank = async (
+	futureDraft: boolean,
 	tid: number,
 	pidsAdd: number[],
 	pidsRemove: number[],
@@ -696,15 +717,14 @@ const getModifiedPickRank = async (
 	// later we need to find the new ranks of this team's ovr/estimated win%
 	// it's cleaner to determine this by temporarily removing the old team info from the cached lists
 	const newTeamOvrs = cache.teamOvrs.filter((t) => t.tid !== tid);
-	const newWps = cache.wps.filter((w) => w.tid !== tid);
+	const newWps = (futureDraft ? cache.future : cache).wps.filter(
+		(w) => w.tid !== tid,
+	);
 
 	const teamSeason = await idb.cache.teamSeasons.indexGet(
 		"teamSeasonsBySeasonTid",
 		[g.get("season"), tid],
 	);
-	const gp = teamSeason ? helpers.getTeamSeasonGp(teamSeason) : 0;
-	const seasonFraction = gp / g.get("numGames");
-
 	const players = await idb.cache.players.indexGetAll("playersByTid", tid);
 	const playersAfterTrade = players.filter((p) => !pidsRemove.includes(p.pid));
 	for (const pid of pidsAdd) {
@@ -731,12 +751,11 @@ const getModifiedPickRank = async (
 		newTeamOvrIndex = newTeamOvrs.length;
 	}
 
-	const newTeamOvrWinp = ovrIndexToEstWinPercent(newTeamOvrIndex);
-	const newWp =
-		gp === 0
-			? newTeamOvrWinp
-			: seasonFraction * ((teamSeason?.won ?? 0) / gp) +
-				(1 - seasonFraction) * newTeamOvrWinp;
+	const newWp = getEstWinPercent({
+		futureDraft,
+		teamOvrWinp: ovrIndexToEstWinPercent(newTeamOvrIndex),
+		teamSeason,
+	});
 
 	let newRank = newWps.findIndex((w) => newWp < w.wp);
 	if (newRank === -1) {
