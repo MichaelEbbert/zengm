@@ -1280,12 +1280,15 @@ class GameSim extends GameSimBase {
 		dt /= 60;
 		const quarter = this.team[0].stat.ptsQtrs.length;
 
-		const clockAtEndOfPlay = this.clock - dt;
+		// Run the clock for the play before committing it, so anything that happens after the play (penalties, timeouts, etc.) is logged at the time the play ended
+		dt = Math.min(dt, this.clock);
+		this.clock -= dt;
 
 		const timeExpiredAtEndOfHalf =
-			clockAtEndOfPlay <= 0 && this.kickoffAfterEndOfPeriod(quarter);
+			this.clock <= 0 && this.kickoffAfterEndOfPeriod(quarter);
 
 		this.currentPlay.commit(timeExpiredAtEndOfHalf);
+		this.playByPlay.setClockForScores(this.clock);
 
 		const outOfBoundsPlayer = this.currentPlay.outOfBoundsPlayer();
 		if (outOfBoundsPlayer) {
@@ -1381,14 +1384,14 @@ class GameSim extends GameSimBase {
 		let twoMinuteWarningHappening = false;
 		if (
 			this.kickoffAfterEndOfPeriod(quarter) &&
-			clockAtEndOfPlay <= 2 &&
+			this.clock <= 2 &&
 			!this.twoMinuteWarningHappened
 		) {
 			this.twoMinuteWarningHappened = true;
 			this.isClockRunning = false;
 			this.playByPlay.logEvent({
 				type: "twoMinuteWarning",
-				clock: clockAtEndOfPlay,
+				clock: this.clock,
 			});
 
 			// So we know it happened this possession, and no random timeout should be used
@@ -1399,11 +1402,7 @@ class GameSim extends GameSimBase {
 
 		// No timeout when the clock is already stopped: it would waste the
 		// timeout (and charge its 0-2s of runoff) for nothing
-		if (
-			clockAtEndOfPlay > 0 &&
-			!twoMinuteWarningHappening &&
-			this.isClockRunning
-		) {
+		if (this.clock > 0 && !twoMinuteWarningHappening && this.isClockRunning) {
 			// Timeouts - small chance at any time
 			if (Math.random() < 0.01) {
 				this.doTimeout(this.o, false);
@@ -1465,7 +1464,7 @@ class GameSim extends GameSimBase {
 			clockRunning: this.isClockRunning,
 			lateWindow:
 				this.kickoffAfterEndOfPeriod(quarter) &&
-				clockAtEndOfPlay <=
+				this.clock <=
 					(quarter >= this.numPeriods
 						? LATE_WINDOW_MINUTES.final
 						: LATE_WINDOW_MINUTES.firstHalf),
@@ -1477,7 +1476,7 @@ class GameSim extends GameSimBase {
 		let dtClockRunning = deadTime(deadCase) / 60;
 
 		// Leave some time for a FG attempt!
-		if (deadCase === "hurryUp" && this.clock - dt - dtClockRunning < 0) {
+		if (deadCase === "hurryUp" && this.clock - dtClockRunning < 0) {
 			dtClockRunning = random.randInt(0, 4) / 60;
 		}
 
@@ -1486,7 +1485,7 @@ class GameSim extends GameSimBase {
 		// Check two minute warning again
 		if (
 			this.kickoffAfterEndOfPeriod(quarter) &&
-			clockAtEndOfPlay - dtClockRunning <= 2 &&
+			this.clock - dtClockRunning <= 2 &&
 			!this.twoMinuteWarningHappened
 		) {
 			this.twoMinuteWarningHappened = true;
@@ -1497,21 +1496,15 @@ class GameSim extends GameSimBase {
 			});
 
 			// Clock only runs until it hits 2 minutes exactly
-			dtClockRunning = helpers.bound(clockAtEndOfPlay - 2, 0, Infinity);
+			dtClockRunning = helpers.bound(this.clock - 2, 0, Infinity);
 		}
 
 		this.lastDeadTime = dtClockRunning * 60;
 
-		// Clock
-		dt += dtClockRunning;
-		this.clock -= dt;
+		dtClockRunning = Math.min(dtClockRunning, this.clock);
+		this.clock -= dtClockRunning;
 
-		if (this.clock < 0) {
-			dt += this.clock;
-			this.clock = 0;
-		}
-
-		this.updatePlayingTime(dt);
+		this.updatePlayingTime(dt + dtClockRunning);
 		if (playType !== "kneel") {
 			this.injuries();
 		}
