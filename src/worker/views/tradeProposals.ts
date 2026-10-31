@@ -5,6 +5,7 @@ import isUntradable from "../core/trade/isUntradable.ts";
 import makeItWork from "../core/trade/makeItWork.ts";
 import summary from "../core/trade/summary.ts";
 import { augmentOffers } from "../api/index.ts";
+import { orderBy } from "../../common/utils.ts";
 
 const getOffers = async (seed: number) => {
 	const NUM_OFFERS = 5;
@@ -17,9 +18,12 @@ const getOffers = async (seed: number) => {
 	);
 	random.shuffle(teams, seed);
 
-	const players = (
-		await idb.cache.players.indexGetAll("playersByTid", userTid)
-	).filter((p) => !isUntradable(p).untradable);
+	const players = orderBy(
+		(await idb.cache.players.indexGetAll("playersByTid", userTid)).filter(
+			(p) => !isUntradable(p).untradable,
+		),
+		"pid",
+	);
 	const draftPicks = await idb.cache.draftPicks.indexGetAll(
 		"draftPicksByTid",
 		userTid,
