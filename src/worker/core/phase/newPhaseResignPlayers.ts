@@ -172,7 +172,10 @@ const newPhaseResignPlayers = async (
 
 		if (
 			g.get("userTids").includes(p.tid) &&
-			!local.autoPlayUntil &&
+			(!local.autoPlayUntil ||
+				local.autoPlayUntil.season < g.get("season") ||
+				(local.autoPlayUntil.season === g.get("season") &&
+					local.autoPlayUntil.phase <= PHASE.RESIGN_PLAYERS)) &&
 			!g.get("spectator")
 		) {
 			const tid = p.tid;
