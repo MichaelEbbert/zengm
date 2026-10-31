@@ -51,6 +51,9 @@ const ESTIMATED_SECONDS_PER_KNEEL = 42;
 const ESTIMATED_SECONDS_PER_KNEEL_TIMEOUT = 2;
 const YARDS_NEEDED_TO_KNEEL = 3;
 
+// Roughly how often 2 point conversions succeed in the game simulation
+const TWO_POINT_CONVERSION_SUCCESS_RATE = 0.5;
+
 const NUM_DOWNS = 4; // Not used everywhere!
 const TWO_MINUTE_WARNING_TIME = 2; // Not used everywhere!
 
@@ -722,6 +725,14 @@ class GameSim extends GameSimBase {
 		if (this.awaitingAfterTouchdown) {
 			if (!g.get("twoPointConversions")) {
 				return "extraPoint";
+			}
+
+			// If an extra point is less likely to succeed than a 2 point conversion (bad or injured kicker, or league settings), the 2 point conversion is better in every situation
+			if (
+				this.probMadeFieldGoal(undefined, SCRIMMAGE_EXTRA_POINT) <
+				TWO_POINT_CONVERSION_SUCCESS_RATE
+			) {
+				return "twoPointConversion";
 			}
 
 			if (ptsDown === 2 && Math.random() < 0.7) {
@@ -1925,14 +1936,17 @@ class GameSim extends GameSimBase {
 		return dt;
 	}
 
-	probMadeFieldGoal(kickerInput?: PlayerGameSim) {
+	probMadeFieldGoal(
+		kickerInput?: PlayerGameSim,
+		scrimmage: number = this.scrimmage,
+	) {
 		const kicker =
 			kickerInput !== undefined
 				? kickerInput
 				: this.team[this.o].depth.K.find((p) => !p.injured);
 		let baseProb = 0;
 		let distance =
-			100 - this.scrimmage + FIELD_GOAL_DISTANCE_YARDS_ADDED_FROM_SCRIMMAGE;
+			100 - scrimmage + FIELD_GOAL_DISTANCE_YARDS_ADDED_FROM_SCRIMMAGE;
 
 		if (!kicker) {
 			// Would take an absurd amount of injuries to get here, but technically possible
