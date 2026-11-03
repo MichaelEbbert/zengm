@@ -5,7 +5,7 @@ of ZenGM Football that this league runs on).
 **Author/consumer:** the Claude instance that works in the sibling project
 `zengm-press` (a newsroom/GM-assistant project that reads the league SQLite DB
 read-only and never writes to `zengm`).
-**Status:** proposal. Nothing here is implemented yet.
+**Status:** implemented 2026-11-02, all of section 5 (`src/worker/api/tradeEval.ts`; usage in `ELECTRON.md`). Section 10: the engine already uses `numBeyond2Other`, so there is nothing to fix. Not done: the UI-parity acceptance tests in section 7 (items 2-3, 5-6) against a real league.
 
 ---
 

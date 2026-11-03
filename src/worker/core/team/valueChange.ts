@@ -12,25 +12,66 @@ import { getNumPicksPerRound } from "../trade/getPickValues.ts";
 import { bySport } from "../../../common/sportFunctions.ts";
 import { last } from "../../../common/utils.ts";
 
-type Asset =
-	| {
-			type: "player";
-			value: number;
-			contractValue: number;
-			injury: PlayerInjury;
-			age: number;
-			justDrafted: boolean;
-	  }
-	| {
-			type: "pick";
-			value: number;
-			contractValue: number;
-			injury: PlayerInjury;
-			age: number;
-			dp: DraftPick;
-			draftPick: number;
-			draftYear: number;
-	  };
+// Reporting-only fields for the trade evaluation API (src/worker/api/tradeEval.ts). The valuation never reads them.
+type AssetReport = {
+	pid?: number;
+	// zscore before the fudge factor (players) or before the 0.1 floor (picks)
+	zValue?: number;
+	// Pick value from estValues before zscore
+	rawValue?: number;
+	manyPicksMultiplier?: number;
+};
+
+type Asset = AssetReport &
+	(
+		| {
+				type: "player";
+				value: number;
+				contractValue: number;
+				injury: PlayerInjury;
+				age: number;
+				justDrafted: boolean;
+		  }
+		| {
+				type: "pick";
+				value: number;
+				contractValue: number;
+				injury: PlayerInjury;
+				age: number;
+				dp: DraftPick;
+				draftPick: number;
+				draftYear: number;
+		  }
+	);
+
+export type AssetDetail = AssetReport & {
+	type: "player" | "pick";
+	dpid?: number;
+	estPick?: number;
+	draftYear?: number;
+	age: number;
+	justDrafted: boolean;
+	// Value after the fudge factor and the many-picks multiplier, before strategy
+	value: number;
+	contractValue: number;
+	afterStrategy: number;
+	injuryAdjustment: number;
+	afterNegativeScaling: number;
+	contractsFactor: number;
+	finalValue: number;
+	contribution: number;
+};
+
+export type ValueChangeBreakdown = {
+	strategy: string;
+	add: AssetDetail[];
+	remove: AssetDetail[];
+	sumAdd: number;
+	sumRemove: number;
+	dv: number;
+	estPicks: Record<number, number>;
+	futureEstPicks: Record<number, number>;
+};
 
 let prevValueChangeKey: number | undefined;
 type PickEstimates = {
@@ -185,6 +226,8 @@ const getPlayers = async ({
 		}
 
 		remove.push({
+			pid: p.pid,
+			zValue: value,
 			type: "player",
 			value: fudgedValue,
 			contractValue: getContractValue(p.contract, value),
@@ -201,6 +244,8 @@ const getPlayers = async ({
 			const value = zscore(p.value);
 
 			add.push({
+				pid: p.pid,
+				zValue: value,
 				type: "player",
 				value,
 				contractValue: getContractValue(p.contract, value),
@@ -330,7 +375,9 @@ const getPickInfo = async (
 		value = 20;
 	}
 
+	const rawValue = value;
 	value = zscore(value);
+	const zValue = value;
 
 	let contractValue = getContractValue(
 		{
@@ -348,6 +395,8 @@ const getPickInfo = async (
 	value -= estPick * 1e-10;
 
 	return {
+		rawValue,
+		zValue,
 		type: "pick",
 		value,
 		contractValue,
@@ -449,6 +498,7 @@ const getPicks = async ({
 				for (const pick of firstRoundPicks) {
 					if (pick.value > 0) {
 						pick.value *= 1 + numBeyond2 / SPORT_FACTOR;
+						pick.manyPicksMultiplier = 1 + numBeyond2 / SPORT_FACTOR;
 					}
 				}
 			}
@@ -459,6 +509,8 @@ const getPicks = async ({
 				for (const pick of otherPicks) {
 					if (pick.value > 0) {
 						pick.value *= 1 + numBeyond2Other / (SPORT_FACTOR * pick.dp.round);
+						pick.manyPicksMultiplier =
+							1 + numBeyond2Other / (SPORT_FACTOR * pick.dp.round);
 					}
 				}
 			}
@@ -478,6 +530,7 @@ const sumValues = (
 	strategy: string,
 	tid: number,
 	includeInjuries = false,
+	details?: AssetDetail[],
 ) => {
 	if (players.length === 0) {
 		return 0;
@@ -533,6 +586,8 @@ const sumValues = (
 			}
 		}
 
+		const afterStrategy = playerValue;
+
 		// Normalize for injuries
 		if (includeInjuries && tid !== g.get("userTid")) {
 			if (p.injury.gamesRemaining > 75) {
@@ -542,10 +597,14 @@ const sumValues = (
 			}
 		}
 
+		const injuryAdjustment = playerValue - afterStrategy;
+
 		// Really bad players will just get no PT, but don't to count them as 0 because then AI thinks it can't find a trade
 		if (playerValue < 0) {
 			playerValue /= 20;
 		}
+
+		const afterNegativeScaling = playerValue;
 
 		const contractsFactor = strategy === "rebuilding" ? 2 : 0.5;
 		playerValue += contractsFactor * p.contractValue;
@@ -555,7 +614,31 @@ const sumValues = (
 			playerValue = Math.max(0, playerValue);
 		}
 
-		return memo + (playerValue > 1 ? playerValue ** EXPONENT : playerValue);
+		const contribution =
+			playerValue > 1 ? playerValue ** EXPONENT : playerValue;
+
+		details?.push({
+			pid: p.pid,
+			zValue: p.zValue,
+			rawValue: p.rawValue,
+			manyPicksMultiplier: p.manyPicksMultiplier,
+			type: p.type,
+			dpid: p.type === "pick" ? p.dp.dpid : undefined,
+			estPick: p.type === "pick" ? p.draftPick : undefined,
+			draftYear: p.type === "pick" ? p.draftYear : undefined,
+			age: p.age,
+			justDrafted: p.type === "player" && p.justDrafted,
+			value: p.value,
+			contractValue: p.contractValue,
+			afterStrategy,
+			injuryAdjustment,
+			afterNegativeScaling,
+			contractsFactor,
+			finalValue: playerValue,
+			contribution,
+		});
+
+		return memo + contribution;
 	}, 0);
 };
 
@@ -659,6 +742,8 @@ const valueChange = async (
 	dpidsRemove: number[],
 	valueChangeKey: number = Math.random(),
 	tradingPartnerTid?: number,
+	// Filled in for the trade evaluation API; the return value is unchanged
+	breakdown?: ValueChangeBreakdown,
 ): Promise<number> => {
 	await player.updateOvrMeanStd();
 
@@ -698,12 +783,27 @@ const valueChange = async (
 	});
 
 	// console.log("ADD");
-	const valuesAdd = sumValues(add, strategy, tid, true);
+	const valuesAdd = sumValues(add, strategy, tid, true, breakdown?.add);
 	// console.log("Total", valuesAdd);
 
 	// console.log("REMOVE");
-	const valuesRemove = sumValues(remove, strategy, tid);
+	const valuesRemove = sumValues(
+		remove,
+		strategy,
+		tid,
+		false,
+		breakdown?.remove,
+	);
 	// console.log("Total", valuesRemove);
+
+	if (breakdown) {
+		breakdown.strategy = strategy;
+		breakdown.sumAdd = valuesAdd;
+		breakdown.sumRemove = valuesRemove;
+		breakdown.dv = valuesAdd - valuesRemove;
+		breakdown.estPicks = cache.estPicks;
+		breakdown.futureEstPicks = cache.future.estPicks;
+	}
 
 	return valuesAdd - valuesRemove;
 };

@@ -108,3 +108,26 @@ Invoke-RestMethod -Method Post http://127.0.0.1:3001/sim/untilRegularSeason
 ```
 
 Each call blocks until the action completes before returning.
+
+### Trade evaluation API (read-only)
+
+Spec: `TRADE-EVAL-API-SPEC.md`. Code: `src/worker/api/tradeEval.ts`, routes in `startApiServer` (`electron/main.js`). Every endpoint only reads: no trade, saved-trade, trading-block or event writes, and no flush. Errors come back as `{ error, status }`: 400 for bad ids, 404 for unknown ids, 409 while a sim, phase change or draft is running, 503 when no league is open. Money is in thousands.
+
+| Method | Path                                      | Returns                                                                                                                          |
+| ------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/trade/context`                          | League settings, ovr mean/std, and each team's payroll, cap space, strategy, team ovr and estimated pick                         |
+| POST   | `/trade/evaluate`                         | `{ sides: [{tid, pids, dpids}, {tid, pids, dpids}] }` -> the AI's accept/reject and why, per-asset values, cap, roster, team ovr |
+| POST   | `/trade/evaluate/batch`                   | `{ trades: [...], compact? }`, up to 500, one valuation key                                                                      |
+| POST   | `/trade/makeItWork`                       | "What would make this work?" without touching the open negotiation; `excludePids`, `maxIncomingSalary`                           |
+| POST   | `/trade/blockOffers`                      | Trading-block offers for `{ pids, dpids, lookingFor }`, each evaluated, cap-illegal ones flagged                                 |
+| POST   | `/trade/search`                           | Cheapest accepted user packages for a target (`aiTid`, `aiPids`, `userCandidatePids`, `maxUserAssets`)                           |
+| GET    | `/player/:pid/tradeValue?perspectiveTid=` | One player's value to a team (default: one contending and one rebuilding AI team)                                                |
+| GET    | `/draftPick/:dpid/value?perspectiveTid=`  | One pick's estimated slot, raw and z-scored value, contract value                                                                |
+| GET    | `/team/:tid/capStatus`                    | Payroll, cap space, released salary, roster size, strategy, team ovr, estimated pick                                             |
+
+In PowerShell use `curl.exe` (plain `curl` is `Invoke-WebRequest`) or `irm`:
+
+```powershell
+curl.exe -s http://127.0.0.1:3001/trade/context
+curl.exe -s -X POST http://127.0.0.1:3001/trade/evaluate -H "Content-Type: application/json" -d '{\"sides\":[{\"tid\":16,\"pids\":[4332]},{\"tid\":0,\"pids\":[2810]}]}'
+```

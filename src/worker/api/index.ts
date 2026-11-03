@@ -19,6 +19,7 @@ import leagueFileUpload, {
 	parseJSON,
 } from "./leagueFileUpload.ts";
 import processInputs from "./processInputs.ts";
+import tradeEval from "./tradeEval.ts";
 import {
 	allStar,
 	contractNegotiation,
@@ -5158,6 +5159,8 @@ export default {
 	playMenu,
 	toolsMenu,
 	main: {
+		// Read-only trade evaluation API for the Electron server (tradeEval.ts)
+		...tradeEval,
 		acceptContractNegotiation,
 		addTeam,
 		advancedPlayerSearch,

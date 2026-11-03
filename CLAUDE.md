@@ -176,6 +176,10 @@ SIM_HARNESS=1 SIM_GAMES=200 SPORT=football npx vitest run --project football src
 
 - Minor async change (retained from sidecar era)
 
+### `src/worker/core/team/valueChange.ts` + `src/worker/api/tradeEval.ts` (new)
+
+- Read-only trade evaluation API (`TRADE-EVAL-API-SPEC.md`, endpoints in `ELECTRON.md`). `valueChange` gained an optional last `breakdown` argument that records each asset's numbers; the valuation itself is unchanged (`tradeEval.test.ts` checks it). On an upstream merge of `valueChange.ts`, keep the `AssetReport` fields and the `details?.push` in `sumValues`.
+
 ### `src/common/processPlayerStats.football.ts` + `src/common/fantasyPoints.football.ts` (new)
 
 - **To change a fantasy scoring weight, edit `FANTASY_POINTS` in `src/common/fantasyPoints.football.ts`** -- never the formula itself. Each constant notes its default (upstream) value.

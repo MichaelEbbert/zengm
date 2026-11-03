@@ -1166,6 +1166,67 @@ function startApiServer(win) {
 				return;
 			}
 
+			// Read-only trade evaluation API (src/worker/api/tradeEval.ts,
+			// TRADE-EVAL-API-SPEC.md). Worker errors come back as
+			// { error, status }; busy is 409.
+			const tradeEvalCall = async (name, param) => {
+				const result = await callWorker(win, "main", name, param);
+				if (result && typeof result === "object" && "error" in result) {
+					send(result.status ?? 400, result);
+				} else {
+					send(200, result ?? null);
+				}
+			};
+			const TRADE_EVAL_POST = {
+				"POST /trade/evaluate": "tradeEvalEvaluate",
+				"POST /trade/evaluate/batch": "tradeEvalBatch",
+				"POST /trade/makeItWork": "tradeEvalMakeItWork",
+				"POST /trade/blockOffers": "tradeEvalBlockOffers",
+				"POST /trade/search": "tradeEvalSearch",
+			};
+			if (TRADE_EVAL_POST[key]) {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				await new Promise((resolve) => req.on("end", resolve));
+				let param;
+				try {
+					param = JSON.parse(body || "{}");
+				} catch {
+					send(400, { error: "body must be JSON" });
+					return;
+				}
+				await tradeEvalCall(TRADE_EVAL_POST[key], param);
+				return;
+			}
+			if (key === "GET /trade/context") {
+				await tradeEvalCall("tradeEvalContext", {});
+				return;
+			}
+			const perspective = url.searchParams.get("perspectiveTid");
+			const perspectiveTid =
+				perspective === null ? undefined : Number(perspective);
+			let m = key.match(/^GET \/player\/(\d+)\/tradeValue$/);
+			if (m) {
+				await tradeEvalCall("tradeEvalPlayerValue", {
+					pid: Number(m[1]),
+					perspectiveTid,
+				});
+				return;
+			}
+			m = key.match(/^GET \/draftPick\/(\d+)\/value$/);
+			if (m) {
+				await tradeEvalCall("tradeEvalPickValue", {
+					dpid: Number(m[1]),
+					perspectiveTid,
+				});
+				return;
+			}
+			m = key.match(/^GET \/team\/(\d+)\/capStatus$/);
+			if (m) {
+				await tradeEvalCall("tradeEvalCapStatus", { tid: Number(m[1]) });
+				return;
+			}
+
 			send(404, { error: "Not found" });
 		} catch (err) {
 			send(500, { error: String(err) });
