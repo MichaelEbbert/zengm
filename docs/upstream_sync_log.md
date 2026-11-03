@@ -144,9 +144,9 @@ Applied directly to `master`, one commit per row. Rollback point: tag `pre-upstr
 
 The gap histogram matches within 0.3 points per bucket. The late-points drop is the intended effect of going down and better kneeling.
 
-### Not yet done
+### Electron test -- passed 2026-11-02, pushed
 
-- Sim a season in Electron. The view lock, overtime and the scoring summary have not been exercised in the real app.
+The user simmed TEST_LEAGUE_1 in Electron through the 2032 playoffs, the draft and the after-draft phase change, then 4 weeks of the next season after a restart. `logs/worker.log` showed no errors: every one of 328 games was saved (0.3-0.4s median from sim start to saved), and the draft's phase change finished in 0.1s. One live touchdown showed the clock change working (snap 4:12, kickoff 4:07). The user reported the test passed.
 
 ## Sync 1 follow-up — 2026-09-09, the `totTD` crash
 

@@ -62,6 +62,15 @@ Player fantasy points now use our own scoring schedule (pass yds 1 per 10, pass 
 
 ---
 
+## Resume Checkpoint -- Before the Next Daily League Season (2026-10-31)
+
+**Do both of these, in order, before the user starts the next Daily League season.**
+
+1. **DONE 2026-11-02: upstream sync 2 passed the Electron test and is pushed.** Rollback tag: `pre-upstream-sync-2-daily-2003`. Record: `docs/upstream_sync_log.md` ("Sync 2").
+2. **Try the enhancements in `FUTURE_PLANS.md`, "Recommended Order":** start at the first item not done. Items 1, 2, 7, 8 and 9 are done (only 8 changed the game: the 0.40-0.45 field goal window now uses the field-position table); 4th-down trial results are in `docs/fourth_down_when_leading.md`. Next: item 3, desperation mode research, then 4 (rushing boost) and 5 (Trade Evaluation API). **Each change is a trial, not a commitment:** build it, test it with the before/after sims in its `FUTURE_PLANS.md` section, show the user the results, and keep it only if the user likes it. The sim harness now has `simFromState({ playToEnd, forceFirstCall })` and `FOURTH_DOWN_TUNING` switches settable through `SIM_TUNE`.
+
+---
+
 ## Future Plans
 
 See `FUTURE_PLANS.md` for planned and in-progress work items (DB conversion history, preseason games, upstream sync, desperation mode tuning, etc.). Read it if the user starts talking about between-season changes, upcoming features, or "what's next."
