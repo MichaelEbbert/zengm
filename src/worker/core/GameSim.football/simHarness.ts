@@ -3,7 +3,7 @@
 // simHarness.test.ts, which only runs its experiment when SIM_HARNESS is set.
 
 import GameSim from "./index.ts";
-import Play from "./Play.ts";
+import Play, { SCRIMMAGE_KICKOFF } from "./Play.ts";
 import type { DeadTimeCase } from "./playClock.ts";
 import loadTeams from "../game/loadTeams.ts";
 import ovr from "../player/ovr.football.ts";
@@ -858,6 +858,11 @@ export type StateResult = {
 	// How the offense's possession from the given state ended: touchdown, field
 	// goal, or neither (turnover, punt, missed kick, clock ran out)
 	openingDrive: { td: number; fg: number; none: number };
+	// Share of trials where the offense still had the ball on 1st down, or had
+	// scored, after the first play
+	converted: number;
+	// Field goal make chance from the given state
+	fgProb: number;
 	// The state as the engine saw it on the first snap of the first trial
 	firstSnap: GameState;
 };
@@ -903,17 +908,27 @@ const validateState = (state: GameState) => {
  * Put the game in `state`, sim until the period ends, and repeat n times. In
  * the 4th quarter that's the end of regulation, so win/tie/loss is the real
  * result; a tie is left as a tie rather than played out in overtime. Earlier
- * quarters stop when that quarter's clock runs out.
+ * quarters stop when that quarter's clock runs out, unless playToEnd plays on
+ * through the end of regulation.
+ *
+ * With playToEnd, each replay still starts with fresh legs and an empty box
+ * score: no fatigue from earlier quarters, and the coach's YPC/YPA ratio starts
+ * over at the given state.
  */
 export const simFromState = async ({
 	n,
 	coach,
 	state,
+	playToEnd = false,
+	forceFirstCall,
 }: {
 	n: number;
 	// true/false for both teams, or [offense, defense]
 	coach: CoachSetting;
 	state: GameState;
+	playToEnd?: boolean;
+	// Make this the first snap's call, ignoring what the sim would have chosen
+	forceFirstCall?: string;
 }): Promise<StateResult> => {
 	validateState(state);
 
@@ -924,6 +939,8 @@ export const simFromState = async ({
 	let ptsFor = 0;
 	let ptsAgainst = 0;
 	const openingDrive = { td: 0, fg: 0, none: 0 };
+	let converted = 0;
+	let fgProb = 0;
 	let firstSnap: GameState | undefined;
 
 	for (let i = 0; i < n; i++) {
@@ -957,6 +974,7 @@ export const simFromState = async ({
 		game.currentPlay = new Play(game);
 
 		if (i === 0) {
+			fgProb = game.probMadeFieldGoal();
 			firstSnap = {
 				down: game.down,
 				toGo: game.toGo,
@@ -971,31 +989,68 @@ export const simFromState = async ({
 		let firstCall: string | undefined;
 		const getPlayType = game.getPlayType.bind(game);
 		game.getPlayType = async (...args) => {
-			const playType = await getPlayType(...args);
+			const playType =
+				firstCall === undefined && forceFirstCall !== undefined
+					? forceFirstCall
+					: await getPlayType(...args);
 			firstCall ??= playType;
 			return playType;
 		};
 
 		// Same loop the engine uses to finish a period
 		let drive: keyof typeof openingDrive | undefined;
-		while (
-			game.clock > 0 ||
-			game.awaitingAfterTouchdown ||
-			game.playUntimedPossession
-		) {
-			await game.simPlay();
+		let plays = 0;
+		const simPeriod = async () => {
+			while (
+				game.clock > 0 ||
+				game.awaitingAfterTouchdown ||
+				game.playUntimedPossession
+			) {
+				await game.simPlay();
 
-			if (drive === undefined) {
-				const scored = game.team[0].stat.pts - startPts[0];
-				if (scored >= 6) {
-					drive = "td";
-				} else if (scored >= 3) {
-					drive = "fg";
-				} else if (game.o !== 0) {
-					drive = "none";
+				plays += 1;
+				if (
+					plays === 1 &&
+					(game.team[0].stat.pts > startPts[0] ||
+						(game.o === 0 && game.down === 1))
+				) {
+					converted += 1;
+				}
+
+				if (drive === undefined) {
+					const scored = game.team[0].stat.pts - startPts[0];
+					if (scored >= 6) {
+						drive = "td";
+					} else if (scored >= 3) {
+						drive = "fg";
+					} else if (game.o !== 0) {
+						drive = "none";
+					}
 				}
 			}
+		};
+
+		await simPeriod();
+
+		// Same steps as simRegulation between periods
+		if (playToEnd) {
+			for (let quarter = state.quarter; quarter < game.numPeriods; quarter++) {
+				if (game.isFirstPeriodAfterHalftime(quarter + 1)) {
+					game.timeouts = [3, 3];
+					game.twoMinuteWarningHappened = false;
+					game.d = game.lastHalfAwaitingKickoff === 0 ? 1 : 0;
+					game.o = game.lastHalfAwaitingKickoff;
+					game.awaitingKickoff = game.d;
+					game.lastHalfAwaitingKickoff = game.d;
+					game.scrimmage = SCRIMMAGE_KICKOFF;
+				}
+				game.team[0].stat.ptsQtrs.push(0);
+				game.team[1].stat.ptsQtrs.push(0);
+				game.clock = g.get("quarterLength");
+				await simPeriod();
+			}
 		}
+
 		openingDrive[drive ?? "none"] += 1;
 
 		calls[firstCall!] = (calls[firstCall!] ?? 0) + 1;
@@ -1025,6 +1080,8 @@ export const simFromState = async ({
 			fg: openingDrive.fg / n,
 			none: openingDrive.none / n,
 		},
+		converted: converted / n,
+		fgProb,
 		firstSnap: firstSnap!,
 	};
 };

@@ -2,6 +2,7 @@ import { assert, describe, expect, test } from "vitest";
 import { readFileSync, writeFileSync } from "node:fs";
 import { idb } from "../../db/index.ts";
 import { team } from "../index.ts";
+import { FOURTH_DOWN_TUNING } from "./coachDecision.ts";
 import {
 	BIG_PLAY_YARDS,
 	DEAD_TIME,
@@ -302,6 +303,48 @@ describe("simFromState", () => {
 		});
 		assert.deepStrictEqual(result.calls, { fieldGoalLate: 20 });
 	});
+
+	test("forceFirstCall replaces only the first snap's call", async () => {
+		await genHarnessTeams();
+		const state = {
+			down: 4,
+			toGo: 2,
+			scrimmage: 53,
+			clock: 12,
+			quarter: 4,
+			diff: 10,
+		};
+		const result = await simFromState({
+			n: 20,
+			coach: true,
+			state,
+			forceFirstCall: "punt",
+		});
+		assert.deepStrictEqual(result.calls, { punt: 20 });
+		assert.isBelow(result.converted, 0.5);
+	}, 60_000);
+
+	test("playToEnd plays past the end of the quarter", async () => {
+		await genHarnessTeams();
+		const state = {
+			down: 1,
+			toGo: 10,
+			scrimmage: 25,
+			clock: 0.1,
+			quarter: 2,
+			diff: 0,
+		};
+		const total = (r: StateResult) => r.ptsFor + r.ptsAgainst;
+		const oneQuarter = await simFromState({ n: 30, coach: true, state });
+		const toEnd = await simFromState({
+			n: 30,
+			coach: true,
+			state,
+			playToEnd: true,
+		});
+		assert.isBelow(total(oneQuarter), 2);
+		assert.isAbove(total(toEnd), 10);
+	}, 60_000);
 
 	// One snap can swing at most 8 points (TD + 2), so a 10-point margin decides it
 	test("leading by 10 with one snap left never loses", async () => {
@@ -1103,6 +1146,7 @@ const applyTuning = () => {
 	const tables: Record<string, Record<string, unknown>> = {
 		BIG_PLAY_YARDS,
 		DEAD_TIME,
+		FOURTH_DOWN_TUNING,
 		HURRY_UP_OUT_OF_BOUNDS_RATE,
 		HURRY_UP_PLAY_LENGTH,
 		LATE_WINDOW_MINUTES,
@@ -1144,13 +1188,22 @@ test.skipIf(!process.env.SIM_HARNESS)(
 		const clock = clockReport(records);
 		const game = gameReport(records);
 
+		// Team 0 is LAC
+		const lac = {
+			win: records.filter((r) => r.pts[0] > r.pts[1]).length,
+			tie: records.filter((r) => r.pts[0] === r.pts[1]).length,
+			loss: records.filter((r) => r.pts[0] < r.pts[1]).length,
+			ptsFor: records.reduce((sum, r) => sum + r.pts[0], 0) / n,
+			ptsAgainst: records.reduce((sum, r) => sum + r.pts[1], 0) / n,
+		};
+
 		process.stdout.write(
 			`\n${formatClockReport(clock)}\n\n${formatGameReport(game)}\n\n`,
 		);
 		if (process.env.SIM_OUT) {
 			writeFileSync(
 				process.env.SIM_OUT,
-				JSON.stringify({ clock, game }, null, 2),
+				JSON.stringify({ clock, game, lac }, null, 2),
 			);
 		}
 	},
@@ -1203,6 +1256,262 @@ test.skipIf(!process.env.SIM_HARNESS)(
 		}
 	},
 	60 * 60 * 1000,
+);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_TRIALS=5000 SIM_SHARD=0/12 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "fourth down grid"
+// docs/fourth_down_when_leading.md: 4th and short near midfield with the leading
+// team on offense, each team taking a turn in the lead, replayed to the end of
+// regulation under today's logic and with the first call forced to a punt.
+// SIM_SHARD=i/n runs every nth cell, so n processes can split the grid.
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: fourth down grid, leading team has the ball",
+	async () => {
+		const n = Number(process.env.SIM_TRIALS ?? 5000);
+		const [shard, shards] = (process.env.SIM_SHARD ?? "0/1")
+			.split("/")
+			.map(Number) as [number, number];
+		applyTuning();
+		const { LAC, BUF } = goinFast1921();
+
+		const spots = [
+			{ name: "4th and 1, own 45", toGo: 1, scrimmage: 45 },
+			{ name: "4th and 1, opp 47", toGo: 1, scrimmage: 53 },
+			{ name: "4th and 2, opp 47", toGo: 2, scrimmage: 53 },
+			{ name: "4th and 3, opp 42", toGo: 3, scrimmage: 58 },
+		];
+
+		const results: Record<string, StateResult> = {};
+		let cell = 0;
+		for (const [offense, defense] of [
+			[LAC, BUF],
+			[BUF, LAC],
+		] as const) {
+			await genHarnessTeams({ rosters: [offense, defense] });
+			for (const spot of spots) {
+				for (const diff of [2, 6, 10, 17]) {
+					for (const quarter of [2, 3, 4]) {
+						for (const arm of ["current", "punt"] as const) {
+							cell += 1;
+							if (cell % shards !== shard) {
+								continue;
+							}
+							const label = `${offense.abbrev} | ${spot.name} | up ${diff} | Q${quarter} | ${arm}`;
+							results[label] = await simFromState({
+								n,
+								coach: true,
+								state: {
+									down: 4,
+									toGo: spot.toGo,
+									scrimmage: spot.scrimmage,
+									clock: 12,
+									quarter,
+									diff,
+								},
+								playToEnd: true,
+								forceFirstCall: arm === "punt" ? "punt" : undefined,
+							});
+						}
+					}
+				}
+			}
+		}
+
+		process.stdout.write(`\n${formatStateResults(results)}\n\n`);
+		if (process.env.SIM_OUT) {
+			writeFileSync(process.env.SIM_OUT, JSON.stringify(results, null, 2));
+		}
+	},
+	6 * 60 * 60 * 1000,
+);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_TRIALS=5000 SIM_SHARD=0/14 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "fourth down trials"
+// docs/fourth_down_when_leading.md, each team taking a turn on offense:
+// - protection: go vs today's call on 4th and short, under 8:00 when up 4+
+// - fgBar: field goal vs punt on 4th and 8 by make chance, when up 4+ late
+// - window: run vs punt on 4th and 3 at a make chance of 0.40-0.45
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: fourth down trials, protection and field goals",
+	async () => {
+		const n = Number(process.env.SIM_TRIALS ?? 5000);
+		const [shard, shards] = (process.env.SIM_SHARD ?? "0/1")
+			.split("/")
+			.map(Number) as [number, number];
+		applyTuning();
+		const { LAC, BUF } = goinFast1921();
+
+		const results: Record<string, StateResult> = {};
+		let cell = 0;
+		const run = async (
+			label: string,
+			state: Omit<Parameters<typeof simFromState>[0]["state"], "down">,
+			forceFirstCall?: string,
+		) => {
+			cell += 1;
+			if (cell % shards !== shard) {
+				return;
+			}
+			results[label] = await simFromState({
+				n,
+				coach: true,
+				state: { down: 4, ...state },
+				playToEnd: true,
+				forceFirstCall,
+			});
+		};
+
+		for (const [offense, defense] of [
+			[LAC, BUF],
+			[BUF, LAC],
+		] as const) {
+			await genHarnessTeams({ rosters: [offense, defense] });
+			const team = offense.abbrev;
+
+			for (const spot of [
+				{ name: "4th and 1, own 45", toGo: 1, scrimmage: 45 },
+				{ name: "4th and 1, opp 47", toGo: 1, scrimmage: 53 },
+				{ name: "4th and 2, opp 47", toGo: 2, scrimmage: 53 },
+				{ name: "4th and 3, opp 42", toGo: 3, scrimmage: 58 },
+			]) {
+				for (const diff of [4, 6, 10]) {
+					for (const clock of [7, 4]) {
+						for (const arm of ["current", "run"]) {
+							await run(
+								`protection | ${team} | ${spot.name} | up ${diff} | ${clock}:00 | ${arm}`,
+								{
+									toGo: spot.toGo,
+									scrimmage: spot.scrimmage,
+									clock,
+									quarter: 4,
+									diff,
+								},
+								arm === "run" ? "run" : undefined,
+							);
+						}
+					}
+				}
+			}
+
+			for (const scrimmage of [62, 65, 68, 70]) {
+				for (const diff of [4, 6, 8]) {
+					for (const clock of [6, 3]) {
+						for (const arm of ["fieldGoal", "punt"]) {
+							await run(
+								`fgBar | ${team} | opp ${100 - scrimmage} | up ${diff} | ${clock}:00 | ${arm}`,
+								{ toGo: 8, scrimmage, clock, quarter: 4, diff },
+								arm,
+							);
+						}
+					}
+				}
+			}
+
+			// The yard lines where this kicker's make chance lands in the window
+			const windowLines: number[] = [];
+			for (let scrimmage = 56; scrimmage <= 75; scrimmage++) {
+				const { fgProb } = await simFromState({
+					n: 1,
+					coach: true,
+					state: {
+						down: 4,
+						toGo: 3,
+						scrimmage,
+						clock: 0.01,
+						quarter: 1,
+						diff: 0,
+					},
+				});
+				if (fgProb >= 0.4 && fgProb <= 0.45) {
+					windowLines.push(scrimmage);
+				}
+			}
+			for (const scrimmage of windowLines) {
+				for (const diff of [-3, 0, 3]) {
+					for (const quarter of [2, 3]) {
+						for (const arm of ["punt", "run"]) {
+							await run(
+								`window | ${team} | opp ${100 - scrimmage} | diff ${diff} | Q${quarter} | ${arm}`,
+								{ toGo: 3, scrimmage, clock: 12, quarter, diff },
+								arm,
+							);
+						}
+					}
+				}
+			}
+		}
+
+		process.stdout.write(
+			`\ncells: ${cell}\n${formatStateResults(results)}\n\n`,
+		);
+		if (process.env.SIM_OUT) {
+			writeFileSync(process.env.SIM_OUT, JSON.stringify(results, null, 2));
+		}
+	},
+	6 * 60 * 60 * 1000,
+);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_TRIALS=5000 SIM_SHARD=0/6 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "protection late"
+// docs/fourth_down_when_leading.md: going for it vs today's call in the last two
+// minutes when up 4+, each team taking a turn in the lead.
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: protection late, going for it vs today's call",
+	async () => {
+		const n = Number(process.env.SIM_TRIALS ?? 5000);
+		const [shard, shards] = (process.env.SIM_SHARD ?? "0/1")
+			.split("/")
+			.map(Number) as [number, number];
+		applyTuning();
+		const { LAC, BUF } = goinFast1921();
+
+		const results: Record<string, StateResult> = {};
+		let cell = 0;
+		for (const [offense, defense] of [
+			[LAC, BUF],
+			[BUF, LAC],
+		] as const) {
+			await genHarnessTeams({ rosters: [offense, defense] });
+			for (const spot of [
+				{ name: "4th and 1, own 45", toGo: 1, scrimmage: 45 },
+				{ name: "4th and 1, opp 47", toGo: 1, scrimmage: 53 },
+				{ name: "4th and 2, opp 47", toGo: 2, scrimmage: 53 },
+				{ name: "4th and 3, opp 42", toGo: 3, scrimmage: 58 },
+			]) {
+				for (const diff of [4, 6, 10]) {
+					for (const clock of [2, 1]) {
+						for (const arm of ["current", "run"]) {
+							cell += 1;
+							if (cell % shards !== shard) {
+								continue;
+							}
+							const label = `${offense.abbrev} | ${spot.name} | up ${diff} | ${clock}:00 | ${arm}`;
+							results[label] = await simFromState({
+								n,
+								coach: true,
+								state: {
+									down: 4,
+									toGo: spot.toGo,
+									scrimmage: spot.scrimmage,
+									clock,
+									quarter: 4,
+									diff,
+								},
+								playToEnd: true,
+								forceFirstCall: arm === "run" ? "run" : undefined,
+							});
+						}
+					}
+				}
+			}
+		}
+
+		process.stdout.write(`\n${formatStateResults(results)}\n\n`);
+		if (process.env.SIM_OUT) {
+			writeFileSync(process.env.SIM_OUT, JSON.stringify(results, null, 2));
+		}
+	},
+	6 * 60 * 60 * 1000,
 );
 
 // Experiment runner, skipped unless SIM_HARNESS is set:

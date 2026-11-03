@@ -10,6 +10,26 @@ const FG_MIN_PROBABILITY = 0.4;
 const EARLY_FIRST_DOWN_PASS_RATE = 0.25;
 const EARLY_FIRST_DOWN_ALWAYS_RUN_TO_GO = 5;
 
+// Switches for the 4th-down trials in docs/fourth_down_when_leading.md, set per
+// run with SIM_TUNE. Every default keeps the original behavior except
+// fgWindowUsesTable, adopted 2026-11-02 (FUTURE_PLANS.md item 8).
+export const FOURTH_DOWN_TUNING = {
+	// Punt instead of going for it near midfield when leading by at least this
+	// much, from leadPuntFromQuarter on. null turns the rule off.
+	leadPuntMinLead: null as number | null,
+	leadPuntFromQuarter: 1,
+	leadPuntMinScrimmage: 40,
+	leadPuntMaxScrimmage: 55,
+	// In protection mode, kick at this make chance or better, otherwise punt
+	protectionFgMinProbability: FG_MIN_PROBABILITY,
+	// In protection mode, use the field-position table when not kicking, instead
+	// of always punting
+	protectionUsesTable: false,
+	// At a make chance of 0.40-0.45 on 4th and 3+, use the field-position table
+	// instead of always punting. false restores the old behavior.
+	fgWindowUsesTable: true,
+};
+
 export function determineMode(
 	scoreDiff: number,
 	quarter: number,
@@ -112,11 +132,25 @@ export function fourthDownDecision(
 	const go = () => goPlay(toGo, passCompletions, passAttempts);
 	const puntOrGo = () => (canPunt ? "punt" : go()) as "run" | "pass" | "punt";
 	const fgOrPunt = () =>
-		canKickFieldGoal && fgProbability >= FG_MIN_PROBABILITY
+		canKickFieldGoal &&
+		fgProbability >= FOURTH_DOWN_TUNING.protectionFgMinProbability
 			? ("fieldGoal" as const)
 			: "punt";
 
-	if (mode === "protection") return fgOrPunt();
+	if (mode === "protection") {
+		const call = fgOrPunt();
+		if (call === "fieldGoal" || !FOURTH_DOWN_TUNING.protectionUsesTable) {
+			return call;
+		}
+		return normalDecision(
+			toGo,
+			scrimmage,
+			canKickFieldGoal,
+			fgProbability,
+			go,
+			puntOrGo,
+		);
+	}
 
 	if (mode === "desperation") {
 		// A field goal ties or wins when down 3 or less, so take it when in range
@@ -134,6 +168,7 @@ export function fourthDownDecision(
 		);
 	}
 
+	const { leadPuntMinLead, leadPuntFromQuarter } = FOURTH_DOWN_TUNING;
 	return normalDecision(
 		toGo,
 		scrimmage,
@@ -141,6 +176,9 @@ export function fourthDownDecision(
 		fgProbability,
 		go,
 		puntOrGo,
+		leadPuntMinLead !== null &&
+			scoreDiff >= leadPuntMinLead &&
+			quarter >= leadPuntFromQuarter,
 	);
 }
 
@@ -151,10 +189,19 @@ function normalDecision(
 	fgProbability: number,
 	go: () => "run" | "pass",
 	puntOrGo: () => "run" | "pass" | "punt",
+	puntWhenLeading = false,
 ): "run" | "pass" | "fieldGoal" | "punt" {
 	if (canKickFieldGoal && fgProbability >= FG_MIN_PROBABILITY) {
 		if (fgProbability > FG_THRESHOLD) return "fieldGoal";
 		if (toGo <= 2) return go();
+		if (!FOURTH_DOWN_TUNING.fgWindowUsesTable) return puntOrGo();
+	}
+
+	if (
+		puntWhenLeading &&
+		scrimmage >= FOURTH_DOWN_TUNING.leadPuntMinScrimmage &&
+		scrimmage <= FOURTH_DOWN_TUNING.leadPuntMaxScrimmage
+	) {
 		return puntOrGo();
 	}
 

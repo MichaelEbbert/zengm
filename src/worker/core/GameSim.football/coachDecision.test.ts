@@ -1,5 +1,6 @@
 import { afterEach, assert, describe, test, vi } from "vitest";
 import {
+	FOURTH_DOWN_TUNING,
 	determineMode,
 	fourthDownDecision,
 	playDecision,
@@ -120,5 +121,125 @@ describe("fourthDownDecision, desperation mode", () => {
 
 	test("down 4+ late: a field goal doesn't tie, so go for it", () => {
 		assert.strictEqual(fourthAndFour(-4, 1.3), "run");
+	});
+});
+
+describe("fourthDownDecision, FOURTH_DOWN_TUNING", () => {
+	const defaults = { ...FOURTH_DOWN_TUNING };
+
+	afterEach(() => {
+		Object.assign(FOURTH_DOWN_TUNING, defaults);
+	});
+
+	const decide = ({
+		toGo = 2,
+		scrimmage = 53,
+		fgProbability = 0.1,
+		quarter = 3,
+		scoreDiff = 10,
+		clock = 12,
+		mode = "normal",
+	}: {
+		toGo?: number;
+		scrimmage?: number;
+		fgProbability?: number;
+		quarter?: number;
+		scoreDiff?: number;
+		clock?: number;
+		mode?: "normal" | "desperation" | "protection";
+	}) =>
+		fourthDownDecision(
+			toGo,
+			scrimmage,
+			true,
+			true,
+			fgProbability,
+			quarter,
+			scoreDiff,
+			clock,
+			mode,
+			10,
+			20,
+		);
+
+	test("defaults keep the original calls, except in the 0.40-0.45 window", () => {
+		assert.strictEqual(decide({}), "run");
+		assert.strictEqual(decide({ toGo: 1, scrimmage: 45 }), "run");
+		assert.strictEqual(decide({ toGo: 3, scrimmage: 58 }), "run");
+		assert.strictEqual(
+			decide({ toGo: 3, scrimmage: 58, fgProbability: 0.42 }),
+			"run",
+		);
+		assert.strictEqual(
+			decide({ toGo: 4, scrimmage: 58, fgProbability: 0.42 }),
+			"punt",
+		);
+		assert.strictEqual(
+			decide({ mode: "protection", fgProbability: 0.42 }),
+			"fieldGoal",
+		);
+	});
+
+	test("the lead rule punts only at the lead, quarter and yard lines it names", () => {
+		FOURTH_DOWN_TUNING.leadPuntMinLead = 9;
+		FOURTH_DOWN_TUNING.leadPuntFromQuarter = 3;
+
+		assert.strictEqual(decide({}), "punt");
+		assert.strictEqual(decide({ toGo: 1, scrimmage: 45 }), "punt");
+		assert.strictEqual(decide({ scoreDiff: 8 }), "run");
+		assert.strictEqual(decide({ quarter: 2 }), "run");
+		assert.strictEqual(decide({ toGo: 3, scrimmage: 58 }), "run");
+
+		FOURTH_DOWN_TUNING.leadPuntMaxScrimmage = 60;
+		assert.strictEqual(decide({ toGo: 3, scrimmage: 58 }), "punt");
+	});
+
+	test("the lead rule leaves field goals alone", () => {
+		FOURTH_DOWN_TUNING.leadPuntMinLead = 9;
+		assert.strictEqual(decide({ fgProbability: 0.5 }), "fieldGoal");
+	});
+
+	test("protection mode's field goal bar", () => {
+		FOURTH_DOWN_TUNING.protectionFgMinProbability = 0.65;
+		assert.strictEqual(
+			decide({ mode: "protection", fgProbability: 0.64 }),
+			"punt",
+		);
+		assert.strictEqual(
+			decide({ mode: "protection", fgProbability: 0.65 }),
+			"fieldGoal",
+		);
+	});
+
+	test("protection mode punts by default and can use the field-position table", () => {
+		const protection = {
+			mode: "protection",
+			scoreDiff: 6,
+			quarter: 4,
+		} as const;
+		assert.strictEqual(decide({ ...protection, clock: 5 }), "punt");
+
+		FOURTH_DOWN_TUNING.protectionUsesTable = true;
+		assert.strictEqual(decide({ ...protection, clock: 5 }), "run");
+		assert.strictEqual(
+			decide({ ...protection, clock: 5, toGo: 3, scrimmage: 45 }),
+			"punt",
+		);
+		assert.strictEqual(
+			decide({ ...protection, clock: 5, toGo: 2, fgProbability: 0.42 }),
+			"fieldGoal",
+		);
+	});
+
+	test("fgWindowUsesTable: false restores the old always-punt window", () => {
+		FOURTH_DOWN_TUNING.fgWindowUsesTable = false;
+		assert.strictEqual(
+			decide({ toGo: 3, scrimmage: 58, fgProbability: 0.42 }),
+			"punt",
+		);
+		assert.strictEqual(
+			decide({ toGo: 2, scrimmage: 58, fgProbability: 0.42 }),
+			"run",
+		);
 	});
 });
