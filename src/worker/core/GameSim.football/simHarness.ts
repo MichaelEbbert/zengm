@@ -863,6 +863,8 @@ export type StateResult = {
 	converted: number;
 	// Field goal make chance from the given state
 	fgProb: number;
+	// Mean interceptions thrown by the offense from the given state on
+	intsThrown: number;
 	// The state as the engine saw it on the first snap of the first trial
 	firstSnap: GameState;
 };
@@ -941,6 +943,7 @@ export const simFromState = async ({
 	const openingDrive = { td: 0, fg: 0, none: 0 };
 	let converted = 0;
 	let fgProb = 0;
+	let intsThrown = 0;
 	let firstSnap: GameState | undefined;
 
 	for (let i = 0; i < n; i++) {
@@ -1065,6 +1068,9 @@ export const simFromState = async ({
 		}
 		ptsFor += game.team[0].stat.pts - startPts[0];
 		ptsAgainst += game.team[1].stat.pts - startPts[1];
+		for (const p of game.team[0].player) {
+			intsThrown += p.stat.pssInt ?? 0;
+		}
 	}
 
 	return {
@@ -1082,6 +1088,7 @@ export const simFromState = async ({
 		},
 		converted: converted / n,
 		fgProb,
+		intsThrown: intsThrown / n,
 		firstSnap: firstSnap!,
 	};
 };

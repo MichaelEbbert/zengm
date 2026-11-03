@@ -2,7 +2,11 @@ import { assert, describe, expect, test } from "vitest";
 import { readFileSync, writeFileSync } from "node:fs";
 import { idb } from "../../db/index.ts";
 import { team } from "../index.ts";
-import { FOURTH_DOWN_TUNING } from "./coachDecision.ts";
+import {
+	DESPERATION_TUNING,
+	FOURTH_DOWN_TUNING,
+	determineMode,
+} from "./coachDecision.ts";
 import {
 	BIG_PLAY_YARDS,
 	DEAD_TIME,
@@ -1146,6 +1150,7 @@ const applyTuning = () => {
 	const tables: Record<string, Record<string, unknown>> = {
 		BIG_PLAY_YARDS,
 		DEAD_TIME,
+		DESPERATION_TUNING,
 		FOURTH_DOWN_TUNING,
 		HURRY_UP_OUT_OF_BOUNDS_RATE,
 		HURRY_UP_PLAY_LENGTH,
@@ -1501,6 +1506,165 @@ test.skipIf(!process.env.SIM_HARNESS)(
 								forceFirstCall: arm === "run" ? "run" : undefined,
 							});
 						}
+					}
+				}
+			}
+		}
+
+		process.stdout.write(`\n${formatStateResults(results)}\n\n`);
+		if (process.env.SIM_OUT) {
+			writeFileSync(process.env.SIM_OUT, JSON.stringify(results, null, 2));
+		}
+	},
+	6 * 60 * 60 * 1000,
+);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_GAMES=5000 SIM_OUT=x.json npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "desperation exposure"
+// FUTURE_PLANS.md item 3: where interceptions happen. Every offensive snap of
+// full LAC vs BUF games, by the coach's mode at the snap, with each game's
+// result for the team on offense.
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: desperation exposure, coach play-calling",
+	async () => {
+		const n = Number(process.env.SIM_GAMES ?? 1000);
+		applyTuning();
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+		const records = await simGames({ n, coach: true });
+
+		type Bucket = {
+			snaps: number;
+			passes: number;
+			ints: number;
+			// Games where this team threw an INT in this mode, and their result
+			gamesWithInt: number;
+			winsWithInt: number;
+		};
+		const empty = (): Bucket => ({
+			snaps: 0,
+			passes: 0,
+			ints: 0,
+			gamesWithInt: 0,
+			winsWithInt: 0,
+		});
+		const byMode: Record<string, Bucket> = {};
+		const games = { n: records.length, lacWins: 0, ties: 0 };
+
+		for (const record of records) {
+			const pts = [0, 0];
+			const intIn = [new Set<string>(), new Set<string>()];
+			if (record.pts[0] > record.pts[1]) {
+				games.lacWins += 1;
+			} else if (record.pts[0] === record.pts[1]) {
+				games.ties += 1;
+			}
+			for (const snap of record.snaps) {
+				if (OFFENSIVE_KINDS_FOR_EXPOSURE.has(snap.kind)) {
+					const o = snap.offense;
+					const mode =
+						snap.quarter >= 4
+							? determineMode(pts[o]! - pts[1 - o]!, snap.quarter, snap.clock)
+							: "normal";
+					const label = `${mode}${mode === "normal" && snap.quarter >= 4 ? " Q4+" : ""}`;
+					const b = (byMode[label] ??= empty());
+					b.snaps += 1;
+					if (PASS_KINDS_FOR_EXPOSURE.has(snap.kind)) {
+						b.passes += 1;
+					}
+					if (snap.kind === "interception") {
+						b.ints += 1;
+						intIn[o]!.add(label);
+					}
+				}
+				pts[0] += snap.ptsScored[0];
+				pts[1] += snap.ptsScored[1];
+			}
+			for (const o of [0, 1]) {
+				const won = record.pts[o]! > record.pts[1 - o]!;
+				for (const label of intIn[o]!) {
+					byMode[label]!.gamesWithInt += 1;
+					if (won) {
+						byMode[label]!.winsWithInt += 1;
+					}
+				}
+			}
+		}
+
+		process.stdout.write(`\n${JSON.stringify({ games, byMode }, null, 2)}\n`);
+		if (process.env.SIM_OUT) {
+			writeFileSync(
+				process.env.SIM_OUT,
+				JSON.stringify({ games, byMode }, null, 2),
+			);
+		}
+	},
+	6 * 60 * 60 * 1000,
+);
+
+const OFFENSIVE_KINDS_FOR_EXPOSURE = new Set<SnapKind>([
+	"run",
+	"completion",
+	"incompletion",
+	"interception",
+	"sack",
+]);
+const PASS_KINDS_FOR_EXPOSURE = new Set<SnapKind>([
+	"completion",
+	"incompletion",
+	"interception",
+	"sack",
+]);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_TRIALS=10000 SIM_SHARD=0/4 npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "desperation trials"
+// FUTURE_PLANS.md item 3: trailing in Q4 with the ball at the own 25, each team
+// trailing in turn, played to the end of regulation. Run once per
+// DESPERATION_TUNING.playCalls setting via SIM_TUNE.
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: desperation trials, trailing late",
+	async () => {
+		const n = Number(process.env.SIM_TRIALS ?? 5000);
+		const [shard, shards] = (process.env.SIM_SHARD ?? "0/1")
+			.split("/")
+			.map(Number) as [number, number];
+		applyTuning();
+		const { LAC, BUF } = goinFast1921();
+
+		const results: Record<string, StateResult> = {};
+		let cell = 0;
+		for (const [offense, defense] of [
+			[LAC, BUF],
+			[BUF, LAC],
+		] as const) {
+			await genHarnessTeams({ rosters: [offense, defense] });
+			// SIM_DIFFS / SIM_CLOCKS / SIM_TIMEOUTS override the grid, comma-separated
+			const list = (name: string, fallback: number[]) =>
+				process.env[name] ? process.env[name].split(",").map(Number) : fallback;
+			for (const diff of list("SIM_DIFFS", [-3, -7, -8, -10, -14])) {
+				for (const clock of list("SIM_CLOCKS", [7, 4, 2])) {
+					for (const timeouts of list("SIM_TIMEOUTS", [3])) {
+						cell += 1;
+						if (cell % shards !== shard) {
+							continue;
+						}
+						const label =
+							timeouts === 3
+								? `${offense.abbrev} | down ${-diff} | ${clock}:00`
+								: `${offense.abbrev} | down ${-diff} | ${clock}:00 | ${timeouts} TO`;
+						results[label] = await simFromState({
+							n,
+							coach: true,
+							state: {
+								down: 1,
+								toGo: 10,
+								scrimmage: 25,
+								clock,
+								quarter: 4,
+								diff,
+								timeouts: [timeouts, 3],
+							},
+						});
 					}
 				}
 			}

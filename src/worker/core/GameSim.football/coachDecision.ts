@@ -30,6 +30,21 @@ export const FOURTH_DOWN_TUNING = {
 	fgWindowUsesTable: true,
 };
 
+// Switches for the desperation-mode research (FUTURE_PLANS.md item 3), set per
+// run with SIM_TUNE. "closeGame" adopted 2026-11-02; "passHeavy" restores the
+// original behavior.
+export const DESPERATION_TUNING = {
+	// "passHeavy": pass unless 2 yards or less to go (the original).
+	// "normal": call plays as in normal mode.
+	// "fgRange": normal-mode calls when down 3 or less, at the opponent's 35 or
+	// closer, with 1:00+ left; passHeavy otherwise.
+	// "closeGame": normal-mode calls when down 3 or less; passHeavy otherwise.
+	playCalls: "closeGame" as "passHeavy" | "normal" | "fgRange" | "closeGame",
+	// closeGame only applies with at least this many minutes left in the period.
+	// 1.1 (1:06): from 1:00 down, pass-heavy wins more (docs/desperation_mode_research.md)
+	closeGameMinClock: 1.1,
+};
+
 export function determineMode(
 	scoreDiff: number,
 	quarter: number,
@@ -78,10 +93,21 @@ export function playDecision(
 	quarter: number,
 	clockMinutes: number,
 	mode: "normal" | "desperation" | "protection",
+	scoreDiff = 0,
 ): "run" | "pass" {
 	const clock = clockMinutes ?? 15;
 
-	if (mode === "desperation") {
+	const { playCalls } = DESPERATION_TUNING;
+	const desperationAsNormal =
+		playCalls === "normal" ||
+		(playCalls === "closeGame" &&
+			scoreDiff >= -3 &&
+			clock >= DESPERATION_TUNING.closeGameMinClock) ||
+		(playCalls === "fgRange" &&
+			scoreDiff >= -3 &&
+			scrimmage >= 65 &&
+			clock >= 1);
+	if (mode === "desperation" && !desperationAsNormal) {
 		if (quarter === 4 && clock < 1 && (scrimmage ?? 0) < 50) return "pass";
 		if (toGo <= 2) return "run";
 		return "pass";

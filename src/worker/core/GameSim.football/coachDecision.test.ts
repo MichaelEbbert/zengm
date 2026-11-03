@@ -1,5 +1,6 @@
 import { afterEach, assert, describe, test, vi } from "vitest";
 import {
+	DESPERATION_TUNING,
 	FOURTH_DOWN_TUNING,
 	determineMode,
 	fourthDownDecision,
@@ -241,5 +242,58 @@ describe("fourthDownDecision, FOURTH_DOWN_TUNING", () => {
 			decide({ toGo: 2, scrimmage: 58, fgProbability: 0.42 }),
 			"run",
 		);
+	});
+});
+
+describe("playDecision, DESPERATION_TUNING", () => {
+	afterEach(() => {
+		DESPERATION_TUNING.playCalls = "closeGame";
+		vi.restoreAllMocks();
+	});
+
+	// 2nd and 4 in desperation mode, Q4 with 3:00 left
+	const call = (scrimmage: number, scoreDiff: number, clock = 3) =>
+		playDecision(
+			2,
+			4,
+			scrimmage,
+			10,
+			40,
+			10,
+			60,
+			6,
+			4,
+			clock,
+			"desperation",
+			scoreDiff,
+		);
+
+	test("closeGame (default) calls normally down 3 or less, passes down 4+", () => {
+		assert.strictEqual(call(40, -3), "run");
+		assert.strictEqual(call(40, -4), "pass");
+	});
+
+	test("closeGame goes back to passHeavy under 1:06", () => {
+		assert.strictEqual(call(40, -3, 1.1), "run");
+		assert.strictEqual(call(40, -3, 1), "pass");
+	});
+
+	test("passHeavy passes on 2nd and 4", () => {
+		DESPERATION_TUNING.playCalls = "passHeavy";
+		assert.strictEqual(call(40, -7), "pass");
+		assert.strictEqual(call(70, -3), "pass");
+	});
+
+	test("normal uses the normal-mode rule: run on 2nd and 4", () => {
+		DESPERATION_TUNING.playCalls = "normal";
+		assert.strictEqual(call(40, -7), "run");
+	});
+
+	test("fgRange only applies down 3 or less, at the opp 35 or closer, 1:00+ left", () => {
+		DESPERATION_TUNING.playCalls = "fgRange";
+		assert.strictEqual(call(70, -3), "run");
+		assert.strictEqual(call(70, -4), "pass");
+		assert.strictEqual(call(60, -3), "pass");
+		assert.strictEqual(call(70, -3, 0.5), "pass");
 	});
 });

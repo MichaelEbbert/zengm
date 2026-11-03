@@ -873,6 +873,7 @@ class GameSim extends GameSimBase {
 			quarter,
 			this.clock,
 			mode,
+			scoreDiff,
 		);
 	}
 
