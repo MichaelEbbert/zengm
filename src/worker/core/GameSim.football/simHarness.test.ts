@@ -5,6 +5,7 @@ import { team } from "../index.ts";
 import {
 	DESPERATION_TUNING,
 	FOURTH_DOWN_TUNING,
+	RUSH_TUNING,
 	determineMode,
 } from "./coachDecision.ts";
 import {
@@ -1152,6 +1153,7 @@ const applyTuning = () => {
 		DEAD_TIME,
 		DESPERATION_TUNING,
 		FOURTH_DOWN_TUNING,
+		RUSH_TUNING,
 		HURRY_UP_OUT_OF_BOUNDS_RATE,
 		HURRY_UP_PLAY_LENGTH,
 		LATE_WINDOW_MINUTES,
@@ -1673,6 +1675,94 @@ test.skipIf(!process.env.SIM_HARNESS)(
 		process.stdout.write(`\n${formatStateResults(results)}\n\n`);
 		if (process.env.SIM_OUT) {
 			writeFileSync(process.env.SIM_OUT, JSON.stringify(results, null, 2));
+		}
+	},
+	6 * 60 * 60 * 1000,
+);
+
+// Experiment runner, skipped unless SIM_HARNESS is set:
+//   SIM_HARNESS=1 SIM_GAMES=5000 SIM_TUNE='{"RUSH_TUNING":{"runBoost":0.1}}' npx vitest run --project football src/worker/core/GameSim.football/simHarness.test.ts -t "rushing boost"
+// FUTURE_PLANS.md item 4: full LAC vs BUF games, both teams on the same
+// setting. A 3-and-out is a drive of 3 or fewer offensive plays that ends in a
+// punt.
+test.skipIf(!process.env.SIM_HARNESS)(
+	"experiment: rushing boost, coach play-calling",
+	async () => {
+		const n = Number(process.env.SIM_GAMES ?? 1000);
+		applyTuning();
+		const { LAC, BUF } = goinFast1921();
+		await genHarnessTeams({ rosters: [LAC, BUF] });
+		const records = await simGames({ n, coach: true });
+
+		const plays = new Set<SnapKind>([
+			"run",
+			"completion",
+			"incompletion",
+			"interception",
+			"sack",
+		]);
+		const passes = new Set<SnapKind>([
+			"completion",
+			"incompletion",
+			"interception",
+			"sack",
+		]);
+		const out = {
+			games: records.length,
+			lac: { win: 0, tie: 0, loss: 0 },
+			drives: 0,
+			threeAndOuts: 0,
+			puntDrives: 0,
+			firstDownCalls: { run: 0, pass: 0 },
+			allCalls: { run: 0, pass: 0 },
+			rushYds: 0,
+			rushes: 0,
+		};
+		for (const record of records) {
+			const [a, b] = record.pts;
+			if (a > b) out.lac.win += 1;
+			else if (a < b) out.lac.loss += 1;
+			else out.lac.tie += 1;
+
+			let drivePlays = 0;
+			let inDrive = false;
+			for (const snap of record.snaps) {
+				if (snap.newDrive) {
+					inDrive = true;
+					drivePlays = 0;
+					out.drives += 1;
+				}
+				if (plays.has(snap.kind)) {
+					drivePlays += 1;
+					const kind = passes.has(snap.kind) ? "pass" : "run";
+					out.allCalls[kind] += 1;
+					if (snap.down === 1) {
+						out.firstDownCalls[kind] += 1;
+					}
+					if (snap.kind === "run" && snap.stat) {
+						out.rushes += snap.stat.rus;
+						out.rushYds += snap.stat.rusYds;
+					}
+				}
+				if (snap.kind === "punt" && inDrive) {
+					out.puntDrives += 1;
+					if (drivePlays <= 3) {
+						out.threeAndOuts += 1;
+					}
+					inDrive = false;
+				}
+			}
+		}
+		const game = gameReport(records);
+		process.stdout.write(`
+${JSON.stringify(out)}
+${formatGameReport(game)}
+`);
+		if (process.env.SIM_OUT) {
+			writeFileSync(
+				process.env.SIM_OUT,
+				JSON.stringify({ out, game }, null, 2),
+			);
 		}
 	},
 	6 * 60 * 60 * 1000,

@@ -67,7 +67,7 @@ Player fantasy points now use our own scoring schedule (pass yds 1 per 10, pass 
 **Do both of these, in order, before the user starts the next Daily League season.**
 
 1. **DONE 2026-11-02: upstream sync 2 passed the Electron test and is pushed.** Rollback tag: `pre-upstream-sync-2-daily-2003`. Record: `docs/upstream_sync_log.md` ("Sync 2").
-2. **Try the enhancements in `FUTURE_PLANS.md`, "Recommended Order":** only item 4 (rushing boost) is left; items 1-3, 5 and 7-9 are done. Changes made: 8 (the 0.40-0.45 field goal window uses the field-position table), 3 (down 3 or less in desperation with 1:06+ left calls plays normally, `DESPERATION_TUNING`) and 5 (the trade evaluation API, `ELECTRON.md`). Results: `docs/fourth_down_when_leading.md`, `docs/desperation_mode_research.md`. **Each change is a trial, not a commitment:** build it, test it with before/after sims, show the user the results, and keep it only if the user likes it. The sim harness has `simFromState({ playToEnd, forceFirstCall })`, and `FOURTH_DOWN_TUNING` / `DESPERATION_TUNING` switches settable through `SIM_TUNE`.
+2. **DONE 2026-11-03: every "Recommended Order" item in `FUTURE_PLANS.md` is complete.** Changes made: 8 (the 0.40-0.45 field goal window uses the field-position table), 3 (down 3 or less in desperation with 1:06+ left calls plays normally, `DESPERATION_TUNING`) and 5 (the trade evaluation API, `ELECTRON.md`). No change: 1, 2, 4, 7, 9. Results: `docs/fourth_down_when_leading.md`, `docs/desperation_mode_research.md`, `docs/rushing_boost_trial.md`. The sim harness has `simFromState({ playToEnd, forceFirstCall })`, and `FOURTH_DOWN_TUNING` / `DESPERATION_TUNING` / `RUSH_TUNING` switches settable through `SIM_TUNE`. The user can start the next Daily League season.
 
 ---
 

@@ -1,5 +1,6 @@
 import { afterEach, assert, describe, test, vi } from "vitest";
 import {
+	RUSH_TUNING,
 	DESPERATION_TUNING,
 	FOURTH_DOWN_TUNING,
 	determineMode,
@@ -295,5 +296,38 @@ describe("playDecision, DESPERATION_TUNING", () => {
 		assert.strictEqual(call(70, -4), "pass");
 		assert.strictEqual(call(60, -3), "pass");
 		assert.strictEqual(call(70, -3, 0.5), "pass");
+	});
+});
+
+describe("playDecision, RUSH_TUNING", () => {
+	afterEach(() => {
+		RUSH_TUNING.runBoost = 0;
+		vi.restoreAllMocks();
+	});
+
+	// 6.0 ypc vs 4.0 ypa: a 60% run share before any boost
+	const call = () => firstDown(10, [10, 10], { rushYards: 60, passYards: 40 });
+
+	test("no boost: run below 0.60", () => {
+		rollBelow(0.59);
+		assert.strictEqual(call(), "run");
+		rollBelow(0.61);
+		assert.strictEqual(call(), "pass");
+	});
+
+	test("a 0.10 boost makes it 0.70", () => {
+		RUSH_TUNING.runBoost = 0.1;
+		rollBelow(0.69);
+		assert.strictEqual(call(), "run");
+		rollBelow(0.71);
+		assert.strictEqual(call(), "pass");
+	});
+
+	test("the boost is capped at 0.90", () => {
+		RUSH_TUNING.runBoost = 0.5;
+		rollBelow(0.89);
+		assert.strictEqual(call(), "run");
+		rollBelow(0.91);
+		assert.strictEqual(call(), "pass");
 	});
 });

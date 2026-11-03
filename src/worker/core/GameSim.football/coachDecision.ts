@@ -30,6 +30,15 @@ export const FOURTH_DOWN_TUNING = {
 	fgWindowUsesTable: true,
 };
 
+// Switch for the rushing boost trial (FUTURE_PLANS.md item 4), set per run with
+// SIM_TUNE. 0 keeps the original behavior.
+export const RUSH_TUNING = {
+	// Added to the 1st-down run share once the 5-and-5 ratio applies, capped at
+	// maxRunProb
+	runBoost: 0,
+	maxRunProb: 0.9,
+};
+
 // Switches for the desperation-mode research (FUTURE_PLANS.md item 3), set per
 // run with SIM_TUNE. "closeGame" adopted 2026-11-02; "passHeavy" restores the
 // original behavior.
@@ -131,7 +140,13 @@ export function playDecision(
 		const ypc = (rushYards || 0) / ra;
 		const ypa = (passYards || 0) / pa;
 		const denom = ypc + ypa;
-		const runProb = denom > 0 ? ypc / denom : 0.5;
+		let runProb = denom > 0 ? ypc / denom : 0.5;
+		if (RUSH_TUNING.runBoost > 0) {
+			runProb = Math.min(
+				runProb + RUSH_TUNING.runBoost,
+				RUSH_TUNING.maxRunProb,
+			);
+		}
 		return Math.random() < runProb ? "run" : "pass";
 	}
 
